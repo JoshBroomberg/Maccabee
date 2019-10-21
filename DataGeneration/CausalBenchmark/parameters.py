@@ -58,28 +58,11 @@ ALLOWED_PARAMS = [
 
 # TODO: refactor the way calculated params and distributions are handled.
 
-
-class Parameters:
-    instance = None
-
-    def __new__(cls):
-        if cls.instance is None:
-            obj = object.__new__(cls)
-            cls.instance = obj
-            return obj
-        else:
-            return cls.instance
-
+class ParameterStore(object):
     def __init__(self):
         self.params_loaded = False
 
-    def __getattr__(self, name):
-        if not self.params_loaded:
-            raise Exception("Parameters not loaded!")
-        else:
-            return super().__getattr__(self, name)
-
-    def load(self, parameter_file_path=DEFAULT_PARAMETER_PATH):
+    def load(self, parameter_file_path):
         self.params_loaded = True
 
         params_file = open(parameter_file_path, "r")
@@ -110,3 +93,9 @@ class Parameters:
     def sample_treatment_effect(self, size=1):
         return np.round(np.random.standard_t(
                             self.TREATMENT_EFFECT_TAIL_THICKNESS, size=size), 3)
+
+Parameters = ParameterStore()
+
+def load_parameters(parameter_file_path=DEFAULT_PARAMETER_PATH):
+    global Parameters
+    Parameters.load(parameter_file_path)

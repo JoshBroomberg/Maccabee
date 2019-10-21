@@ -1,7 +1,7 @@
 import numpy as np
 import sympy as sp
-from . import Constants
-from . import Parameters
+from .constants import Constants
+from .parameters import Parameters
 
 def select_given_probability_distribution(full_list, selection_probabilities):
     full_list = np.array(full_list)
@@ -34,4 +34,4 @@ def initialize_expression_constants(expression):
 
     return expression.subs(
         zip(constants_to_initialize,
-            Parameters().sample_subfunction_constants(size=len(constants_to_initialize))))
+            Parameters.sample_subfunction_constants(size=len(constants_to_initialize))))

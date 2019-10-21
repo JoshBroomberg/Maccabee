@@ -18,11 +18,11 @@ def build_data_frame(covar_data, covar_names):
       index=np.arange(n_observations))
 
   # Sample and add noise column
-  noise_samples = Parameters().sample_outcome_noise(size=n_observations)
+  noise_samples = Parameters.sample_outcome_noise(size=n_observations)
   data[str(Constants.OUTCOME_NOISE_SYMBOL)] = noise_samples
 
   # Sample observations to reduce observation count if desired.
-  data = data.sample(frac=Parameters().OBSERVATION_PROBABILITY)
+  data = data.sample(frac=Parameters.OBSERVATION_PROBABILITY)
 
   # generate symbols for all covariates
   covar_symbols = np.array(sp.symbols(covar_names))
@@ -61,11 +61,11 @@ def generate_transformed_covariate_space(covariate_symbols, subfunction_form_pro
 def generate_aligned_treatment_and_outcome_covariates(covariate_symbols):
   true_outcome_covariates = generate_transformed_covariate_space(
       covariate_symbols,
-      Parameters().OUTCOME_MECHANISM_COVARIATE_SELECTION_PROBABILITY)
+      Parameters.OUTCOME_MECHANISM_COVARIATE_SELECTION_PROBABILITY)
 
   true_treatment_covariates = generate_transformed_covariate_space(
       covariate_symbols,
-      Parameters().TREAT_MECHANISM_COVARIATE_SELECTION_PROBABILITY)
+      Parameters.TREAT_MECHANISM_COVARIATE_SELECTION_PROBABILITY)
 
   # Unique set of all covariates
   true_covariates = np.array(list(set(true_treatment_covariates + true_outcome_covariates)))
@@ -74,7 +74,7 @@ def generate_aligned_treatment_and_outcome_covariates(covariate_symbols):
   # parameter.
   shared_confounders, _ = select_given_probability_distribution(
       true_covariates,
-      selection_probabilities=Parameters().ACTUAL_CONFOUNDER_ALIGNMENT)
+      selection_probabilities=Parameters.ACTUAL_CONFOUNDER_ALIGNMENT)
   shared_confounders = set(shared_confounders)
 
   # Union the true confounders into the original covariate selections.
@@ -112,21 +112,21 @@ def generate_treatment_function(treatment_subfunctions, data):
   normalized_logit_expr = (x - min_logit)/(max_logit - min_logit)
 
   # Second, construct function to rescale to target interval
-  constrained_logit_expr = Parameters().TARGET_MIN_LOGIT + \
-    (x*(Parameters().TARGET_MAX_LOGIT - Parameters().TARGET_MIN_LOGIT))
+  constrained_logit_expr = Parameters.TARGET_MIN_LOGIT + \
+    (x*(Parameters.TARGET_MAX_LOGIT - Parameters.TARGET_MIN_LOGIT))
 
   rescaling_expr = constrained_logit_expr.subs(x, normalized_logit_expr)
   rescaled_logit_mean = rescaling_expr.evalf(subs={x: mean_logit})
 
   # Third, construct function to apply offset for targeted propensity.
   # This requires the rescaled mean found above.
-  target_propensity_adjustment = Parameters().TARGET_MEAN_LOGIT - rescaled_logit_mean
+  target_propensity_adjustment = Parameters.TARGET_MEAN_LOGIT - rescaled_logit_mean
   targeted_logit_expr = rescaling_expr + target_propensity_adjustment
 
   # Apply max/min truncation to account for adjustment shift.
   max_min_capped_targeted_logit = sp.functions.Max(
-      sp.functions.Min(targeted_logit_expr, Parameters().TARGET_MAX_LOGIT),
-      Parameters().TARGET_MIN_LOGIT)
+      sp.functions.Min(targeted_logit_expr, Parameters.TARGET_MAX_LOGIT),
+      Parameters.TARGET_MIN_LOGIT)
 
   # Finally, construct the full function expression.
   treatment_logit_expr = max_min_capped_targeted_logit.subs(
@@ -139,12 +139,12 @@ def generate_treatment_function(treatment_subfunctions, data):
 """ Create outcome function"""
 
 def generate_treatment_effect_subfunction(outcome_subfunctions, data):
-  base_treatment_effect = Parameters().sample_treatment_effect()[0]
+  base_treatment_effect = Parameters.sample_treatment_effect()[0]
 
   # Sample outcome subfunctions to interact with Treatment effect.
   selected_interaction_terms, _ = select_given_probability_distribution(
       full_list=outcome_subfunctions,
-      selection_probabilities=Parameters().TREATMENT_EFFECT_HETEROGENEITY)
+      selection_probabilities=Parameters.TREATMENT_EFFECT_HETEROGENEITY)
 
   # Build multiplier
   treatment_effect_multiplier_expr = np.sum(selected_interaction_terms)
@@ -239,7 +239,7 @@ def created_simulated_data_from_random_covariates():
 
     potential_confounder_symbols, potential_confounder_selections = select_given_probability_distribution(
         full_list=covar_symbols,
-        selection_probabilities=Parameters().POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY)
+        selection_probabilities=Parameters.POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY)
 
     potential_confounder_symbols
 
