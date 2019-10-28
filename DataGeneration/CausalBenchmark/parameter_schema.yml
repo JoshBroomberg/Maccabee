@@ -51,6 +51,10 @@ OUTCOME_MECHANISM_COVARIATE_SELECTION_PROBABILITY:
     covariates appear in the outcome mechanism in different
     forms.
 
+OUTCOME_MECHANISM_EXPONENTIATION:
+  type: bool
+  description: |
+    Exponentiate the combined, transformed covariates.
 
 SUBFUNCTION_CONSTANT_TAIL_THICKNESS:
   type: number

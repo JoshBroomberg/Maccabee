@@ -1,7 +1,21 @@
 import numpy as np
 import sympy as sp
 from .constants import Constants
-from .parameters import Parameters
+import pandas as pd
+
+def generate_random_covariates():
+    N_COVARS = 20
+    N_OBSERVATIONS = 1000
+
+    # Generate random covariates and name sequentially
+    covar_data = np.random.normal(loc=0, scale=5, size=(N_OBSERVATIONS, N_COVARS))
+    covar_names = np.array([f"X{i}" for i in range(N_COVARS)])
+
+    # Build DF
+    return pd.DataFrame(
+            data=covar_data,
+            columns=covar_names,
+            index=np.arange(N_OBSERVATIONS))
 
 def select_given_probability_distribution(full_list, selection_probabilities):
     full_list = np.array(full_list)
@@ -28,10 +42,10 @@ def evaluate_expression(expression, data):
     return func(*covar_data).flatten()
 
 @np.vectorize
-def initialize_expression_constants(expression):
+def initialize_expression_constants(parameters, expression):
     constants_to_initialize = \
         Constants.SUBFUNCTION_CONSTANT_SYMBOLS.intersection(expression.free_symbols)
 
     return expression.subs(
         zip(constants_to_initialize,
-            Parameters.sample_subfunction_constants(size=len(constants_to_initialize))))
+            parameters.sample_subfunction_constants(size=len(constants_to_initialize))))

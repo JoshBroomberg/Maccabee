@@ -2,10 +2,9 @@ import numpy as np
 import sympy as sp
 from sympy.abc import x
 import yaml
-from copy import deepcopy
 
-PARAMETER_SPECIFICATION_PATH = "CausalBenchmark/param_specification.yml"
-DEFAULT_PARAMETER_PATH = "CausalBenchmark/default_params.yml"
+PARAMETER_SPECIFICATION_PATH = "CausalBenchmark/parameter_schema.yml"
+DEFAULT_PARAMETER_PATH = "CausalBenchmark/default_parameter_specification.yml"
 
 PARAMETER_SPEC = yaml.safe_load(open(PARAMETER_SPECIFICATION_PATH, "r"))
 
@@ -23,14 +22,9 @@ PARAM_MAX_KEY = "max"
 PARAM_DICT_KEYS_KEY = "required_keys"
 
 # TODO: refactor the way calculated params and distributions are handled.
-class ParameterStore(object):
+class ParameterStore():
 
-    def __init__(self):
-        self.params_loaded = False
-
-    def load(self, parameter_file_path):
-        self.params_loaded = True
-
+    def __init__(self, parameter_file_path):
         params_file = open(parameter_file_path, "r")
         parameters = yaml.safe_load(params_file)
 
@@ -65,7 +59,5 @@ class ParameterStore(object):
         return np.round(np.random.standard_t(
                             self.TREATMENT_EFFECT_TAIL_THICKNESS, size=size), 3)
 
-Parameters = ParameterStore()
-
-def load_parameters(parameter_file_path=DEFAULT_PARAMETER_PATH):
-    Parameters.load(parameter_file_path)
+def build_parameter_object(parameter_file_path):
+    return ParameterStore(parameter_file_path=parameter_file_path)
