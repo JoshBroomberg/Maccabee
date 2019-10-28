@@ -16,8 +16,9 @@ class DataGeneratingProcessWrapper():
         # Potential confounders
         self.potential_confounder_symbols = None
 
-        # Observed covariate data.
+        # Observed and oracle/transformed covariate data.
         self.observed_covariate_data = None
+        self.oracle_covariate_data = None
 
         # Sampled covariate transforms for the treat and outcome functions.
         self.outcome_covariate_transforms = None
@@ -32,8 +33,11 @@ class DataGeneratingProcessWrapper():
         self.outcome_function = None
 
         # Generated data
-        self.observed_data = None
-        self.oracle_data = None
+        self.observed_outcome_data = None
+        self.oracle_outcome_data = None
+
+        # Operational constants.
+        self.data_generated = False
 
     def sample_dgp(self):
         self.sample_observed_covariate_data()
@@ -266,8 +270,22 @@ class DataGeneratingProcessWrapper():
             Constants.TREATMENT_ASSIGNMENT_SYMBOL*self.treatment_effect_subfunction + \
             Constants.OUTCOME_NOISE_SYMBOL
 
+    def generate_transformed_covariate_data(self):
+        all_transforms = list(set(self.outcome_covariate_transforms).union(
+            self.treatment_covariate_transforms))
+
+        data = {}
+        for index, transform in enumerate(all_transforms):
+            data[f"{Constants.TRANSFORMED_COVARIATE_PREFIX}{index}"] = \
+                evaluate_expression(transform, self.observed_covariate_data)
+
+        return pd.DataFrame(data)
+
     def generate_data(self):
         """Perform data generation"""
+
+        self.data_generated = True
+
         n_observations = self.observed_covariate_data.shape[0]
 
         logit_values = evaluate_expression(
@@ -289,26 +307,30 @@ class DataGeneratingProcessWrapper():
         treatment_effect = Y1 - Y0
 
         # Data available for causal inference
-        self.observed_data = self.observed_covariate_data.copy()
-        self.observed_data[Constants.TREATMENT_ASSIGNMENT_VAR_NAME] = T
-        self.observed_data[Constants.OBSERVED_OUTCOME_VAR_NAME] = Y
+        self.observed_outcome_data = pd.DataFrame()
+        self.observed_outcome_data[Constants.TREATMENT_ASSIGNMENT_VAR_NAME] = T
+        self.observed_outcome_data[Constants.OBSERVED_OUTCOME_VAR_NAME] = Y
 
         # Data not available for causal inference.
-        self.oracle_data = self.generate_transformed_covariate_data()
-        self.oracle_data[Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME] = logit_values
-        self.oracle_data[Constants.PROPENSITY_SCORE_VAR_NAME] = propensity_scores
-        self.oracle_data[Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME] = Y0
-        self.oracle_data[Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_VAR_NAME] = Y1
-        self.oracle_data[Constants.TREATMENT_EFFECT_VAR_NAME] = treatment_effect
+        self.oracle_covariate_data = self.generate_transformed_covariate_data()
+        self.oracle_outcome_data = pd.DataFrame()
+        self.oracle_outcome_data[Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME] = logit_values
+        self.oracle_outcome_data[Constants.PROPENSITY_SCORE_VAR_NAME] = propensity_scores
+        self.oracle_outcome_data[Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME] = Y0
+        self.oracle_outcome_data[Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_VAR_NAME] = Y1
+        self.oracle_outcome_data[Constants.TREATMENT_EFFECT_VAR_NAME] = treatment_effect
 
-        return self.observed_data, self.oracle_data
+        return (self.observed_covariate_data, self.observed_outcome_data,
+            self.oracle_covariate_data, self.oracle_outcome_data)
 
-    def generate_transformed_covariate_data(self):
-        all_transforms = list(set(self.outcome_covariate_transforms).union(self.treatment_covariate_transforms))
+    def get_observed_data(self):
+        if not self.data_generated:
+            raise Exception("You must run generate_data first.")
 
-        data = {}
-        for index, transform in enumerate(all_transforms):
-            data[f"X'_{index}={transform}"] = evaluate_expression(
-                transform, self.observed_covariate_data)
+        return self.observed_outcome_data.join(self.observed_covariate_data)
 
-        return pd.DataFrame(data)
+    def get_oracle_data(self):
+        if not self.data_generated:
+            raise Exception("You must run generate_data first.")
+
+        return self.oracle_outcome_data.join(self.oracle_covariate_data)

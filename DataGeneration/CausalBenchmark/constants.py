@@ -49,6 +49,8 @@ class Constants:
     # How much of the covariate data to use when normalizing functions.
     NORMALIZATION_DATA_SAMPLE_FRACTION = 1
 
+    TRANSFORMED_COVARIATE_PREFIX = "TRANSFORMED_X"
+
     TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME = "logit(P(T|X))"
     PROPENSITY_SCORE_VAR_NAME = "P(T|X)"
     TREATMENT_ASSIGNMENT_VAR_NAME = "T"
@@ -61,3 +63,17 @@ class Constants:
 
     OUTCOME_NOISE_VAR_NAME = "NOISE(Y)"
     OUTCOME_NOISE_SYMBOL = sp.symbols(OUTCOME_NOISE_VAR_NAME)
+
+    # Metric constants
+    OBSERVED_COVARIATE_DATA = "OBSERVED_COVARIATES"
+    OBSERVED_OUTCOME_DATA = "OBSERVED_OUTCOMES"
+    ORACLE_COVARIATE_DATA = "ORACLE_COVARIATES"
+    ORACLE_OUTCOME_DATA = "ORACLE_OUTCOMES"
+
+    LINEAR_R2 = "Linear r2"
+    LOGISTIC_R2 = "Logistic r2"
+    PERCENT = "Percent"
+    L2_MEAN_DIST = "L2 dist between means"
+    NN_CF_MAHALA_DIST = "Mahalanobis distance to nearest counterfactual"
+    STD_RATIO = "Std Ratio"
+    WASS_DIST = "Wasserstein Distance"
