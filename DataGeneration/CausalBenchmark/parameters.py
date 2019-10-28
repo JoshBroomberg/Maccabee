@@ -4,61 +4,27 @@ from sympy.abc import x
 import yaml
 from copy import deepcopy
 
+PARAMETER_SPECIFICATION_PATH = "CausalBenchmark/param_specification.yml"
 DEFAULT_PARAMETER_PATH = "CausalBenchmark/default_params.yml"
-ALLOWED_PARAMS = [
-    # Probability that a covariate is a potential confounder
-    # (affecting one or both of treatment and outcome)
-    # Lower values reduce the number of covariates which are predicitive
-    # of treatment/outcome. This makes modelling harder given need
-    # for variable selection.
-    # TODO: consider differential selection of different covariate types.
-    "POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY",
 
-    # Probability that a covariate in the true space
-    # will appear in both the outcome and treatment functions.
-    # This is a soft target, with some room for variance.
-    "ACTUAL_CONFOUNDER_ALIGNMENT",
+PARAMETER_SPEC = yaml.safe_load(open(PARAMETER_SPECIFICATION_PATH, "r"))
 
-    ### SHARED TREAT/OUTCOME FUNCTION SETTINGS ###
+PARAM_DESC_KEY = "description"
 
-    # Probabilities which govern the probability with which
-    # covariates appear in the treatment mechanism in different
-    # forms.
-    "TREAT_MECHANISM_COVARIATE_SELECTION_PROBABILITY",
-    "OUTCOME_MECHANISM_COVARIATE_SELECTION_PROBABILITY",
+PARAM_TYPE_KEY = "type"
+PARAM_TYPE_NUMBER = "number"
+PARAM_TYPE_DICTIONARY = "dictionary"
 
-    # DF for the T-distribution over subfunction constants.
-    "SUBFUNCTION_CONSTANT_TAIL_THICKNESS",
+# Number type keys
+PARAM_MIN_KEY = "min"
+PARAM_MAX_KEY = "max"
 
-    ### TREATMENT FUNCTION PARAMS ###
-
-    # propensity score settings
-    "MIN_PROPENSITY_SCORE",
-    "MAX_PROPENSITY_SCORE",
-    "TARGET_PROPENSITY_SCORE",
-
-    ### OUTCOME FUNCTION PARAMS ###
-
-    # DF for the T-distribution over outcome noise.
-    "OUTCOME_NOISE_TAIL_THICKNESS",
-
-    ### TREATMENT EFFECT PARAMS ###
-
-    # Marginal probability that there is an interaction between the
-    # base treatment effect and each subfunction in the outcome function.
-    "TREATMENT_EFFECT_HETEROGENEITY",
-
-    # DF for the T-distribution over treatment effects.
-    "TREATMENT_EFFECT_TAIL_THICKNESS",
-
-    # Marginal probability of observing any given row of the dataset.
-    # Used to reduce the overall number of observations if desired.
-    "OBSERVATION_PROBABILITY"
-]
+# Dict type keys
+PARAM_DICT_KEYS_KEY = "required_keys"
 
 # TODO: refactor the way calculated params and distributions are handled.
-
 class ParameterStore(object):
+
     def __init__(self):
         self.params_loaded = False
 
@@ -68,12 +34,16 @@ class ParameterStore(object):
         params_file = open(parameter_file_path, "r")
         parameters = yaml.safe_load(params_file)
 
-        for name, value in parameters.items():
-            if name in ALLOWED_PARAMS:
-                setattr(self, name, value)
+        for param_name, param_info in PARAMETER_SPEC.items():
+            param_type = param_info[PARAM_TYPE_KEY]
+            if param_name in parameters:
+                param_value = parameters[param_name]
+                # TODO: add checks for min/max/keys
+                setattr(self, param_name, param_value)
             else:
-                raise Exception("{} is not an allowed parameter".format(name))
+                raise Exception("Missing parameter: {}".format(param_name))
 
+        # TODO: provide a spec for calculated params
         logistic_function = (sp.functions.exp(x)/(1+sp.functions.exp(x)))
         self.TARGET_MIN_LOGIT = sp.solve(
             logistic_function - self.MIN_PROPENSITY_SCORE, x)[0]
@@ -82,6 +52,7 @@ class ParameterStore(object):
         self.TARGET_MEAN_LOGIT = sp.solve(
             logistic_function - self.TARGET_PROPENSITY_SCORE, x)[0]
 
+    # TODO: provide a spec for sampling functions.
     def sample_subfunction_constants(self, size=1):
         return np.round(np.random.standard_t(
                              self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS, size=size), 3)
@@ -97,5 +68,4 @@ class ParameterStore(object):
 Parameters = ParameterStore()
 
 def load_parameters(parameter_file_path=DEFAULT_PARAMETER_PATH):
-    global Parameters
     Parameters.load(parameter_file_path)

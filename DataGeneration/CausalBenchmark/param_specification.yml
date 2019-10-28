@@ -1,0 +1,118 @@
+# TODO: use inheritance for specification of probabilities and DF
+# TODO: consider differential selection of different covariate types.
+POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY:
+  type: number
+  min: 0
+  max: 1
+  description: |
+      Marginal probability that each covariate is a potential confounder
+      (affecting one or both of treatment and outcome) Lower values reduce
+      the number of covariates which are predicitive of treatment/outcome.
+      This makes modelling harder given need for variable selection
+
+ACTUAL_CONFOUNDER_ALIGNMENT:
+  type: number
+  min: 0
+  max: 1
+  description: |
+      Marginal probability that a covariate in the transformed covariate space
+      will appear in both the outcome and treatment functions. This is a soft
+      target - there is variance in actual achieved alignment.
+
+### SHARED TREAT/OUTCOME FUNCTION SETTINGS ###
+
+TREAT_MECHANISM_COVARIATE_SELECTION_PROBABILITY:
+  type: dictionary
+  required_keys:
+    - LINEAR
+    - POLY_QUAD
+    - POLY_CUBIC
+    - STEP_JUMP
+    - STEP_KINK
+    - INTERACTION_TWO_WAY
+    - INTERACTION_THREE_WAY
+  description: |
+    Probabilities that govern the probability with which
+    covariates appear in the treatment mechanism in different
+    forms.
+
+OUTCOME_MECHANISM_COVARIATE_SELECTION_PROBABILITY:
+  type: dictionary
+  required_keys:
+    - LINEAR
+    - POLY_QUAD
+    - POLY_CUBIC
+    - STEP_JUMP
+    - STEP_KINK
+    - INTERACTION_TWO_WAY
+    - INTERACTION_THREE_WAY
+  description: |
+    Probabilities that govern the probability with which
+    covariates appear in the outcome mechanism in different
+    forms.
+
+
+SUBFUNCTION_CONSTANT_TAIL_THICKNESS:
+  type: number
+  min: 1
+  max: 100
+  description: |
+    DF for the T-distribution over subfunction constants.
+
+### TREATMENT FUNCTION PARAMS ###
+
+# propensity score settings
+MIN_PROPENSITY_SCORE:
+  type: number
+  min: 0.001
+  max: 0.999
+  description: |
+    Minimum propensity score for treatment mechanism
+
+MAX_PROPENSITY_SCORE:
+  type: number
+  min: 0.001
+  max: 0.999
+  description: |
+    Max propensity score for treatment mechanism
+
+TARGET_PROPENSITY_SCORE:
+  type: number
+  min: 0.001
+  max: 0.999
+  description: |
+    Target propensity score for treatment mechanism
+
+### OUTCOME FUNCTION PARAMS ###
+
+OUTCOME_NOISE_TAIL_THICKNESS:
+  type: number
+  min: 1
+  max: 100
+  description: |
+    DF for the T-distribution over outcome noise.
+
+### TREATMENT EFFECT PARAMS ###
+
+TREATMENT_EFFECT_HETEROGENEITY:
+  type: number
+  min: 0
+  max: 1
+  description: |
+    Marginal probability that there is an interaction between the
+    base treatment effect and each subfunction in the outcome function.
+
+TREATMENT_EFFECT_TAIL_THICKNESS:
+  type: number
+  min: 1
+  max: 100
+  description: |
+    DF for the T-distribution over treatment effects.
+
+OBSERVATION_PROBABILITY:
+  type: number
+  min: 0
+  max: 1
+  description: |
+    Marginal probability of observing any given row of the dataset.
+    Used to reduce the overall number of observations if desired.

@@ -1,7 +1,6 @@
 from sympy.abc import a, c, x, y, z
 import sympy as sp
 
-
 # OPERATIONAL CONSTANTS
 class Constants:
     LINEAR = "LINEAR"
