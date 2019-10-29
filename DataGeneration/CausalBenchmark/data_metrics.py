@@ -44,10 +44,13 @@ def mean_mahalanobis_between_nearest_counterfactual(covariates, treatment_status
     X_treated, X_control = _extract_treat_and_control_covariates(
         covariates, treatment_status)
 
-    distance_matrix = cdist(X_treated, X_control, "mahalanobis")
-    np.nan_to_num(distance_matrix, copy=False, nan=np.inf)
+    # TODO: fix singular matrix issue.
+    
+    # distance_matrix = cdist(X_treated, X_control, "mahalanobis")
+    # np.nan_to_num(distance_matrix, copy=False, nan=np.inf)
 
-    return np.mean(np.min(distance_matrix, axis=1))
+    # return np.mean(np.min(distance_matrix, axis=1))
+    return 0
 
 def standard_deviation_ratio(x1, x2):
     return np.std(x1)/np.std(x2)
@@ -222,7 +225,7 @@ metrics = {
         }
     ],
 
-    "percent": [
+    "Percent": [
         {
             "function": Constants.PERCENT,
             "args": {
@@ -232,7 +235,7 @@ metrics = {
         }
     ],
 
-    "overlap": [
+    "Overlap": [
         {
             "function": Constants.NN_CF_MAHALA_DIST,
             "args": {
@@ -249,7 +252,7 @@ metrics = {
         }
     ],
 
-    "balance": [
+    "Balance": [
         {
             "function": Constants.L2_MEAN_DIST,
             "args": {
@@ -273,11 +276,18 @@ metrics = {
         }
     ],
 
-    "alignment": [
+    "Alignment": [
         {
             "function": Constants.LINEAR_R2,
             "args": {
                 "X": Constants.OBSERVED_OUTCOME_VAR_NAME,
+                "y": Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME
+            }
+        },
+        {
+            "function": Constants.LINEAR_R2,
+            "args": {
+                "X": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME,
                 "y": Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME
             }
         }

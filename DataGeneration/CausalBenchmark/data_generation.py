@@ -52,6 +52,7 @@ class DataGeneratingProcessWrapper():
             frac=self.params.OBSERVATION_PROBABILITY)
 
         n_observed = self.observed_covariate_data.shape[0]
+
         # Sample and add noise column
         noise_samples = self.params.sample_outcome_noise(size=n_observed)
         self.observed_covariate_data[Constants.OUTCOME_NOISE_VAR_NAME] = noise_samples
@@ -115,21 +116,33 @@ class DataGeneratingProcessWrapper():
                 self.params.TREAT_MECHANISM_COVARIATE_SELECTION_PROBABILITY)
 
         # Unique set of all covariate transforms
-        all_transforms = np.array(
-            list(set(treatment_covariate_transforms + outcome_covariate_transforms)))
+        all_transforms = list(set(
+            treatment_covariate_transforms + outcome_covariate_transforms))
 
         # Select overlapping covariates transforms (effective confounder space)
         # based on the alignment parameter.
         aligned_transforms, _ = select_given_probability_distribution(
                 all_transforms,
                 selection_probabilities=self.params.ACTUAL_CONFOUNDER_ALIGNMENT)
-        aligned_transforms = set(aligned_transforms)
+
+        treat_only_transforms = list(set(treatment_covariate_transforms).difference(aligned_transforms))
+        outcome_only_transforms = list(set(outcome_covariate_transforms).difference(aligned_transforms))
+
+        aligned_transforms = initialize_expression_constants(
+            self.params,
+            aligned_transforms)
+
+        treat_only_transforms = initialize_expression_constants(
+            self.params,
+            treat_only_transforms)
+
+        outcome_only_transforms = initialize_expression_constants(
+            self.params,
+            outcome_only_transforms)
 
         # Union the true confounders into the original covariate selections.
-        self.outcome_covariate_transforms = list(
-            aligned_transforms.union(outcome_covariate_transforms))
-        self.treatment_covariate_transforms = list(
-            aligned_transforms.union(treatment_covariate_transforms))
+        self.outcome_covariate_transforms = np.hstack([aligned_transforms, outcome_only_transforms])
+        self.treatment_covariate_transforms = np.hstack([aligned_transforms, treat_only_transforms])
 
     def sample_treatment_assignment_function(self):
         """
@@ -141,12 +154,6 @@ class DataGeneratingProcessWrapper():
         # to produce "deep" functions. Probably overkill.
 
         # TODO: enable overlap adjustment
-
-        # Randomly initialize transform constants
-        # TODO: rescale each covar to map to the range -1, 1
-        self.treatment_covariate_transforms = initialize_expression_constants(
-            self.params,
-            self.treatment_covariate_transforms)
 
         # Build base treatment logit function. Additive combination of the true covariates.
         # TODO: add non-linear activation function
@@ -210,23 +217,30 @@ class DataGeneratingProcessWrapper():
         # Build multiplier
         treatment_effect_multiplier_expr = np.sum(initialized_interaction_terms)
 
-        # Normalize multiplier size but not location. This keeps the size
-        # of the effect bounded but doesn't center the effect for different units
-        # at 0.
-        sampled_data = self.observed_covariate_data.sample(
-            frac=Constants.NORMALIZATION_DATA_SAMPLE_FRACTION)
+        # Process interaction terms into treatment subfunction.
+        if treatment_effect_multiplier_expr != 0:
 
-        treatment_effect_multiplier_values = evaluate_expression(
-            treatment_effect_multiplier_expr, sampled_data)
+            # Normalize multiplier size but not location. This keeps the size
+            # of the effect bounded but doesn't center the effect for different units
+            # at 0.
+            sampled_data = self.observed_covariate_data.sample(
+                frac=Constants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
-        multiplier_std = np.std(treatment_effect_multiplier_values)
-        multiplier_mean = np.mean(treatment_effect_multiplier_values)
+            treatment_effect_multiplier_values = evaluate_expression(
+                treatment_effect_multiplier_expr, sampled_data)
 
-        normalized_treatment_effect_multiplier_expr = \
-            (treatment_effect_multiplier_expr - multiplier_mean)/multiplier_std
+            multiplier_std = np.std(treatment_effect_multiplier_values)
+            multiplier_mean = np.mean(treatment_effect_multiplier_values)
 
-        self.treatment_effect_subfunction = base_treatment_effect * \
-            (1+normalized_treatment_effect_multiplier_expr)
+            normalized_treatment_effect_multiplier_expr = \
+                (treatment_effect_multiplier_expr - multiplier_mean)/multiplier_std
+
+            self.treatment_effect_subfunction = base_treatment_effect * \
+                (1+normalized_treatment_effect_multiplier_expr)
+
+        # No interaction terms
+        else:
+            self.treatment_effect_subfunction = base_treatment_effect
 
 
     def sample_outcome_function(self):
@@ -235,16 +249,10 @@ class DataGeneratingProcessWrapper():
         # TODO: consider recursively applying the covariate transformation
         # to produce "deep" functions. Probability overkill.
 
-        # Randomly initialize subfunction constants.
-        # TODO: rescale each covar to map to the range -1, 1
-        self.outcome_covariate_transforms = initialize_expression_constants(
-            self.params,
-            self.outcome_covariate_transforms)
-
         # Build base outcome function. Additive combination of the true covariates.
 
         # TODO: add non-linear activation function and ensure proper normalization.
-        # use the OUTCOME_MECHANISM_EXPONENTIATION param.
+        # using or changing the OUTCOME_MECHANISM_EXPONENTIATION param.
         base_outcome_expression = np.sum(self.outcome_covariate_transforms)
 
         # Sample data to evaluate distribution.

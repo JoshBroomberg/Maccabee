@@ -3,19 +3,25 @@ import sympy as sp
 from .constants import Constants
 import pandas as pd
 
-def generate_random_covariates():
-    N_COVARS = 20
-    N_OBSERVATIONS = 1000
+def generate_random_covariates(n_covars = 20, n_observations = 1000):
 
     # Generate random covariates and name sequentially
-    covar_data = np.random.normal(loc=0, scale=5, size=(N_OBSERVATIONS, N_COVARS))
-    covar_names = np.array([f"X{i}" for i in range(N_COVARS)])
+    covar_data = np.random.normal(loc=0, scale=5, size=(n_observations, n_covars))
+    covar_names = np.array([f"X{i}" for i in range(n_covars)])
 
     # Build DF
     return pd.DataFrame(
             data=covar_data,
             columns=covar_names,
-            index=np.arange(N_OBSERVATIONS))
+            index=np.arange(n_observations))
+
+def normalize_covariate_data(covariate_data):
+    X_min = np.min(covariate_data, axis=0)
+    X_max = np.max(covariate_data, axis=0)
+    normalized_data = (covariate_data - X_min)/(X_max - X_min)
+    scaled_data = 2*normalized_data - 1
+    return scaled_data
+
 
 def select_given_probability_distribution(full_list, selection_probabilities):
     full_list = np.array(full_list)
@@ -39,13 +45,23 @@ def evaluate_expression(expression, data):
             dummify=False))
 
     covar_data = [data[[str(symbol)]].to_numpy() for symbol in free_symbols]
-    return func(*covar_data).flatten()
 
-@np.vectorize
-def initialize_expression_constants(parameters, expression):
-    constants_to_initialize = \
-        Constants.SUBFUNCTION_CONSTANT_SYMBOLS.intersection(expression.free_symbols)
+    res = func(*covar_data)
+    if type(res) == np.ndarray:
+        return res.flatten()
+    else:
+        return res
 
-    return expression.subs(
-        zip(constants_to_initialize,
-            parameters.sample_subfunction_constants(size=len(constants_to_initialize))))
+def initialize_expression_constants(parameters, expressions):
+    initialized_expressions = []
+
+    for expression in expressions:
+        constants_to_initialize = \
+            Constants.SUBFUNCTION_CONSTANT_SYMBOLS.intersection(expression.free_symbols)
+
+        initialized_expressions.append(expression.subs(
+            zip(constants_to_initialize,
+                parameters.sample_subfunction_constants(
+                    size=len(constants_to_initialize)))))
+
+    return initialized_expressions

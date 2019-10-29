@@ -48,12 +48,14 @@ class ParameterStore():
 
     # TODO: provide a spec for sampling functions.
     def sample_subfunction_constants(self, size=1):
+        std = np.sqrt(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS/(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS-2))
         return np.round(np.random.standard_t(
-                             self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS, size=size), 3)
+                             self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS, size=size)/std, 3)
 
     def sample_outcome_noise(self, size=1):
+        std = 3*np.sqrt(self.OUTCOME_NOISE_TAIL_THICKNESS/(self.OUTCOME_NOISE_TAIL_THICKNESS-2))
         return np.round(np.random.standard_t(
-                            self.OUTCOME_NOISE_TAIL_THICKNESS, size=size), 3)
+                            self.OUTCOME_NOISE_TAIL_THICKNESS, size=size)/std, 3)
 
     def sample_treatment_effect(self, size=1):
         return np.round(np.random.standard_t(

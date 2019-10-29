@@ -58,7 +58,7 @@ OUTCOME_MECHANISM_EXPONENTIATION:
 
 SUBFUNCTION_CONSTANT_TAIL_THICKNESS:
   type: number
-  min: 1
+  min: 3
   max: 100
   description: |
     DF for the T-distribution over subfunction constants.
@@ -91,7 +91,7 @@ TARGET_PROPENSITY_SCORE:
 
 OUTCOME_NOISE_TAIL_THICKNESS:
   type: number
-  min: 1
+  min: 3
   max: 100
   description: |
     DF for the T-distribution over outcome noise.
@@ -108,7 +108,7 @@ TREATMENT_EFFECT_HETEROGENEITY:
 
 TREATMENT_EFFECT_TAIL_THICKNESS:
   type: number
-  min: 1
+  min: 3
   max: 100
   description: |
     DF for the T-distribution over treatment effects.
