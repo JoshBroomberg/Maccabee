@@ -7,8 +7,8 @@ import pandas as pd
 # pip install POT
 
 def _extract_treat_and_control_covariates(covariates, treatment_status):
-    X_treated = covariates[(treatment_status==1)]
-    X_control = covariates[(treatment_status==0)]
+    X_treated = covariates[(treatment_status==1).to_numpy()]
+    X_control = covariates[(treatment_status==0).to_numpy()]
     return X_treated, X_control
 
 def linear_regression_r2(X, y):
@@ -88,11 +88,11 @@ metric_functions = {
 data_accessors = {
     Constants.OBSERVED_COVARIATE_DATA: {
         "accessor": lambda data: data[Constants.OBSERVED_COVARIATE_DATA],
-        "name": "Observed Covariates"
+        "name": "X_obs"
     },
     Constants.ORACLE_COVARIATE_DATA: {
         "accessor": lambda data: data[Constants.ORACLE_COVARIATE_DATA],
-        "name": "Oracle Covariates"
+        "name": "X_true"
     },
 
     Constants.OBSERVED_OUTCOME_VAR_NAME: {
@@ -120,28 +120,28 @@ data_accessors = {
         "accessor": lambda data: data[
             Constants.ORACLE_OUTCOME_DATA][
             Constants.TREATMENT_EFFECT_VAR_NAME],
-        "name": "Treatment Effect"
+        "name": "TE"
     },
 
     Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME: {
         "accessor": lambda data: data[
             Constants.ORACLE_OUTCOME_DATA][
             Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME],
-        "name": "Treatment Assignment Logit"
+        "name": "Treat Logit"
     },
 
     Constants.PROPENSITY_SCORE_VAR_NAME: {
         "accessor": lambda data: data[
             Constants.ORACLE_OUTCOME_DATA][
             Constants.PROPENSITY_SCORE_VAR_NAME],
-        "name": "Propensity Score"
+        "name": "P-score"
     },
 
     Constants.TREATMENT_ASSIGNMENT_VAR_NAME: {
         "accessor": lambda data: data[
             Constants.OBSERVED_OUTCOME_DATA][
             Constants.TREATMENT_ASSIGNMENT_VAR_NAME],
-        "name": "Treatment Status"
+        "name": "T"
     }
 }
 

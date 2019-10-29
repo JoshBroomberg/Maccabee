@@ -24,8 +24,8 @@ PARAM_DICT_KEYS_KEY = "required_keys"
 # TODO: refactor the way calculated params and distributions are handled.
 class ParameterStore():
 
-    def __init__(self, parameter_file_path):
-        params_file = open(parameter_file_path, "r")
+    def __init__(self, parameter_spec_path):
+        params_file = open(parameter_spec_path, "r")
         parameters = yaml.safe_load(params_file)
 
         for param_name, param_info in PARAMETER_SPEC.items():
@@ -59,5 +59,5 @@ class ParameterStore():
         return np.round(np.random.standard_t(
                             self.TREATMENT_EFFECT_TAIL_THICKNESS, size=size), 3)
 
-def build_parameter_object(parameter_file_path):
-    return ParameterStore(parameter_file_path=parameter_file_path)
+def build_parameters(parameter_spec_path):
+    return ParameterStore(parameter_spec_path=parameter_spec_path)
