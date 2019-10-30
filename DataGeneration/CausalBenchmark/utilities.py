@@ -37,20 +37,26 @@ def select_given_probability_distribution(full_list, selection_probabilities):
     return selected, selections
 
 def evaluate_expression(expression, data):
-    free_symbols = list(expression.free_symbols)
-    func = np.vectorize(sp.lambdify(
-            free_symbols,
-            expression,
-            "numpy",
-            dummify=False))
+    if hasattr(expression, 'free_symbols'):
+        free_symbols = list(expression.free_symbols)
+        func = np.vectorize(sp.lambdify(
+                free_symbols,
+                expression,
+                "numpy",
+                dummify=False))
 
-    covar_data = [data[[str(symbol)]].to_numpy() for symbol in free_symbols]
+        covar_data = [
+            data[[str(symbol)]].to_numpy()
+            for symbol in free_symbols
+        ]
 
-    res = func(*covar_data)
-    if type(res) == np.ndarray:
-        return res.flatten()
+        res = func(*covar_data)
+        if hasattr(res, 'flatten'):
+            res = res.flatten()
     else:
-        return res
+        res = expression
+
+    return res
 
 def initialize_expression_constants(parameters, expressions):
     initialized_expressions = []

@@ -64,16 +64,35 @@ class Constants:
     OUTCOME_NOISE_VAR_NAME = "NOISE(Y)"
     OUTCOME_NOISE_SYMBOL = sp.symbols(OUTCOME_NOISE_VAR_NAME)
 
-    # Metric constants
-    OBSERVED_COVARIATE_DATA = "OBSERVED_COVARIATES"
-    OBSERVED_OUTCOME_DATA = "OBSERVED_OUTCOMES"
-    ORACLE_COVARIATE_DATA = "ORACLE_COVARIATES"
-    ORACLE_OUTCOME_DATA = "ORACLE_OUTCOMES"
+    ### Metric constants ###
 
-    LINEAR_R2 = "Lin r2"
-    LOGISTIC_R2 = "Log r2"
-    PERCENT = "Percent"
-    L2_MEAN_DIST = "mean dist"
-    NN_CF_MAHALA_DIST = "NN c-factual dist"
-    STD_RATIO = "Normed std"
-    WASS_DIST = "Wass dist"
+    # Data inputs
+    class MetricData:
+        OBSERVED_COVARIATE_DATA = "OBSERVED_COVARIATES"
+        OBSERVED_OUTCOME_DATA = "OBSERVED_OUTCOMES"
+        ORACLE_COVARIATE_DATA = "ORACLE_COVARIATES"
+        ORACLE_OUTCOME_DATA = "ORACLE_OUTCOMES"
+
+    # Functions
+    class MetricFunctions:
+        LINEAR_R2 = "Lin r2"
+        LOGISTIC_R2 = "Log r2"
+        PERCENT = "Percent"
+        L2_MEAN_DIST = "mean dist"
+        NN_CF_MAHALA_DIST = "NN c-factual dist"
+        STD_RATIO = "Normed std"
+        WASS_DIST = "Wass dist"
+
+    class MetricNames:
+        OUTCOME_NONLINEARITY = "OUTCOME_NONLINEARITY"
+        TREATMENT_NONLINEARITY = "TREATMENT_NONLINEARITY"
+        PERCENT_TREATED = "PERCENT_TREATED"
+        OVERLAP = "OVERLAP"
+        BALANCE = "BALANCE"
+        ALIGNMENT = "ALIGNMENT"
+        TE_HETEROGENEITY = "TE_HETEROGENEITY"
+
+    class MetricLevels:
+        LOW = "LOW"
+        MEDIUM = "MEDIUM"
+        HIGH = "HIGH"

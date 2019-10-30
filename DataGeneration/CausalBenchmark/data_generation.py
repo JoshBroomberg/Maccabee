@@ -62,7 +62,12 @@ class DataGeneratingProcessWrapper():
             full_list=self.covariate_symbols,
             selection_probabilities=self.params.POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY)
 
-    def sample_covariate_transforms(self, covariate_symbols, transform_probabilities):
+        if len(self.potential_confounder_symbols) == 0:
+            self.potential_confounder_symbols = [
+                np.random.choice(self.covariate_symbols)]
+
+    def sample_covariate_transforms(self, covariate_symbols,
+        transform_probabilities, empty_allowed=False):
         """
         Sample a set of transforms which will be applied to the base covariates.
         The set of transforms is governed by the specified probabilities for
@@ -75,11 +80,11 @@ class DataGeneratingProcessWrapper():
         function). The subfunction form probabilities and combination of the
         transforms is different for the treat and outcome function.
         """
-        #TODO: Post-process the output of this function to group terms
+        #TODO NB: Post-process the output of this function to group terms
         # based on the same covariates and produce new multiplicative
         # combinations of different covariates.
 
-        covariate_transforms = []
+        selected_covariate_transforms = []
         for transform_name, transform_spec in Constants.SUBFUNCTION_FORMS.items():
             transform_expression = transform_spec[Constants.EXPRESSION_KEY]
             transform_covariate_symbols = transform_spec[Constants.COVARIATE_SYMBOLS_KEY]
@@ -94,13 +99,27 @@ class DataGeneratingProcessWrapper():
                 full_list=covariate_combinations,
                 selection_probabilities=transform_probabilities[transform_name])
 
-
-            covariate_transforms.extend([transform_expression.subs(
+            selected_covariate_transforms.extend([transform_expression.subs(
                                     zip(transform_covariate_symbols, covar_comb))
                                     for covar_comb in selected_covar_combinations
                                 ])
 
-        return covariate_transforms
+        # Add at least one transform if empty_allowed is False
+        # and no transforms slected above.
+        # TODO: this is an ugly solution to a complex problem. Improve this.
+        if len(selected_covariate_transforms) == 0 and not empty_allowed:
+
+            transform_spec = Constants.SUBFUNCTION_FORMS[Constants.LINEAR]
+            transform_expression = transform_spec[Constants.EXPRESSION_KEY]
+            transform_covariate_symbols = transform_spec[Constants.COVARIATE_SYMBOLS_KEY]
+            required_covars = covariate_symbols[:len(transform_covariate_symbols)]
+
+            selected_covariate_transforms = [
+                transform_expression.subs(zip(
+                transform_covariate_symbols, required_covars))
+            ]
+
+        return selected_covariate_transforms
 
     def sample_treatment_and_outcome_covariate_transforms(self):
         """
@@ -193,8 +212,13 @@ class DataGeneratingProcessWrapper():
                 self.params.TARGET_MIN_LOGIT)
 
         # Finally, construct the full function expression.
-        self.treatment_assignment_logit_function = \
-            max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
+        try:
+            self.treatment_assignment_logit_function = \
+                max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
+        except:
+            print(base_treatment_logit_expression)
+            raise
+
         exponentiated_logit = sp.functions.exp(self.treatment_assignment_logit_function)
 
         self.treatment_assignment_function = exponentiated_logit/(1 + exponentiated_logit)
