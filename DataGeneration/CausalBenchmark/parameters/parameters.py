@@ -68,7 +68,7 @@ class ParameterStore():
 
     # TODO: provide a spec for sampling functions.
     def sample_subfunction_constants(self, size=1):
-        std = np.sqrt(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS/(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS-2))
+        std = 5*np.sqrt(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS/(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS-2))
         return np.round(np.random.standard_t(
                              self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS, size=size)/std, 3)
 

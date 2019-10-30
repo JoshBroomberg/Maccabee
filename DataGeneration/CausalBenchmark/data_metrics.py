@@ -4,11 +4,7 @@ from scipy.spatial.distance import cdist
 import ot
 from .constants import Constants
 import pandas as pd
-
-def _extract_treat_and_control_covariates(covariates, treatment_status):
-    X_treated = covariates[(treatment_status==1).to_numpy()]
-    X_control = covariates[(treatment_status==0).to_numpy()]
-    return X_treated, X_control
+from .utilities import extract_treat_and_control_data
 
 def linear_regression_r2(X, y):
     if type(X) == pd.Series:
@@ -31,7 +27,7 @@ def percent(x, value):
     return 100*np.sum((x == value).astype(int))/len(x)
 
 def l2_distance_between_means(covariates, treatment_status):
-    X_treated, X_control = _extract_treat_and_control_covariates(
+    X_treated, X_control = extract_treat_and_control_data(
         covariates, treatment_status)
 
     X_treated_mean = np.mean(X_treated, axis=0)
@@ -40,11 +36,10 @@ def l2_distance_between_means(covariates, treatment_status):
     return np.linalg.norm(X_treated_mean - X_control_mean)
 
 def mean_mahalanobis_between_nearest_counterfactual(covariates, treatment_status):
-    X_treated, X_control = _extract_treat_and_control_covariates(
+    X_treated, X_control = extract_treat_and_control_data(
         covariates, treatment_status)
 
     # TODO: fix singular matrix issue.
-
     try:
         distance_matrix = cdist(X_treated, X_control, "mahalanobis")
         np.nan_to_num(distance_matrix, copy=False, nan=np.inf)
@@ -52,13 +47,11 @@ def mean_mahalanobis_between_nearest_counterfactual(covariates, treatment_status
     except:
         return np.NaN
 
-
-
 def standard_deviation_ratio(x1, x2):
     return np.std(x1)/np.std(x2)
 
 def wasserstein(covariates, treatment_status):
-    X_treated, X_control = _extract_treat_and_control_covariates(
+    X_treated, X_control = extract_treat_and_control_data(
         covariates, treatment_status)
 
     num_treated, num_control = len(X_treated), len(X_control)
@@ -72,6 +65,12 @@ def wasserstein(covariates, treatment_status):
 
     return ot.sinkhorn2(a, b, M, lambd)[0]
 
+def naive_TE_estimate_error(TE, observed_outcome, treatment_status):
+    Y_t, Y_c = extract_treat_and_control_data(observed_outcome, treatment_status)
+    ATE_true = np.mean(TE)
+    ATE_est = np.mean(Y_t) - np.mean(Y_c)
+    return np.abs(ATE_true - ATE_est)
+
 MetricFunctions = Constants.MetricFunctions
 MetricData = Constants.MetricData
 MetricNames = Constants.MetricNames
@@ -83,7 +82,8 @@ metric_functions = {
     MetricFunctions.L2_MEAN_DIST: l2_distance_between_means,
     MetricFunctions.NN_CF_MAHALA_DIST: mean_mahalanobis_between_nearest_counterfactual,
     MetricFunctions.STD_RATIO: standard_deviation_ratio,
-    MetricFunctions.WASS_DIST: wasserstein
+    MetricFunctions.WASS_DIST: wasserstein,
+    MetricFunctions.NAIVE_TE: naive_TE_estimate_error
 }
 
 # TODO: remove names and simplify access.
@@ -291,6 +291,15 @@ metrics = {
                 "treatment_status": Constants.TREATMENT_ASSIGNMENT_VAR_NAME
             },
             "name": "Wass dist X_obs: T=1<->T=0"
+        },
+        {
+            "function": MetricFunctions.NAIVE_TE,
+            "args": {
+                "TE": Constants.TREATMENT_EFFECT_VAR_NAME,
+                "observed_outcome": Constants.OBSERVED_OUTCOME_VAR_NAME,
+                "treatment_status": Constants.TREATMENT_ASSIGNMENT_VAR_NAME
+            },
+            "name": "Naive TE"
         }
     ],
 

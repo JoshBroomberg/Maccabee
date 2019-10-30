@@ -82,6 +82,7 @@ class Constants:
         NN_CF_MAHALA_DIST = "NN c-factual dist"
         STD_RATIO = "Normed std"
         WASS_DIST = "Wass dist"
+        NAIVE_TE = "Naive TE"
 
     class MetricNames:
         OUTCOME_NONLINEARITY = "OUTCOME_NONLINEARITY"

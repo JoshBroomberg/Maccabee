@@ -3,6 +3,11 @@ import sympy as sp
 from .constants import Constants
 import pandas as pd
 
+def extract_treat_and_control_data(covariates, treatment_status):
+    X_treated = covariates[(treatment_status==1).to_numpy()]
+    X_control = covariates[(treatment_status==0).to_numpy()]
+    return X_treated, X_control
+
 def generate_random_covariates(n_covars = 20, n_observations = 1000):
 
     # Generate random covariates and name sequentially

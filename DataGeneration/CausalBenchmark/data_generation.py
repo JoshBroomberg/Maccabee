@@ -212,12 +212,9 @@ class DataGeneratingProcessWrapper():
                 self.params.TARGET_MIN_LOGIT)
 
         # Finally, construct the full function expression.
-        try:
-            self.treatment_assignment_logit_function = \
-                max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
-        except:
-            print(base_treatment_logit_expression)
-            raise
+        self.treatment_assignment_logit_function = \
+            max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
+        # self.treatment_assignment_logit_function = base_treatment_logit_expression
 
         exponentiated_logit = sp.functions.exp(self.treatment_assignment_logit_function)
 
