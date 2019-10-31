@@ -1,3 +1,6 @@
+# This file defines the parameter values used to achieve
+# a desired level for each metric.
+
 LOW_NONLINEARITY_SURFACE: &low_nonlinearity
    LINEAR: 0.8
    POLY_QUAD: 0.0

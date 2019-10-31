@@ -1,3 +1,5 @@
+# This file defines the default parameter values
+# used throughout the package.
 POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY: 0.75
 
 ACTUAL_CONFOUNDER_ALIGNMENT: 0.5

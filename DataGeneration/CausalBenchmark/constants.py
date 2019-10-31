@@ -3,6 +3,11 @@ import sympy as sp
 
 # OPERATIONAL CONSTANTS
 class Constants:
+    '''
+    This class defines constants which are used throughout
+    the package.
+    '''
+
     LINEAR = "LINEAR"
     POLY_QUADRATIC = "POLY_QUAD"
     POLY_CUBIC = "POLY_CUBIC"
@@ -15,6 +20,9 @@ class Constants:
     EXPRESSION_KEY = "expr"
 
     SUBFUNCTION_CONSTANT_SYMBOLS = {a, c}
+
+    # The various transforms which can be applied to covariates
+    # and combinations of covariates.
     SUBFUNCTION_FORMS = {
         LINEAR: {
                 COVARIATE_SYMBOLS_KEY: [x],

@@ -147,6 +147,7 @@ class DataGeneratingProcessWrapper():
         treat_only_transforms = list(set(treatment_covariate_transforms).difference(aligned_transforms))
         outcome_only_transforms = list(set(outcome_covariate_transforms).difference(aligned_transforms))
 
+        # Initialize the constants in all the transforms.
         aligned_transforms = initialize_expression_constants(
             self.params,
             aligned_transforms)
@@ -214,7 +215,6 @@ class DataGeneratingProcessWrapper():
         # Finally, construct the full function expression.
         self.treatment_assignment_logit_function = \
             max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
-        # self.treatment_assignment_logit_function = base_treatment_logit_expression
 
         exponentiated_logit = sp.functions.exp(self.treatment_assignment_logit_function)
 
@@ -300,6 +300,11 @@ class DataGeneratingProcessWrapper():
             Constants.OUTCOME_NOISE_SYMBOL
 
     def generate_transformed_covariate_data(self):
+        '''
+        Generate the values of all the transformed covariates by running the
+        original covariate data through the transforms used in the outcome and
+        treatment functions.
+        '''
         all_transforms = list(set(self.outcome_covariate_transforms).union(
             self.treatment_covariate_transforms))
 
@@ -317,14 +322,17 @@ class DataGeneratingProcessWrapper():
 
         n_observations = self.observed_covariate_data.shape[0]
 
+        # Generate treatment assignment data.
         logit_values = evaluate_expression(
             self.treatment_assignment_logit_function,
             self.observed_covariate_data)
+
         propensity_scores = evaluate_expression(
             self.treatment_assignment_function, self.observed_covariate_data)
 
         T = (np.random.uniform(size=n_observations) < propensity_scores).astype(int)
 
+        # Generate potential outcomes ad treatment effects.
         Y0 = evaluate_expression(
                 self.outcome_function.subs(Constants.TREATMENT_ASSIGNMENT_SYMBOL, 0),
                 self.observed_covariate_data)
@@ -334,6 +342,8 @@ class DataGeneratingProcessWrapper():
 
         Y = (T*Y1) + ((1-T)*Y0)
         treatment_effect = Y1 - Y0
+
+        # Build data frames.
 
         # Data available for causal inference
         self.observed_outcome_data = pd.DataFrame()
@@ -353,12 +363,18 @@ class DataGeneratingProcessWrapper():
             self.oracle_covariate_data, self.oracle_outcome_data)
 
     def get_observed_data(self):
+        '''
+        Assemble and return the observable data.
+        '''
         if not self.data_generated:
             raise Exception("You must run generate_data first.")
 
         return self.observed_outcome_data.join(self.observed_covariate_data)
 
     def get_oracle_data(self):
+        '''
+        Assemble and return the non-observable/oracle data.
+        '''
         if not self.data_generated:
             raise Exception("You must run generate_data first.")
 

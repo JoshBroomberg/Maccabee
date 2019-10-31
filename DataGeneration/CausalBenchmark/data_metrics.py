@@ -6,6 +6,12 @@ from .constants import Constants
 import pandas as pd
 from .utilities import extract_treat_and_control_data
 
+### Metric functions
+# These are the functions which are used
+# to calculate the measure values. Each function
+# is used in multiple measures so they are named and
+# parameterized generically.
+
 def linear_regression_r2(X, y):
     if type(X) == pd.Series:
         X = X.to_numpy().reshape((-1, 1))
@@ -23,10 +29,17 @@ def logistic_regression_r2(X, y):
     return lr.score(X, y)
 
 def percent(x, value):
+    '''
+    Percent of values in x which have the value in value.
+    '''
     x = np.array(x)
     return 100*np.sum((x == value).astype(int))/len(x)
 
 def l2_distance_between_means(covariates, treatment_status):
+    '''
+    L2 norm of the distance between the means of the covariates
+    in the treat and control groups.
+    '''
     X_treated, X_control = extract_treat_and_control_data(
         covariates, treatment_status)
 
@@ -36,6 +49,11 @@ def l2_distance_between_means(covariates, treatment_status):
     return np.linalg.norm(X_treated_mean - X_control_mean)
 
 def mean_mahalanobis_between_nearest_counterfactual(covariates, treatment_status):
+    '''
+    Mahalanobis distance between the nearest neighbor of each treated unit
+    which is in the control group.
+    '''
+
     X_treated, X_control = extract_treat_and_control_data(
         covariates, treatment_status)
 
@@ -48,9 +66,16 @@ def mean_mahalanobis_between_nearest_counterfactual(covariates, treatment_status
         return np.NaN
 
 def standard_deviation_ratio(x1, x2):
+    '''
+    Ratio of the std of x1 and x2
+    '''
     return np.std(x1)/np.std(x2)
 
 def wasserstein(covariates, treatment_status):
+    '''
+    Wasserstein distance between the covariates in the treat and control groups.
+    '''
+
     X_treated, X_control = extract_treat_and_control_data(
         covariates, treatment_status)
 
@@ -66,15 +91,25 @@ def wasserstein(covariates, treatment_status):
     return ot.sinkhorn2(a, b, M, lambd)[0]
 
 def naive_TE_estimate_error(TE, observed_outcome, treatment_status):
+    '''
+    Absolute difference between the true treatment effect and the
+    naive estimate based on mean outcome in each group.
+    '''
     Y_t, Y_c = extract_treat_and_control_data(observed_outcome, treatment_status)
     ATE_true = np.mean(TE)
     ATE_est = np.mean(Y_t) - np.mean(Y_c)
     return np.abs(ATE_true - ATE_est)
 
+
 MetricFunctions = Constants.MetricFunctions
 MetricData = Constants.MetricData
 MetricNames = Constants.MetricNames
 
+### NOTE: the code below is complex because it is designed
+# to allow new measures to be created very easily. Feel free
+# to skip down to the measure definitions.
+
+# Map the function names to function callables.
 metric_functions = {
     MetricFunctions.LINEAR_R2: linear_regression_r2,
     MetricFunctions.LOGISTIC_R2: logistic_regression_r2,
@@ -87,6 +122,7 @@ metric_functions = {
 }
 
 # TODO: remove names and simplify access.
+# Specify ways to access each input variable.
 data_accessors = {
     # Covariate Data
     MetricData.OBSERVED_COVARIATE_DATA: {
@@ -150,6 +186,10 @@ data_accessors = {
 }
 
 # TODO: add metrics for new params.
+# Specify the metrics and the measures for each metric.
+# Each metric has a list of measures which are defined
+# by a calculation function and the arguments to be supplied
+# to it.
 metrics = {
     MetricNames.OUTCOME_NONLINEARITY: [
         {
@@ -340,12 +380,17 @@ def _get_arg_value(arg_val_name, data):
     else:
         return arg_val_name
 
+# TODO: accept input data in a more reasonable format.
 def calculate_data_metrics(
     observed_covariate_data,
     observed_outcome_data,
     oracle_covariate_data,
     oracle_outcome_data,
     observation_spec = None):
+    '''
+    Given a set of generated data, calculate all metrics
+    in the observation spec.
+    '''
 
     data = {
         MetricData.OBSERVED_COVARIATE_DATA: observed_covariate_data,
@@ -357,22 +402,26 @@ def calculate_data_metrics(
     metric_results = {}
     for metric, metric_measures in metrics.items():
         if (observation_spec is not None) and (metric not in observation_spec):
-            continue
+            continue # not in observation specs.
 
         metric_results[metric] = {}
 
         for measure in metric_measures:
             if measure["name"] not in observation_spec[metric]:
-                 continue
+                 continue # not in observation specs.
 
             func_name = measure["function"]
             func = metric_functions[func_name]
 
+            # Assemble the argument values by fetching the relevant portions
+            # of the data
             args = dict([(arg_name, _get_arg_value(arg_val_name, data))
                 for arg_name, arg_val_name in measure["args"].items()])
 
+            # Call the metric function with the args.
             res = func(**args)
 
+            # Store results.
             measure_name = measure["name"]
             metric_results[metric][f"{measure_name}"] = res
 

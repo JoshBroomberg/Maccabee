@@ -1,3 +1,5 @@
+# This file defines the available parameters and their valid values.
+
 # TODO: use inheritance for specification of probabilities and DF
 # TODO: consider differential selection of different covariate types.
 POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY:
