@@ -8,11 +8,11 @@ from pkg_resources import resource_filename
 ### Define constants ###
 
 PARAMETER_SCHEMA_PATH = resource_filename(
-    "CauseML", 'parameters/parameter_schema.yml')
+    'CausalBenchmark', 'parameters/parameter_schema.yml')
 DEFAULT_PARAMETER_PATH = resource_filename(
-    "CauseML", 'parameters/default_parameter_specification.yml')
+    'CausalBenchmark', 'parameters/default_parameter_specification.yml')
 METRIC_LEVEL_PARAMETER_PATH = resource_filename(
-    "CauseML", 'parameters/metric_level_parameter_specifications.yml')
+    'CausalBenchmark', 'parameters/metric_level_parameter_specifications.yml')
 
 PARAMETER_SCHEMA = yaml.safe_load(open(PARAMETER_SCHEMA_PATH, "r"))
 
@@ -120,7 +120,7 @@ def build_parameters_from_metric_levels(metric_levels, save=False):
 
     # Set the value of each metric to the correct values.
     for metric_name, metric_level in metric_levels.items():
-
+        
         if metric_name in metric_level_param_specs:
             metric_level_specs = metric_level_param_specs[metric_name]
 
