@@ -1,30 +1,18 @@
 # This file defines the available parameters and their valid values.
 
-# TODO: use inheritance for specification of probabilities and DF
-# TODO: consider differential selection of different covariate types.
-POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY:
-  type: number
+PROBABILITY_MIN_MAX: &probability_min_max
   min: 0
   max: 1
-  description: |
-      Marginal probability that each covariate is a potential confounder
-      (affecting one or both of treatment and outcome) Lower values reduce
-      the number of covariates which are predicitive of treatment/outcome.
-      This makes modelling harder given need for variable selection
 
-ACTUAL_CONFOUNDER_ALIGNMENT:
-  type: number
-  min: 0
-  max: 1
-  description: |
-      Marginal probability that a covariate in the transformed covariate space
-      will appear in both the outcome and treatment functions. This is a soft
-      target - there is variance in actual achieved alignment.
+PROPENSITY_MIN_MAX: &propensity_min_max
+  min: 0.00001
+  max: 0.99999
 
-### SHARED TREAT/OUTCOME FUNCTION SETTINGS ###
+DOF_MIN_MAX: &dof_min_max
+  min: 3
+  max: 200
 
-TREAT_MECHANISM_COVARIATE_SELECTION_PROBABILITY:
-  type: dictionary
+FUNCTION_SURFACE_REQUIRED_KEYS: &function_surface_required_keys
   required_keys:
     - LINEAR
     - POLY_QUAD
@@ -33,92 +21,119 @@ TREAT_MECHANISM_COVARIATE_SELECTION_PROBABILITY:
     - STEP_KINK
     - INTERACTION_TWO_WAY
     - INTERACTION_THREE_WAY
-  description: |
-    Probabilities that govern the probability with which
-    covariates appear in the treatment mechanism in different
-    forms.
 
-OUTCOME_MECHANISM_COVARIATE_SELECTION_PROBABILITY:
-  type: dictionary
-  required_keys:
-    - LINEAR
-    - POLY_QUAD
-    - POLY_CUBIC
-    - STEP_JUMP
-    - STEP_KINK
-    - INTERACTION_TWO_WAY
-    - INTERACTION_THREE_WAY
-  description: |
-    Probabilities that govern the probability with which
-    covariates appear in the outcome mechanism in different
-    forms.
+SCHEMA:
+  POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY:
+    type: number
+    <<: *probability_min_max
+    description: |
+        Marginal probability that each covariate is a potential confounder
+        (affecting one or both of treatment and outcome) Lower values reduce
+        the number of covariates which are predicitive of treatment/outcome.
+        This makes modelling harder given need for variable selection
 
-OUTCOME_MECHANISM_EXPONENTIATION:
-  type: bool
-  description: |
-    Exponentiate the combined, transformed covariates.
+  ACTUAL_CONFOUNDER_ALIGNMENT:
+    type: number
+    <<: *probability_min_max
+    description: |
+        Marginal probability that a covariate in the transformed covariate space
+        will appear in both the outcome and treatment functions. This is a soft
+        target - there is variance in actual achieved alignment.
 
-SUBFUNCTION_CONSTANT_TAIL_THICKNESS:
-  type: number
-  min: 3
-  max: 100
-  description: |
-    DF for the T-distribution over subfunction constants.
+  ### SHARED TREAT/OUTCOME FUNCTION SETTINGS ###
 
-### TREATMENT FUNCTION PARAMS ###
+  TREAT_MECHANISM_COVARIATE_SELECTION_PROBABILITY:
+    type: dictionary
+    <<: *function_surface_required_keys
+    description: |
+      Probabilities that govern the probability with which
+      covariates appear in the treatment mechanism in different
+      forms.
 
-# propensity score settings
-MIN_PROPENSITY_SCORE:
-  type: number
-  min: 0.001
-  max: 0.999
-  description: |
-    Minimum propensity score for treatment mechanism
+  OUTCOME_MECHANISM_COVARIATE_SELECTION_PROBABILITY:
+    type: dictionary
+    <<: *function_surface_required_keys
+    description: |
+      Probabilities that govern the probability with which
+      covariates appear in the outcome mechanism in different
+      forms.
 
-MAX_PROPENSITY_SCORE:
-  type: number
-  min: 0.001
-  max: 0.999
-  description: |
-    Max propensity score for treatment mechanism
+  OUTCOME_MECHANISM_EXPONENTIATION:
+    type: bool
+    description: |
+      Exponentiate the combined, transformed covariates.
 
-TARGET_PROPENSITY_SCORE:
-  type: number
-  min: 0.001
-  max: 0.999
-  description: |
-    Target propensity score for treatment mechanism
+  SUBFUNCTION_CONSTANT_TAIL_THICKNESS:
+    type: number
+    <<: *dof_min_max
+    description: |
+      DF for the T-distribution over subfunction constants.
 
-### OUTCOME FUNCTION PARAMS ###
+  ### TREATMENT FUNCTION PARAMS ###
 
-OUTCOME_NOISE_TAIL_THICKNESS:
-  type: number
-  min: 3
-  max: 100
-  description: |
-    DF for the T-distribution over outcome noise.
+  # propensity score settings
+  MIN_PROPENSITY_SCORE:
+    type: number
+    <<: *propensity_min_max
+    description: |
+      Minimum propensity score for treatment mechanism
 
-### TREATMENT EFFECT PARAMS ###
+  MAX_PROPENSITY_SCORE:
+    type: number
+    <<: *propensity_min_max
+    description: |
+      Max propensity score for treatment mechanism
 
-TREATMENT_EFFECT_HETEROGENEITY:
-  type: number
-  min: 0
-  max: 1
-  description: |
-    Marginal probability that there is an interaction between the
-    base treatment effect and each subfunction in the outcome function.
+  TARGET_PROPENSITY_SCORE:
+    type: number
+    <<: *propensity_min_max
+    description: |
+      Target propensity score for treatment mechanism
 
-TREATMENT_EFFECT_TAIL_THICKNESS:
-  type: number
-  min: 3
-  max: 100
-  description: |
-    DF for the T-distribution over treatment effects.
+  TARGET_MIN_LOGIT:
+    type: calculated
+    expr: np.log(MIN_PROPENSITY_SCORE/(1-MIN_PROPENSITY_SCORE))
+    description: |
+      Minimum logit value for treatment mechanism
 
-OBSERVATION_PROBABILITY:
-  type: number
-  min: 0
-  max: 1
-  description: |
-    Marginal probability of observing any given row of the dataset.
-    Used to reduce the overall number of observations if desired.
+  TARGET_MAX_LOGIT:
+    type: calculated
+    expr: np.log(MAX_PROPENSITY_SCORE/(1-MAX_PROPENSITY_SCORE))
+    description: |
+      Max logit value for treatment mechanism
+
+  TARGET_MEAN_LOGIT:
+    type: calculated
+    expr: np.log(TARGET_PROPENSITY_SCORE/(1-TARGET_PROPENSITY_SCORE))
+    description: |
+      Target logit value for treatment mechanism
+
+  ### OUTCOME FUNCTION PARAMS ###
+
+  OUTCOME_NOISE_TAIL_THICKNESS:
+    type: number
+    <<: *dof_min_max
+    description: |
+      DF for the T-distribution over outcome noise.
+
+  ### TREATMENT EFFECT PARAMS ###
+
+  TREATMENT_EFFECT_HETEROGENEITY:
+    type: number
+    <<: *probability_min_max
+    description: |
+      Marginal probability that there is an interaction between the
+      base treatment effect and each subfunction in the outcome function.
+
+  TREATMENT_EFFECT_TAIL_THICKNESS:
+    type: number
+    <<: *dof_min_max
+    description: |
+      DF for the T-distribution over treatment effects.
+
+  OBSERVATION_PROBABILITY:
+    type: number
+    <<: *probability_min_max
+    description: |
+      Marginal probability of observing any given row of the dataset.
+      Used to reduce the overall number of observations if desired.
