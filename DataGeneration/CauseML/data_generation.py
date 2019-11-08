@@ -119,6 +119,22 @@ class DataGeneratingProcessWrapper():
                 transform_covariate_symbols, required_covars))
             ]
 
+        # The number of combinations grows factorially with the number of
+        # covariates. Cap the number of covariate transforms at a multiple
+        # of the number of base covariates.
+        max_transform_count = \
+            Constants.MAX_RATIO_TRANSFORMED_TO_ORIGINAL_TERMS*len(covariate_symbols)
+        if len(selected_covariate_transforms) > max_transform_count:
+            # Randomly sample selected transforms with expected number selected
+            # equal to the max.
+            selection_p = max_transform_count/len(selected_covariate_transforms)
+
+            selected_covariate_transforms, _ = select_given_probability_distribution(
+                full_list=selected_covariate_transforms,
+                selection_probabilities=selection_p)
+
+            selected_covariate_transforms = list(selected_covariate_transforms)
+
         return selected_covariate_transforms
 
     def sample_treatment_and_outcome_covariate_transforms(self):
@@ -164,6 +180,7 @@ class DataGeneratingProcessWrapper():
         self.outcome_covariate_transforms = np.hstack([aligned_transforms, outcome_only_transforms])
         self.treatment_covariate_transforms = np.hstack([aligned_transforms, treat_only_transforms])
 
+
     def sample_treatment_assignment_function(self):
         """
         Sample a treatment assignment function by combining the sampled covariate
@@ -201,6 +218,7 @@ class DataGeneratingProcessWrapper():
 
         rescaling_expr = constrained_logit_expr.subs(x, normalized_logit_expr)
         rescaled_logit_mean = rescaling_expr.evalf(subs={x: mean_logit})
+
 
         # Third, construct function to apply offset for targeted propensity.
         # This requires the rescaled mean found above.

@@ -89,8 +89,11 @@ class Constants:
         },
     }
 
+    # All X times the number of original covariates.
+    MAX_RATIO_TRANSFORMED_TO_ORIGINAL_TERMS = 5
+
     # How much of the covariate data to use when normalizing functions.
-    NORMALIZATION_DATA_SAMPLE_FRACTION = 1
+    NORMALIZATION_DATA_SAMPLE_FRACTION = 0.25
 
     TRANSFORMED_COVARIATE_PREFIX = "TRANSFORMED_X"
 
@@ -140,3 +143,13 @@ class Constants:
         LOW = "LOW"
         MEDIUM = "MEDIUM"
         HIGH = "HIGH"
+
+    class Data:
+        get_dataset_path = lambda file_name: resource_filename(
+            'CauseML', f"data/{file_name}.csv")
+
+        LALONDE_PATH = get_dataset_path("lalonde")
+        LALONDE_DISCRETE_COVARS = [2, 3, 4, 5]
+
+        CPP_PATH = get_dataset_path("cpp")
+        CPP_DISCRETE_COVARS = [1, 16, 20, 21, 23, 37, 50, 53]

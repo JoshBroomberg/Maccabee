@@ -19,6 +19,7 @@ class ParameterStore():
         with open(parameter_spec_path, "r") as params_file:
             raw_parameter_dict = yaml.safe_load(params_file)
         self.parsed_parameter_dict = {}
+        self.calculated_parameters = {}
 
         # Read in the parameter values for each param in the
         # schema.
@@ -33,6 +34,7 @@ class ParameterStore():
                             param_name))
 
                 param_value = self.get_calculated_param_value(param_info)
+                self.calculated_parameters[param_name] = param_info
 
             # If the parameter is in the specification file
             elif param_name in raw_parameter_dict:
@@ -50,6 +52,11 @@ class ParameterStore():
     def get_calculated_param_value(self, param_info):
         expr = param_info[PARAM_CONSTANTS.ParamInfo.EXPRESSION_KEY]
         return eval(expr, globals(), self.parsed_parameter_dict)
+
+    def recalculate_calculated_params(self):
+        for param_name, param_info in self.calculated_parameters.items():
+            param_value = self.get_calculated_param_value(param_info)
+            self.set_parameter(param_name, param_value)
 
     def validate_param_value(self, param_info, param_value):
         param_type = param_info[PARAM_CONSTANTS.ParamInfo.TYPE_KEY]
@@ -125,5 +132,8 @@ def build_parameters_from_metric_levels(metric_levels, save=False):
                 raise Exception(f"{metric_level} is not a valid level for {metric_name}")
         else:
             raise Exception(f"{metric_name} is not a valid metric")
+
+
+    params.recalculate_calculated_params()
 
     return params

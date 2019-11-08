@@ -8,14 +8,6 @@ def extract_treat_and_control_data(covariates, treatment_status):
     X_control = covariates[(treatment_status==0).to_numpy()]
     return X_treated, X_control
 
-def normalize_covariate_data(covariate_data):
-    X_min = np.min(covariate_data, axis=0)
-    X_max = np.max(covariate_data, axis=0)
-    normalized_data = (covariate_data - X_min)/(X_max - X_min)
-    scaled_data = 2*normalized_data - 1
-    return scaled_data
-
-
 def select_given_probability_distribution(full_list, selection_probabilities):
     full_list = np.array(full_list)
 
@@ -32,20 +24,15 @@ def select_given_probability_distribution(full_list, selection_probabilities):
 def evaluate_expression(expression, data):
     if hasattr(expression, 'free_symbols'):
         free_symbols = list(expression.free_symbols)
-        func = np.vectorize(sp.lambdify(
+        core_func = sp.lambdify(
                 free_symbols,
                 expression,
                 "numpy",
-                dummify=False))
+                dummify=False)
 
-        covar_data = [
-            data[[str(symbol)]].to_numpy()
-            for symbol in free_symbols
-        ]
-
-        res = func(*covar_data)
-        if hasattr(res, 'flatten'):
-            res = res.flatten()
+        free_symbol_names = [ str(sym) for sym in free_symbols ]
+        wrapper_func = lambda arg_arr: core_func(*arg_arr)
+        res = np.apply_along_axis(wrapper_func, 1, data[free_symbol_names].to_numpy())
     else:
         res = expression
 
