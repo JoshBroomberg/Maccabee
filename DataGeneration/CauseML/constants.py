@@ -53,6 +53,7 @@ class Constants:
 
     COVARIATE_SYMBOLS_KEY = "covariates"
     EXPRESSION_KEY = "expr"
+    DISCRETE_ALLOWED_KEY = "disc"
 
     SUBFUNCTION_CONSTANT_SYMBOLS = {a, c}
 
@@ -61,31 +62,38 @@ class Constants:
     SUBFUNCTION_FORMS = {
         LINEAR: {
                 COVARIATE_SYMBOLS_KEY: [x],
-                EXPRESSION_KEY: c*x
+                EXPRESSION_KEY: c*x,
+                DISCRETE_ALLOWED_KEY: True
         },
         POLY_QUADRATIC: {
                 COVARIATE_SYMBOLS_KEY: [x],
-                EXPRESSION_KEY: c*(x**2)
+                EXPRESSION_KEY: c*(x**2),
+                DISCRETE_ALLOWED_KEY: False
         },
         POLY_CUBIC: {
                 COVARIATE_SYMBOLS_KEY: [x],
-                EXPRESSION_KEY: c*(x**3)
+                EXPRESSION_KEY: c*(x**3),
+                DISCRETE_ALLOWED_KEY: False
         },
         STEP_CONSTANT: {
                 COVARIATE_SYMBOLS_KEY: [x],
-                EXPRESSION_KEY: sp.Piecewise((0, x < a), (c, True))
+                EXPRESSION_KEY: sp.Piecewise((0, x < a), (c, True)),
+                DISCRETE_ALLOWED_KEY: False
         },
         STEP_VARIABLE: {
                 COVARIATE_SYMBOLS_KEY: [x],
-                EXPRESSION_KEY: sp.Piecewise((0, x < a), (c*x, True))
+                EXPRESSION_KEY: sp.Piecewise((0, x < a), (c*x, True)),
+                DISCRETE_ALLOWED_KEY: False
         },
         INTERACTION_TWO_WAY: {
                 COVARIATE_SYMBOLS_KEY: [x, y],
-                EXPRESSION_KEY: c*x*y
+                EXPRESSION_KEY: c*x*y,
+                DISCRETE_ALLOWED_KEY: True
         },
         INTERACTION_THREE_WAY: {
                 COVARIATE_SYMBOLS_KEY: [x, y, z],
-                EXPRESSION_KEY: c*x*y*z
+                EXPRESSION_KEY: c*x*y*z,
+                DISCRETE_ALLOWED_KEY: True
         },
     }
 
@@ -149,7 +157,11 @@ class Constants:
             'CauseML', f"data/{file_name}.csv")
 
         LALONDE_PATH = get_dataset_path("lalonde")
-        LALONDE_DISCRETE_COVARS = [2, 3, 4, 5]
+        LALONDE_DISCRETE_COVARS = ["black","hispanic","married","nodegree"]
 
         CPP_PATH = get_dataset_path("cpp")
-        CPP_DISCRETE_COVARS = [1, 16, 20, 21, 23, 37, 50, 53]
+        CPP_DISCRETE_COVARS = ['x_17','x_22','x_38','x_51','x_54','x_2_A','x_2_B',
+            'x_2_C','x_2_D','x_2_E','x_2_F','x_21_A','x_21_B','x_21_C','x_21_D',
+            'x_21_E','x_21_F','x_21_G','x_21_H','x_21_I','x_21_J','x_21_K',
+            'x_21_L','x_21_M','x_21_N','x_21_O','x_21_P','x_24_A','x_24_B',
+            'x_24_C','x_24_D', 'x_24_E']

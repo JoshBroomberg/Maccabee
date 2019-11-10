@@ -7,9 +7,12 @@ from .constants import Constants
 from .utilities import select_given_probability_distribution, evaluate_expression, initialize_expression_constants
 
 class DataGeneratingProcessWrapper():
-    def __init__(self, parameters, source_covariate_data):
+    def __init__(self, parameters, data_source):
+
+
         self.params = parameters
-        self.source_covariate_data = source_covariate_data
+        self.data_source = data_source
+        self.source_covariate_data = data_source.get_data()
 
         self.covariate_symbols = np.array(sp.symbols(list(self.source_covariate_data.columns)))
 
@@ -89,11 +92,18 @@ class DataGeneratingProcessWrapper():
         for transform_name, transform_spec in Constants.SUBFUNCTION_FORMS.items():
             transform_expression = transform_spec[Constants.EXPRESSION_KEY]
             transform_covariate_symbols = transform_spec[Constants.COVARIATE_SYMBOLS_KEY]
+            transform_discrete_allowed = transform_spec[Constants.DISCRETE_ALLOWED_KEY]
+
+            usable_covariate_symbols = covariate_symbols
+            if not transform_discrete_allowed:
+                usable_covariate_symbols = list(filter(
+                    lambda sym: str(sym) not in self.data_source.binary_column_names,
+                    covariate_symbols))
 
             # All possible combinations of covariates for the given transform.
             covariate_combinations = np.array(
                 list(combinations(
-                    covariate_symbols,
+                    usable_covariate_symbols,
                     len(transform_covariate_symbols))))
 
             selected_covar_combinations, _ = select_given_probability_distribution(
@@ -125,6 +135,7 @@ class DataGeneratingProcessWrapper():
         # of the number of base covariates.
         max_transform_count = \
             Constants.MAX_RATIO_TRANSFORMED_TO_ORIGINAL_TERMS*len(covariate_symbols)
+
         if len(selected_covariate_transforms) > max_transform_count:
             # Randomly sample selected transforms with expected number selected
             # equal to the max.

@@ -2,24 +2,47 @@ import numpy as np
 import pandas as pd
 from .constants import Constants
 
+
+class DataSource():
+
+    def __init__(self, covariate_data, binary_column_names):
+        self.original_covariate_data = covariate_data
+        self.binary_column_names = binary_column_names
+
+        self.binary_column_indeces = [
+            self.original_covariate_data.columns.get_loc(name)
+            for name in self.binary_column_names
+        ]
+
+        self.normalized_covariate_data = _normalize_covariate_data(
+            self.original_covariate_data,
+            exclude_columns=self.binary_column_indeces)
+
+    def get_data(self):
+        return self.normalized_covariate_data
+
 def load_cpp():
     cpp_covars = load_covars_from_path(Constants.Data.CPP_PATH)
 
     # TODO: remove this hacked column limit...
-    cpp_covars = cpp_covars[[f"x_{i}" for i in range(1, 20)]]
-    Constants.Data.CPP_DISCRETE_COVARS = [i for i in Constants.Data.CPP_DISCRETE_COVARS if i < 20]
-    cpp_covars = cpp_covars.head(200)
-    normalized_cpp = _normalize_covariate_data(
-        cpp_covars, exclude_columns=Constants.Data.CPP_DISCRETE_COVARS)
+    # cpp_covars = cpp_covars[[f"x_{i}" for i in range(1, 20)]]
+    # Constants.Data.CPP_DISCRETE_COVARS = [i for i in Constants.Data.CPP_DISCRETE_COVARS if i < 20]
+    # cpp_covars = cpp_covars.head(200)
 
-    return normalized_cpp
+    cpp_data_source = DataSource(
+        covariate_data=cpp_covars,
+        binary_column_names=Constants.Data.CPP_DISCRETE_COVARS)
+
+    return cpp_data_source
 
 def load_lalonde():
     lalonde_covars = load_covars_from_path(Constants.Data.LALONDE_PATH)
-    normalized_lalonde = _normalize_covariate_data(
-        lalonde_covars, exclude_columns=Constants.Data.LALONDE_DISCRETE_COVARS)
 
-    return normalized_lalonde
+    lalone_data_source = DataSource(
+        covariate_data=lalonde_covars,
+        binary_column_names=Constants.Data.LALONDE_DISCRETE_COVARS)
+
+    return lalone_data_source
 
 def load_covars_from_path(covar_path):
     '''
@@ -45,8 +68,14 @@ def load_random_normal_covariates(
     covar_names = np.array([f"X{i}" for i in range(n_covars)])
 
     # Build DF
-    return _build_covar_data_frame(
+    norm_covars = _build_covar_data_frame(
         covar_data, covar_names, np.arange(n_observations))
+
+    norm_data_source = DataSource(
+        covariate_data=norm_covars,
+        binary_column_names=[])
+
+    return norm_data_source
 
 def _build_covar_data_frame(data, column_names, index):
     return pd.DataFrame(
