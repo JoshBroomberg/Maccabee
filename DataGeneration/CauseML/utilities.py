@@ -21,22 +21,30 @@ def select_given_probability_distribution(full_list, selection_probabilities):
         selected = selected.flatten()
     return selected, selections
 
+# import tensorflow as tf
+
 def evaluate_expression(expression, data):
-    if hasattr(expression, 'free_symbols'):
+    try:
         free_symbols = list(expression.free_symbols)
-        core_func = sp.lambdify(
+        expr_func = sp.lambdify(
                 free_symbols,
                 expression,
-                "numpy",
+                modules=[
+                    {
+                        "amax": lambda x: np.maximum(*x),
+                        "amin": lambda x: np.minimum(*x)
+                    },
+                    "numpy"
+                ],
                 dummify=False)
 
-        free_symbol_names = [ str(sym) for sym in free_symbols ]
-        wrapper_func = lambda arg_arr: core_func(*arg_arr)
-        res = np.apply_along_axis(wrapper_func, 1, data[free_symbol_names].to_numpy())
-    else:
-        res = expression
+        column_data = [data[str(sym)] for sym in free_symbols]
+        res = expr_func(*column_data)
 
-    return res
+        return res
+    except AttributeError:
+        # No free symbols, return expression itself.
+        return expression
 
 def initialize_expression_constants(parameters, expressions):
     initialized_expressions = []

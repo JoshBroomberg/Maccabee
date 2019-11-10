@@ -90,6 +90,14 @@ SCHEMA:
     description: |
       Target propensity score for treatment mechanism
 
+  FORCED_IMBALANCE_ADJUSTMENT:
+    type: number
+    min: 0
+    max: 0.5
+    description: |
+      Value between 0 and 0.5 which is the proportion of controls/treated units
+      that will be swapped to increase imbalance.
+
   TARGET_MIN_LOGIT:
     type: calculated
     expr: np.log(MIN_PROPENSITY_SCORE/(1-MIN_PROPENSITY_SCORE))

@@ -86,9 +86,20 @@ def wasserstein(covariates, treatment_status):
 
     M = ot.dist(X_treated, X_control)
     M /= M.max()
-    lambd = 1e-3
 
-    return ot.sinkhorn2(a, b, M, lambd)[0]
+    # Remove all zero-cost entries to produce
+    # a properly conditioned problem.
+    a, b, M = ot.utils.clean_zeros(a, b, M)
+
+    lambd = 1e-2
+
+    wass_dist = ot.sinkhorn2(a, b, M, lambd, maxiter=3000)[0]
+    if wass_dist < 1e-3 and \
+        l2_distance_between_means(covariates, treatment_status) > 1e-4:
+        print(f"Detected failure with W={wass_dist}...")
+        return None
+    else:
+        return wass_dist
 
 def naive_TE_estimate_error(TE, observed_outcome, treatment_status):
     '''

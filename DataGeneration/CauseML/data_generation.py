@@ -30,6 +30,7 @@ class DataGeneratingProcessWrapper():
 
         # Outcome function and subfunctions
         self.treatment_effect_subfunction = None
+        self.treatment_free_outcome_subfunction = None
         self.outcome_function = None
 
         # Generated data
@@ -235,9 +236,7 @@ class DataGeneratingProcessWrapper():
             max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
 
         exponentiated_logit = sp.functions.exp(self.treatment_assignment_logit_function)
-
         self.treatment_assignment_function = exponentiated_logit/(1 + exponentiated_logit)
-
 
     def sample_treatment_effect_subfunction(self):
         """ Create treatment effect subfunction """
@@ -259,9 +258,9 @@ class DataGeneratingProcessWrapper():
         # Process interaction terms into treatment subfunction.
         if treatment_effect_multiplier_expr != 0:
 
-            # Normalize multiplier size but not location. This keeps the size
-            # of the effect bounded but doesn't center the effect for different units
-            # at 0.
+            # Normalize multiplier size.
+            # TODO: vaidate the approach to normalization used here
+            # vs other function construction.
             sampled_data = self.observed_covariate_data.sample(
                 frac=Constants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
@@ -313,9 +312,12 @@ class DataGeneratingProcessWrapper():
         # Create the treatment effect subfunction.
         self.sample_treatment_effect_subfunction()
 
-        self.outcome_function = normalized_outcome_expression + \
-            Constants.TREATMENT_ASSIGNMENT_SYMBOL*self.treatment_effect_subfunction + \
+        self.treatment_free_outcome_subfunction = normalized_outcome_expression + \
             Constants.OUTCOME_NOISE_SYMBOL
+
+        self.outcome_function = self.treatment_free_outcome_subfunction + \
+            (Constants.TREATMENT_ASSIGNMENT_SYMBOL*self.treatment_effect_subfunction)
+
 
     def generate_transformed_covariate_data(self):
         '''
@@ -345,21 +347,37 @@ class DataGeneratingProcessWrapper():
             self.treatment_assignment_logit_function,
             self.observed_covariate_data)
 
-        propensity_scores = evaluate_expression(
-            self.treatment_assignment_function, self.observed_covariate_data)
+        propensity_scores = np.exp(logit_values)/(1+np.exp(logit_values))
 
         T = (np.random.uniform(size=n_observations) < propensity_scores).astype(int)
 
-        # Generate potential outcomes ad treatment effects.
-        Y0 = evaluate_expression(
-                self.outcome_function.subs(Constants.TREATMENT_ASSIGNMENT_SYMBOL, 0),
-                self.observed_covariate_data)
-        Y1 = evaluate_expression(
-                self.outcome_function.subs(Constants.TREATMENT_ASSIGNMENT_SYMBOL, 1),
-                self.observed_covariate_data)
+        # Balance adjustment
+        control_p_scores = propensity_scores.where(T == 0)
+        treat_p_scores = propensity_scores.where(T == 1)
 
+        num_controls = control_p_scores.count()
+        n_to_switch = int(num_controls*self.params.FORCED_IMBALANCE_ADJUSTMENT)
+
+        control_switch_targets = control_p_scores.nlargest(n_to_switch).index.values
+        treat_switch_targets = treat_p_scores.nsmallest(n_to_switch).index.values
+
+        T[control_switch_targets] = 1
+        T[treat_switch_targets] = 0
+
+        # Generate base outcomes, treatment effects and potential outcomes.
+        base_outcomes = evaluate_expression(
+            self.treatment_free_outcome_subfunction,
+            self.observed_covariate_data)
+
+        treatment_effects = evaluate_expression(
+            self.treatment_effect_subfunction,
+            self.observed_covariate_data)
+
+        Y0 = base_outcomes
+        Y1 = base_outcomes + treatment_effects
+
+        # Observed outcome
         Y = (T*Y1) + ((1-T)*Y0)
-        treatment_effect = Y1 - Y0
 
         # Build data frames.
 
@@ -375,7 +393,7 @@ class DataGeneratingProcessWrapper():
         self.oracle_outcome_data[Constants.PROPENSITY_SCORE_VAR_NAME] = propensity_scores
         self.oracle_outcome_data[Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME] = Y0
         self.oracle_outcome_data[Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_VAR_NAME] = Y1
-        self.oracle_outcome_data[Constants.TREATMENT_EFFECT_VAR_NAME] = treatment_effect
+        self.oracle_outcome_data[Constants.TREATMENT_EFFECT_VAR_NAME] = treatment_effects
 
         return (self.observed_covariate_data, self.observed_outcome_data,
             self.oracle_covariate_data, self.oracle_outcome_data)

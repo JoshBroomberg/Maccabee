@@ -4,6 +4,11 @@ from .constants import Constants
 
 def load_cpp():
     cpp_covars = load_covars_from_path(Constants.Data.CPP_PATH)
+
+    # TODO: remove this hacked column limit...
+    cpp_covars = cpp_covars[[f"x_{i}" for i in range(1, 20)]]
+    Constants.Data.CPP_DISCRETE_COVARS = [i for i in Constants.Data.CPP_DISCRETE_COVARS if i < 20]
+    cpp_covars = cpp_covars.head(200)
     normalized_cpp = _normalize_covariate_data(
         cpp_covars, exclude_columns=Constants.Data.CPP_DISCRETE_COVARS)
 
