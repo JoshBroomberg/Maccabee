@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from .constants import Constants
+from .utilities import random_covar_matrix
 
 
 class DataSource():
@@ -21,13 +22,15 @@ class DataSource():
     def get_data(self):
         return self.normalized_covariate_data
 
-def load_cpp():
-    cpp_covars = load_covars_from_path(Constants.Data.CPP_PATH)
-
-    # TODO: remove this hacked column limit...
+    # TODO: Build in a mechanism to limit/control the size of the
+    # returned dataset? See below
     # cpp_covars = cpp_covars[[f"x_{i}" for i in range(1, 20)]]
     # Constants.Data.CPP_DISCRETE_COVARS = [i for i in Constants.Data.CPP_DISCRETE_COVARS if i < 20]
     # cpp_covars = cpp_covars.head(200)
+
+def load_cpp():
+    cpp_covars = load_covars_from_path(Constants.Data.CPP_PATH)
+
 
     cpp_data_source = DataSource(
         covariate_data=cpp_covars,
@@ -54,17 +57,27 @@ def load_covars_from_path(covar_path):
 
 def load_random_normal_covariates(
     n_covars = 20, n_observations = 1000,
-    mean=0, std=5):
+    mean=0, std=1, partial_correlation_degree=0.0):
     '''
     Generate random normal covariate data-frame based on the
     supplied parameters.
     '''
 
-    # Generate random covariates and name sequentially
-    covar_data = np.random.normal(
-        loc=mean, scale=std, size=(n_observations, n_covars))
+    covar = random_covar_matrix(
+        dimension=n_covars,
+        correlation_deg=partial_correlation_degree)
 
+    # Generate random covariates
+    covar_data = np.random.multivariate_normal(
+        mean=np.full((n_covars,), mean),
+        cov=std*covar,
+        size=n_observations)
+
+    # Normalize the generated data (this nullifies the impact of the
+    # mean and std params but they are supplied for potential later use)
     covar_data = _normalize_covariate_data(covar_data)
+
+    # Name sequentially
     covar_names = np.array([f"X{i}" for i in range(n_covars)])
 
     # Build DF
