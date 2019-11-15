@@ -38,8 +38,6 @@ def select_given_probability_distribution(full_list, selection_probabilities):
         selected = selected.flatten()
     return selected, selections
 
-# import tensorflow as tf
-
 def evaluate_expression(expression, data):
     try:
         free_symbols = list(expression.free_symbols)
@@ -53,7 +51,7 @@ def evaluate_expression(expression, data):
                     },
                     "numpy"
                 ],
-                dummify=False)
+                dummify=True)
 
         column_data = [data[str(sym)] for sym in free_symbols]
         res = expr_func(*column_data)

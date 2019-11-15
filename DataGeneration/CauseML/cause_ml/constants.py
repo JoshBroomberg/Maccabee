@@ -14,15 +14,15 @@ class Constants:
 
     class Params:
         _SCHEMA_PATH = resource_filename(
-            'CauseML', 'parameters/parameter_schema.yml')
+            'cause_ml', 'parameters/parameter_schema.yml')
 
         with open(_SCHEMA_PATH, "r") as schema_file:
             SCHEMA = yaml.safe_load(schema_file)["SCHEMA"]
 
         DEFAULT_SPEC_PATH = resource_filename(
-            'CauseML', 'parameters/default_parameter_specification.yml')
+            'cause_ml', 'parameters/default_parameter_specification.yml')
         METRIC_LEVEL_SPEC_PATH = resource_filename(
-            'CauseML', 'parameters/metric_level_parameter_specifications.yml')
+            'cause_ml', 'parameters/metric_level_parameter_specifications.yml')
 
         class ParamInfo:
             DESCRIPTION_KEY = "description"
@@ -154,7 +154,7 @@ class Constants:
 
     class Data:
         get_dataset_path = lambda file_name: resource_filename(
-            'CauseML', f"data/{file_name}.csv")
+            'cause_ml', f"data/{file_name}.csv")
 
         LALONDE_PATH = get_dataset_path("lalonde")
         LALONDE_DISCRETE_COVARS = ["black","hispanic","married","nodegree"]
