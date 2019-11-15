@@ -47,7 +47,9 @@ class ParameterStore():
             else:
                 raise Exception("Param spec is missing: {}".format(param_name))
 
-            self.set_parameter(param_name, param_value)
+            self.set_parameter(
+                param_name, param_value,
+                recalculate_calculated_params=False)
 
     def get_calculated_param_value(self, param_info):
         expr = param_info[PARAM_CONSTANTS.ParamInfo.EXPRESSION_KEY]
@@ -56,7 +58,8 @@ class ParameterStore():
     def recalculate_calculated_params(self):
         for param_name, param_info in self.calculated_parameters.items():
             param_value = self.get_calculated_param_value(param_info)
-            self.set_parameter(param_name, param_value)
+            self.set_parameter(param_name, param_value,
+                recalculate_calculated_params=False)
 
     def validate_param_value(self, param_info, param_value):
         param_type = param_info[PARAM_CONSTANTS.ParamInfo.TYPE_KEY]
@@ -77,9 +80,11 @@ class ParameterStore():
 
     # Makes a parameter value available on the ParamStore object
     # and stores the value in a dict for later write out.
-    def set_parameter(self, param_name, param_value):
+    def set_parameter(self, param_name, param_value, recalculate_calculated_params=True):
         setattr(self, param_name, param_value)
         self.parsed_parameter_dict[param_name] = param_value
+        if recalculate_calculated_params:
+            self.recalculate_calculated_params()
 
     def write(self):
         # TODO: dump parsed params to valid yaml spec
@@ -127,7 +132,8 @@ def build_parameters_from_metric_levels(metric_levels, save=False):
 
             if metric_level in metric_level_specs:
                 for param_name, param_value in metric_level_specs[metric_level].items():
-                    params.set_parameter(param_name, param_value)
+                    params.set_parameter(
+                        param_name, param_value, recalculate_calculated_params=False)
             else:
                 raise Exception(f"{metric_level} is not a valid level for {metric_name}")
         else:

@@ -51,6 +51,9 @@ class DataGeneratingProcessWrapper():
         self.sample_outcome_function()
 
     def sample_observed_covariate_data(self):
+        # TODO: this should be repeated on data gen not DGP sample
+        # but that would require renormalization of the DGP.
+
         # Sample observations to reduce observation count if desired.
         self.observed_covariate_data = self.source_covariate_data.sample(
             frac=self.params.OBSERVATION_PROBABILITY)
@@ -399,6 +402,8 @@ class DataGeneratingProcessWrapper():
 
         # Data not available for causal inference.
         self.oracle_covariate_data = self.generate_transformed_covariate_data()
+        self.oracle_covariate_data[Constants.OUTCOME_NOISE_VAR_NAME] = \
+            self.observed_covariate_data[Constants.OUTCOME_NOISE_VAR_NAME]
         self.oracle_outcome_data = pd.DataFrame()
         self.oracle_outcome_data[Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME] = logit_values
         self.oracle_outcome_data[Constants.PROPENSITY_SCORE_VAR_NAME] = propensity_scores
@@ -416,7 +421,9 @@ class DataGeneratingProcessWrapper():
         if not self.data_generated:
             raise Exception("You must run generate_data first.")
 
-        return self.observed_outcome_data.join(self.observed_covariate_data)
+        return self.observed_outcome_data \
+            .join(self.observed_covariate_data) \
+            .drop(Constants.OUTCOME_NOISE_VAR_NAME, axis=1)
 
     def get_oracle_data(self):
         '''
