@@ -108,10 +108,10 @@ def _normalize_covariate_data(covariate_data, exclude_columns=[]):
     column_shifts = (-1*X_min) * included_filter
 
     # Amount to scale columns. Excluded cols scale by 1.
-    column_scales = ((X_max - X_min) * included_filter) + excluded_filter
+    inverse_column_scales = ((X_max - X_min) * included_filter) + excluded_filter
 
     # Shift and scale to [0, 1]
-    normalized_data = (covariate_data + column_shifts)/column_scales
+    normalized_data = (covariate_data + column_shifts)/inverse_column_scales
 
     # Shift and scale to [-1, 1]
     rescaled_data = (normalized_data * \
