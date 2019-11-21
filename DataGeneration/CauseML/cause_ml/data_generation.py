@@ -119,19 +119,20 @@ class DataGeneratingProcessWrapper():
                                 ])
 
         # Add at least one transform if empty_allowed is False
-        # and no transforms slected above.
+        # and no transforms selected above.
         # TODO: this is an ugly solution to a complex problem. Improve this.
         if len(selected_covariate_transforms) == 0 and not empty_allowed:
 
-            transform_spec = Constants.SUBFUNCTION_FORMS[Constants.LINEAR]
-            transform_expression = transform_spec[Constants.EXPRESSION_KEY]
-            transform_covariate_symbols = transform_spec[Constants.COVARIATE_SYMBOLS_KEY]
-            required_covars = covariate_symbols[:len(transform_covariate_symbols)]
-
-            selected_covariate_transforms = [
-                transform_expression.subs(zip(
-                transform_covariate_symbols, required_covars))
-            ]
+            # transform_spec = Constants.SUBFUNCTION_FORMS[Constants.LINEAR]
+            # transform_expression = transform_spec[Constants.EXPRESSION_KEY]
+            # transform_covariate_symbols = transform_spec[Constants.COVARIATE_SYMBOLS_KEY]
+            # required_covars = covariate_symbols[:len(transform_covariate_symbols)]
+            #
+            # selected_covariate_transforms = [
+            #     transform_expression.subs(zip(
+            #     transform_covariate_symbols, required_covars))
+            # ]
+            selected_covariate_transforms.append(list(Constants.SUBFUNCTION_CONSTANT_SYMBOLS)[0])
 
         # The number of combinations grows factorially with the number of
         # covariates. Cap the number of covariate transforms at a multiple
@@ -225,7 +226,12 @@ class DataGeneratingProcessWrapper():
 
         # Rescale to meet min/max constraints and target propensity.
         # First, construct function to rescale between 0 and 1
-        normalized_logit_expr = (x - min_logit)/(max_logit - min_logit)
+        diff = (max_logit - min_logit)
+        raise
+        if diff > 0:
+            normalized_logit_expr = (x - min_logit)/diff
+        else:
+            normalized_logit_expr = x/x
 
         # Second, construct function to rescale to target interval
         constrained_logit_expr = self.params.TARGET_MIN_LOGIT + \
@@ -246,6 +252,8 @@ class DataGeneratingProcessWrapper():
                 self.params.TARGET_MIN_LOGIT)
 
         # Finally, construct the full function expression.
+        print(max_min_capped_targeted_logit)
+        print(base_treatment_logit_expression)
         self.treatment_assignment_logit_function = \
             max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
 

@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
      name='cause_ml',
-     version='0.0.5',
+     version='0.0.11',
      scripts=[],
      author="Josh Broomberg",
      author_email="joshbroomberg@gmail.com",

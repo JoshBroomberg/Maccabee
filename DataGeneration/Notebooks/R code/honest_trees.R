@@ -13,6 +13,17 @@ HRF_learners <- function(X_train, y_train, t_train, X_test, tau_test, nthreads=0
     splitratio = .5,
     middleSplit = FALSE)
 
+  large_mu_forest_params <- list(
+    relevant.Variable = 1:ncol(X_train),
+    ntree = 150,
+    replace = TRUE,
+    sample.fraction = 0.9,
+    mtry = ncol(X_train),
+    nodesizeSpl = 1,
+    nodesizeAvg = 3,
+    splitratio = .5,
+    middleSplit = FALSE)
+
   tau_forest_params <- list(
     relevant.Variable = 1:ncol(X_train),
     ntree = 50,
@@ -49,7 +60,7 @@ HRF_learners <- function(X_train, y_train, t_train, X_test, tau_test, nthreads=0
   # S learner
   sl_rf <- S_RF(feat=X_train, tr=t_train, yobs=y_train,
     nthread=nthreads,
-    mu.forestry=mu_forest_params)
+    mu.forestry=large_mu_forest_params)
   S_cate_rf <- EstimateCate(sl_rf, X_test)
   S_loss <- mean((S_cate_rf - tau_test) ^ 2)
   remove(sl_rf)
@@ -67,17 +78,3 @@ HRF_learners <- function(X_train, y_train, t_train, X_test, tau_test, nthreads=0
 
   c(T_loss, S_loss, X_loss)
 }
-
-
-# create example data set
-#simulated_experiment <- simulate_causal_experiment(
-#    ntrain = 1000,
-#    ntest = 100,
-#    dim = 10)
-
-#feature_train <- simulated_experiment$feat_tr
-#w_train <- simulated_experiment$W_tr
-#yobs_train <- simulated_experiment$Yobs_tr
-#cate_true <- simulated_experiment$tau_tr
-
-#print(HRF_learners(cate_true, feature_train, yobs_train, w_train))
