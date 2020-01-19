@@ -3,74 +3,76 @@ import sympy as sp
 import numpy as np
 import pandas as pd
 from itertools import combinations
-from .constants import Constants
-from .utilities import select_given_probability_distribution, evaluate_expression, initialize_expression_constants
+from ..constants import Constants
+from ..utilities import select_given_probability_distribution, evaluate_expression, initialize_expression_constants
+from .data_generating_process import DataGeneratingProcess
 
-class DataGeneratingProcessWrapper():
+class DataGeneratingProcessSampler():
     def __init__(self, parameters, data_source):
         self.params = parameters
         self.data_source = data_source
 
-        self.source_covariate_data = data_source.get_data()
-        self.covariate_symbols = np.array(sp.symbols(list(self.source_covariate_data.columns)))
-
-        # Potential confounders
-        self.potential_confounder_symbols = None
-
-        # Observed and oracle/transformed covariate data.
-        self.observed_covariate_data = None
-        self.oracle_covariate_data = None
-
-        # Sampled covariate transforms for the treat and outcome functions.
-        self.outcome_covariate_transforms = None
-        self.treatment_covariate_transforms = None
-
-        # Treatment assignment function and subfunctions
-        self.treatment_assignment_logit_function = None
-        self.treatment_assignment_function = None
-        self.treatment_assignment_function_constant = False
-
-        # Outcome function and subfunctions
-        self.treatment_effect_subfunction = None
-        self.treatment_free_outcome_subfunction = None
-        self.outcome_function = None
-
-        # Generated data
-        self.observed_outcome_data = None
-        self.oracle_outcome_data = None
-
-        # Operational constants.
-        self.data_generated = False
-
     def sample_dgp(self):
-        self.sample_observed_covariate_data()
-        self.sample_potential_confounders()
-        self.sample_treatment_and_outcome_covariate_transforms()
-        self.sample_treatment_assignment_function()
-        self.sample_outcome_function()
+        source_covariate_data = self.data_source.get_data()
+        covariate_symbols = np.array(sp.symbols(list(source_covariate_data.columns)))
 
-    def sample_observed_covariate_data(self):
-        # TODO: this should be repeated on data gen not DGP sample
-        # but that would require renormalization of the DGP.
+        # Sample the source data to generate the observed covariate data.
+        observed_covariate_data = self.sample_observed_covariate_data(
+            source_covariate_data)
 
-        # Sample observations to reduce observation count if desired.
-        self.observed_covariate_data = self.source_covariate_data.sample(
+        # Select the observed variables which may appear in the assignment or
+        # outcome functions. These are potential confounders.
+        potential_confounder_symbols = self.sample_potential_confounders(
+            covariate_symbols)
+
+        # Sample the covariate transforms which make up the assignment and
+        # outcome functions.
+        outcome_covariate_transforms, treatment_covariate_transforms = \
+            self.sample_treatment_and_outcome_covariate_transforms(
+                potential_confounder_symbols)
+
+        treatment_assignment_logit_func, treatment_assignment_function = \
+            self.sample_treatment_assignment_function(
+                treatment_covariate_transforms, observed_covariate_data)
+
+        outcome_function, base_outcome_subfunc, treat_effect_subfunc = \
+            self.sample_outcome_function(
+                outcome_covariate_transforms, observed_covariate_data)
+
+        dgp = DataGeneratingProcess(
+            params=self.params,
+            observed_covariate_data=observed_covariate_data,
+            treatment_assignment_function=treatment_assignment_function,
+            treatment_effect_subfunction=treat_effect_subfunc,
+            base_outcome_subfunction=base_outcome_subfunc)
+
+        return dgp
+
+    def sample_observed_covariate_data(self, source_covariate_data):
+        # Sample observations.
+
+        # For now, we allow simple uniform sampling. In future, we may
+        # support more complex sampling procedures to allow for simulation
+        # of observation censorship etc.
+
+        # NOTE: in the ideal world, this would occur on data generation
+        # (as part of the DGP run) rather than here. But normalization of the
+        # DGP to target specific distribution properties requires a static
+        # dataset.
+        observed_covariate_data = source_covariate_data.sample(
             frac=self.params.OBSERVATION_PROBABILITY)
 
-        n_observed = self.observed_covariate_data.shape[0]
+        return observed_covariate_data
 
-        # Sample and add noise column
-        noise_samples = self.params.sample_outcome_noise(size=n_observed)
-        self.observed_covariate_data[Constants.OUTCOME_NOISE_VAR_NAME] = noise_samples
-
-    def sample_potential_confounders(self):
-        self.potential_confounder_symbols, _ = select_given_probability_distribution(
-            full_list=self.covariate_symbols,
+    def sample_potential_confounders(self, covariate_symbols):
+        potential_confounder_symbols, _ = select_given_probability_distribution(
+            full_list=covariate_symbols,
             selection_probabilities=self.params.POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY)
 
-        if len(self.potential_confounder_symbols) == 0:
-            self.potential_confounder_symbols = [
-                np.random.choice(self.covariate_symbols)]
+        if len(potential_confounder_symbols) == 0:
+            potential_confounder_symbols = [np.random.choice(covariate_symbols)]
+
+        return potential_confounder_symbols
 
     def sample_covariate_transforms(self, covariate_symbols,
         transform_probabilities, empty_allowed=False):
@@ -122,6 +124,7 @@ class DataGeneratingProcessWrapper():
         # TODO: this is an ugly solution to a complex problem. Improve this.
         if len(selected_covariate_transforms) == 0 and not empty_allowed:
 
+            # TODO: eval and delete this if no longer desired.
             # transform_spec = Constants.SUBFUNCTION_FORMS[Constants.LINEAR]
             # transform_expression = transform_spec[Constants.EXPRESSION_KEY]
             # transform_covariate_symbols = transform_spec[Constants.COVARIATE_SYMBOLS_KEY]
@@ -152,17 +155,17 @@ class DataGeneratingProcessWrapper():
 
         return selected_covariate_transforms
 
-    def sample_treatment_and_outcome_covariate_transforms(self):
+    def sample_treatment_and_outcome_covariate_transforms(self, potential_confounder_symbols):
         """
         Sample covariate transforms for the treatment and outcome function
         and then modify the sampled transforms to generate desired alignment.
         """
         outcome_covariate_transforms = self.sample_covariate_transforms(
-                self.potential_confounder_symbols,
+                potential_confounder_symbols,
                 self.params.OUTCOME_MECHANISM_COVARIATE_SELECTION_PROBABILITY)
 
         treatment_covariate_transforms = self.sample_covariate_transforms(
-                self.potential_confounder_symbols,
+                potential_confounder_symbols,
                 self.params.TREAT_MECHANISM_COVARIATE_SELECTION_PROBABILITY)
 
         # Unique set of all covariate transforms
@@ -192,11 +195,16 @@ class DataGeneratingProcessWrapper():
             outcome_only_transforms)
 
         # Union the true confounders into the original covariate selections.
-        self.outcome_covariate_transforms = np.hstack([aligned_transforms, outcome_only_transforms])
-        self.treatment_covariate_transforms = np.hstack([aligned_transforms, treat_only_transforms])
+        outcome_covariate_transforms = np.hstack(
+            [aligned_transforms, outcome_only_transforms])
+        treatment_covariate_transforms = np.hstack(
+            [aligned_transforms, treat_only_transforms])
+
+        return outcome_covariate_transforms, treatment_covariate_transforms
 
 
-    def sample_treatment_assignment_function(self):
+    def sample_treatment_assignment_function(self,
+        treatment_covariate_transforms, observed_covariate_data):
         """
         Sample a treatment assignment function by combining the sampled covariate
         transforms, initializing the constants, and normalizing the function
@@ -204,15 +212,15 @@ class DataGeneratingProcessWrapper():
         """
         # TODO: consider recursively applying the covariate transformation
         # to produce "deep" functions. Probably overkill.
-
+        # TODO: add non-linear activation function
         # TODO: enable overlap adjustment
 
         # Build base treatment logit function. Additive combination of the true covariates.
-        # TODO: add non-linear activation function
-        base_treatment_logit_expression = np.sum(self.treatment_covariate_transforms)
+        base_treatment_logit_expression = np.sum(
+            treatment_covariate_transforms)
 
         # Sample data to evaluate distribution.
-        sampled_data = self.observed_covariate_data.sample(
+        sampled_data = observed_covariate_data.sample(
             frac=Constants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
         # Adjust logit
@@ -230,11 +238,12 @@ class DataGeneratingProcessWrapper():
             normalized_logit_expr = (x - min_logit)/diff
         else:
             prop_score_logit = self.params.TARGET_MEAN_LOGIT
-            self.treatment_assignment_logit_function = prop_score_logit
-            self.treatment_assignment_function = \
+            treatment_assignment_logit_function = prop_score_logit
+            treatment_assignment_function = \
                 np.exp(prop_score_logit)/(1+np.exp(prop_score_logit))
-            self.treatment_assignment_function_constant = True
-            return
+
+            return (treatment_assignment_logit_function,
+                treatment_assignment_function)
 
         # Second, construct function to rescale to target interval
         constrained_logit_expr = self.params.TARGET_MIN_LOGIT + \
@@ -255,20 +264,24 @@ class DataGeneratingProcessWrapper():
                 self.params.TARGET_MIN_LOGIT)
 
         # Finally, construct the full function expression.
-        self.treatment_assignment_logit_function = \
+        treatment_assignment_logit_function = \
             max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
 
-        exponentiated_logit = sp.functions.exp(self.treatment_assignment_logit_function)
-        self.treatment_assignment_function = exponentiated_logit/(1 + exponentiated_logit)
+        exponentiated_logit = sp.functions.exp(treatment_assignment_logit_function)
+        treatment_assignment_function = exponentiated_logit/(1 + exponentiated_logit)
 
-    def sample_treatment_effect_subfunction(self):
+        return (treatment_assignment_logit_function,
+            treatment_assignment_function)
+
+    def sample_treatment_effect_subfunction(self,
+        outcome_covariate_transforms, observed_covariate_data):
         """ Create treatment effect subfunction """
 
         base_treatment_effect = self.params.sample_treatment_effect()[0]
 
         # Sample outcome subfunctions to interact with Treatment effect.
         selected_interaction_terms, _ = select_given_probability_distribution(
-                full_list=self.outcome_covariate_transforms,
+                full_list=outcome_covariate_transforms,
                 selection_probabilities=self.params.TREATMENT_EFFECT_HETEROGENEITY)
 
         initialized_interaction_terms = initialize_expression_constants(
@@ -284,7 +297,7 @@ class DataGeneratingProcessWrapper():
             # Normalize multiplier size.
             # TODO: vaidate the approach to normalization used here
             # vs other function construction.
-            sampled_data = self.observed_covariate_data.sample(
+            sampled_data = observed_covariate_data.sample(
                 frac=Constants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
             treatment_effect_multiplier_values = evaluate_expression(
@@ -296,15 +309,19 @@ class DataGeneratingProcessWrapper():
             normalized_treatment_effect_multiplier_expr = \
                 (treatment_effect_multiplier_expr - multiplier_mean)/multiplier_std
 
-            self.treatment_effect_subfunction = base_treatment_effect * \
+            treatment_effect_subfunction = base_treatment_effect * \
                 (1+normalized_treatment_effect_multiplier_expr)
 
-        # No interaction terms
+            return treatment_effect_subfunction
+
+        # No interaction terms. Return base treatment effect as the
+        # treatment effect subfunction.
         else:
-            self.treatment_effect_subfunction = base_treatment_effect
+            return base_treatment_effect
 
 
-    def sample_outcome_function(self):
+    def sample_outcome_function(self,
+        outcome_covariate_transforms, observed_covariate_data):
         """ Create outcome function"""
 
         # TODO: consider recursively applying the covariate transformation
@@ -314,10 +331,10 @@ class DataGeneratingProcessWrapper():
 
         # TODO: add non-linear activation function and ensure proper normalization.
         # using or changing the OUTCOME_MECHANISM_EXPONENTIATION param.
-        base_outcome_expression = np.sum(self.outcome_covariate_transforms)
+        base_outcome_expression = np.sum(outcome_covariate_transforms)
 
         # Sample data to evaluate distribution.
-        sampled_data = self.observed_covariate_data.sample(
+        sampled_data = observed_covariate_data.sample(
             frac=Constants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
         # Normalized outcome values to have approximate mean=0 and std=1.
@@ -333,113 +350,12 @@ class DataGeneratingProcessWrapper():
             (base_outcome_expression - outcome_mean)/outcome_std
 
         # Create the treatment effect subfunction.
-        self.sample_treatment_effect_subfunction()
+        treat_effect_subfunction = self.sample_treatment_effect_subfunction(
+            outcome_covariate_transforms, observed_covariate_data)
 
-        self.treatment_free_outcome_subfunction = normalized_outcome_expression + \
-            Constants.OUTCOME_NOISE_SYMBOL
+        base_outcome_subfunction = normalized_outcome_expression
+        outcome_function = base_outcome_subfunction + \
+            Constants.OUTCOME_NOISE_SYMBOL + \
+            (Constants.TREATMENT_ASSIGNMENT_SYMBOL*treat_effect_subfunction)
 
-        self.outcome_function = self.treatment_free_outcome_subfunction + \
-            (Constants.TREATMENT_ASSIGNMENT_SYMBOL*self.treatment_effect_subfunction)
-
-
-    def generate_transformed_covariate_data(self):
-        '''
-        Generate the values of all the transformed covariates by running the
-        original covariate data through the transforms used in the outcome and
-        treatment functions.
-        '''
-        all_transforms = list(set(self.outcome_covariate_transforms).union(
-            self.treatment_covariate_transforms))
-
-        data = {}
-        for index, transform in enumerate(all_transforms):
-            data[f"{Constants.TRANSFORMED_COVARIATE_PREFIX}{index}"] = \
-                evaluate_expression(transform, self.observed_covariate_data)
-
-        return pd.DataFrame(data)
-
-    def generate_data(self):
-        """Perform data generation"""
-
-        self.data_generated = True
-
-        n_observations = self.observed_covariate_data.shape[0]
-
-        # Generate treatment assignment data.
-        logit_values = evaluate_expression(
-            self.treatment_assignment_logit_function,
-            self.observed_covariate_data)
-
-        propensity_scores = np.exp(logit_values)/(1+np.exp(logit_values))
-
-        T = (np.random.uniform(size=n_observations) < propensity_scores).astype(int)
-
-        if not self.treatment_assignment_function_constant:
-            # Balance adjustment
-            control_p_scores = propensity_scores.where(T == 0)
-            treat_p_scores = propensity_scores.where(T == 1)
-
-            num_controls = control_p_scores.count()
-            n_to_switch = int(num_controls*self.params.FORCED_IMBALANCE_ADJUSTMENT)
-
-            control_switch_targets = control_p_scores.nlargest(n_to_switch).index.values
-            treat_switch_targets = treat_p_scores.nsmallest(n_to_switch).index.values
-
-            T[control_switch_targets] = 1
-            T[treat_switch_targets] = 0
-
-        # Generate base outcomes, treatment effects and potential outcomes.
-        base_outcomes = evaluate_expression(
-            self.treatment_free_outcome_subfunction,
-            self.observed_covariate_data)
-
-        treatment_effects = evaluate_expression(
-            self.treatment_effect_subfunction,
-            self.observed_covariate_data)
-
-        Y0 = base_outcomes
-        Y1 = base_outcomes + treatment_effects
-
-        # Observed outcome
-        Y = (T*Y1) + ((1-T)*Y0)
-
-        # Build data frames.
-
-        # Data available for causal inference
-        self.observed_outcome_data = pd.DataFrame()
-        self.observed_outcome_data[Constants.TREATMENT_ASSIGNMENT_VAR_NAME] = T
-        self.observed_outcome_data[Constants.OBSERVED_OUTCOME_VAR_NAME] = Y
-
-        # Data not available for causal inference.
-        self.oracle_covariate_data = self.generate_transformed_covariate_data()
-        self.oracle_covariate_data[Constants.OUTCOME_NOISE_VAR_NAME] = \
-            self.observed_covariate_data[Constants.OUTCOME_NOISE_VAR_NAME]
-        self.oracle_outcome_data = pd.DataFrame()
-        self.oracle_outcome_data[Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME] = logit_values
-        self.oracle_outcome_data[Constants.PROPENSITY_SCORE_VAR_NAME] = propensity_scores
-        self.oracle_outcome_data[Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME] = Y0
-        self.oracle_outcome_data[Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_VAR_NAME] = Y1
-        self.oracle_outcome_data[Constants.TREATMENT_EFFECT_VAR_NAME] = treatment_effects
-
-        return (self.observed_covariate_data, self.observed_outcome_data,
-            self.oracle_covariate_data, self.oracle_outcome_data)
-
-    def get_observed_data(self):
-        '''
-        Assemble and return the observable data.
-        '''
-        if not self.data_generated:
-            raise Exception("You must run generate_data first.")
-
-        return self.observed_outcome_data \
-            .join(self.observed_covariate_data) \
-            .drop(Constants.OUTCOME_NOISE_VAR_NAME, axis=1)
-
-    def get_oracle_data(self):
-        '''
-        Assemble and return the non-observable/oracle data.
-        '''
-        if not self.data_generated:
-            raise Exception("You must run generate_data first.")
-
-        return self.oracle_outcome_data.join(self.oracle_covariate_data)
+        return outcome_function, base_outcome_subfunction, treat_effect_subfunction
