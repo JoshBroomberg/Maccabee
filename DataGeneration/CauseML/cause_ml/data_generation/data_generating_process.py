@@ -8,18 +8,20 @@ class DataGeneratingProcess():
     def __init__(self,
         params,
         observed_covariate_data,
+        outcome_covariate_transforms,
+        treatment_covariate_transforms,
         treatment_assignment_function,
         treatment_effect_subfunction,
         base_outcome_subfunction,
-        generate_oracle_covariate_data=False):
+        generate_oracle_covariate_data=True):
 
         self.params = params
 
         # DGP COMPONENTS
 
         # Sampled covariate transforms for the treat and outcome functions.
-        self.outcome_covariate_transforms = None
-        self.treatment_covariate_transforms = None
+        self.outcome_covariate_transforms = outcome_covariate_transforms
+        self.treatment_covariate_transforms = treatment_covariate_transforms
 
         # Treatment assignment function and subfunctions
         self.treatment_assignment_logit_function = None
@@ -46,6 +48,8 @@ class DataGeneratingProcess():
         self.propensity_scores = evaluate_expression(
             self.treatment_assignment_function,
             self.observed_covariate_data)
+
+        self.logit_values = np.log(self.propensity_scores/(1-self.propensity_scores))
 
         # Generate base outcomes and treatment effects. This is more efficient
         # than using the complete outcome function which required re-evaluating
@@ -122,7 +126,7 @@ class DataGeneratingProcess():
         # Data not available for causal inference.
         oracle_outcome_data = pd.DataFrame()
         oracle_outcome_data[Constants.OUTCOME_NOISE_VAR_NAME] = noise_samples
-        # oracle_outcome_data[Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME] = logit_values
+        oracle_outcome_data[Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME] = self.logit_values
         oracle_outcome_data[Constants.PROPENSITY_SCORE_VAR_NAME] = self.propensity_scores
         oracle_outcome_data[Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME] = Y0
         oracle_outcome_data[Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_VAR_NAME] = Y1

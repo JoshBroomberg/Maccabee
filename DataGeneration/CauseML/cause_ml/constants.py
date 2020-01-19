@@ -121,14 +121,14 @@ class Constants:
     ### Metric constants ###
 
     # Data inputs
-    class MetricData:
+    class AnalysisMetricData:
         OBSERVED_COVARIATE_DATA = "OBSERVED_COVARIATES"
         OBSERVED_OUTCOME_DATA = "OBSERVED_OUTCOMES"
         ORACLE_COVARIATE_DATA = "ORACLE_COVARIATES"
         ORACLE_OUTCOME_DATA = "ORACLE_OUTCOMES"
 
     # Functions
-    class MetricFunctions:
+    class AnalysisMetricFunctions:
         LINEAR_R2 = "Lin r2"
         LOGISTIC_R2 = "Log r2"
         PERCENT = "Percent"
@@ -138,7 +138,7 @@ class Constants:
         WASS_DIST = "Wass dist"
         NAIVE_TE = "Naive TE"
 
-    class MetricNames:
+    class AxisNames:
         OUTCOME_NONLINEARITY = "OUTCOME_NONLINEARITY"
         TREATMENT_NONLINEARITY = "TREATMENT_NONLINEARITY"
         PERCENT_TREATED = "PERCENT_TREATED"
@@ -147,7 +147,7 @@ class Constants:
         ALIGNMENT = "ALIGNMENT"
         TE_HETEROGENEITY = "TE_HETEROGENEITY"
 
-    class MetricLevels:
+    class AxisLevels:
         LOW = "LOW"
         MEDIUM = "MEDIUM"
         HIGH = "HIGH"

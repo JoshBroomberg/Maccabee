@@ -114,7 +114,7 @@ def build_parameters_from_specification(parameter_spec_path):
     '''
     return ParameterStore(parameter_spec_path=parameter_spec_path)
 
-def build_parameters_from_metric_levels(metric_levels, save=False):
+def build_parameters_from_axis_levels(metric_levels, save=False):
     '''
     Build a parameter store from a set of metric levels. These
     are applied onto the default parameter spec.

@@ -42,6 +42,8 @@ class DataGeneratingProcessSampler():
         dgp = DataGeneratingProcess(
             params=self.params,
             observed_covariate_data=observed_covariate_data,
+            outcome_covariate_transforms=outcome_covariate_transforms,
+            treatment_covariate_transforms=treatment_covariate_transforms,
             treatment_assignment_function=treatment_assignment_function,
             treatment_effect_subfunction=treat_effect_subfunc,
             base_outcome_subfunction=base_outcome_subfunc)
