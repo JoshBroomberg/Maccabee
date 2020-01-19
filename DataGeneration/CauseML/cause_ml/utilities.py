@@ -41,6 +41,7 @@ def select_given_probability_distribution(full_list, selection_probabilities):
 def evaluate_expression(expression, data):
     try:
         free_symbols = list(expression.free_symbols)
+
         expr_func = sp.lambdify(
                 free_symbols,
                 expression,

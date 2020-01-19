@@ -8,12 +8,10 @@ from .utilities import select_given_probability_distribution, evaluate_expressio
 
 class DataGeneratingProcessWrapper():
     def __init__(self, parameters, data_source):
-
-
         self.params = parameters
         self.data_source = data_source
-        self.source_covariate_data = data_source.get_data()
 
+        self.source_covariate_data = data_source.get_data()
         self.covariate_symbols = np.array(sp.symbols(list(self.source_covariate_data.columns)))
 
         # Potential confounders
@@ -30,6 +28,7 @@ class DataGeneratingProcessWrapper():
         # Treatment assignment function and subfunctions
         self.treatment_assignment_logit_function = None
         self.treatment_assignment_function = None
+        self.treatment_assignment_function_constant = False
 
         # Outcome function and subfunctions
         self.treatment_effect_subfunction = None
@@ -227,11 +226,15 @@ class DataGeneratingProcessWrapper():
         # Rescale to meet min/max constraints and target propensity.
         # First, construct function to rescale between 0 and 1
         diff = (max_logit - min_logit)
-        raise
-        if diff > 0:
+        if np.min(diff) > 0:
             normalized_logit_expr = (x - min_logit)/diff
         else:
-            normalized_logit_expr = x/x
+            prop_score_logit = self.params.TARGET_MEAN_LOGIT
+            self.treatment_assignment_logit_function = prop_score_logit
+            self.treatment_assignment_function = \
+                np.exp(prop_score_logit)/(1+np.exp(prop_score_logit))
+            self.treatment_assignment_function_constant = True
+            return
 
         # Second, construct function to rescale to target interval
         constrained_logit_expr = self.params.TARGET_MIN_LOGIT + \
@@ -252,8 +255,6 @@ class DataGeneratingProcessWrapper():
                 self.params.TARGET_MIN_LOGIT)
 
         # Finally, construct the full function expression.
-        print(max_min_capped_targeted_logit)
-        print(base_treatment_logit_expression)
         self.treatment_assignment_logit_function = \
             max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
 
@@ -373,18 +374,19 @@ class DataGeneratingProcessWrapper():
 
         T = (np.random.uniform(size=n_observations) < propensity_scores).astype(int)
 
-        # Balance adjustment
-        control_p_scores = propensity_scores.where(T == 0)
-        treat_p_scores = propensity_scores.where(T == 1)
+        if not self.treatment_assignment_function_constant:
+            # Balance adjustment
+            control_p_scores = propensity_scores.where(T == 0)
+            treat_p_scores = propensity_scores.where(T == 1)
 
-        num_controls = control_p_scores.count()
-        n_to_switch = int(num_controls*self.params.FORCED_IMBALANCE_ADJUSTMENT)
+            num_controls = control_p_scores.count()
+            n_to_switch = int(num_controls*self.params.FORCED_IMBALANCE_ADJUSTMENT)
 
-        control_switch_targets = control_p_scores.nlargest(n_to_switch).index.values
-        treat_switch_targets = treat_p_scores.nsmallest(n_to_switch).index.values
+            control_switch_targets = control_p_scores.nlargest(n_to_switch).index.values
+            treat_switch_targets = treat_p_scores.nsmallest(n_to_switch).index.values
 
-        T[control_switch_targets] = 1
-        T[treat_switch_targets] = 0
+            T[control_switch_targets] = 1
+            T[treat_switch_targets] = 0
 
         # Generate base outcomes, treatment effects and potential outcomes.
         base_outcomes = evaluate_expression(
