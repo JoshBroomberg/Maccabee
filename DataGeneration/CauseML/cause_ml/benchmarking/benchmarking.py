@@ -28,12 +28,62 @@ def _fit_and_apply_model(model_class, estimand, dataset):
 
     return estimate_val, true_val
 
-def run_benchmark(model_class, estimand,
-                   data_source, param_grid,
-                   num_dgp_samples=1,
-                   num_data_samples_per_dgp=1,
-                   enable_ray_multiprocessing=False,
-                   metrics=ACCURACY_METRICS):
+def _process_effect_data(sample_effect_data, ray_enabled):
+    # Process potentially async results.
+    if ray_enabled:
+        sample_effect_data = ray.get(sample_effect_data)
+
+    # Extract estimane and ground truth
+    sample_effect_data = np.array(sample_effect_data)
+    estimate_vals = sample_effect_data[:, 0]
+    true_vals = sample_effect_data[:, 1]
+
+    return estimate_vals, true_vals
+
+def run_concrete_dgp_benchmark(
+    dgp, model_class, estimand, num_samples_from_dgp,
+    enable_ray_multiprocessing=False,
+    process_results=True):
+
+    # Configure multiprocessing
+    if enable_ray_multiprocessing:
+        if not ray.is_initialized():
+            ray.init()
+
+        sample_data = ray.remote(_sample_data).remote
+        fit_and_apply_model = ray.remote(_fit_and_apply_model).remote
+    else:
+        sample_data = _sample_data
+        fit_and_apply_model = fit_and_apply_model
+
+    sample_effect_data = []
+    for _ in range(num_samples_from_dgp):
+        dataset = sample_data(dgp)
+
+        # Fit model and use to generate estimates.
+        effect_data = fit_and_apply_model(
+            model_class, estimand, dataset)
+        sample_effect_data.append(effect_data)
+
+    if process_results:
+        # Extract estimates and ground truth results.
+        estimate_vals, true_vals = _process_effect_data(
+            sample_effect_data, ray_enabled=enable_ray_multiprocessing)
+
+        results = {}
+        for metric_name, metric_func in ACCURACY_METRICS.items():
+            results[metric_name] = metric_func(estimate_vals, true_vals)
+
+        return results
+
+    return sample_effect_data
+
+def run_sampled_dgp_benchmark(
+    model_class, estimand,
+    data_source, param_grid,
+    num_dgp_samples=1,
+    num_data_samples_per_dgp=1,
+    enable_ray_multiprocessing=False):
 
     # Configure multiprocessing
     if enable_ray_multiprocessing:
@@ -41,12 +91,8 @@ def run_benchmark(model_class, estimand,
             ray.init()
 
         sample_dgp = ray.remote(_sample_dgp).remote
-        sample_data = ray.remote(_sample_data).remote
-        fit_and_apply_model = ray.remote(_fit_and_apply_model).remote
     else:
         sample_dgp = _sample_dgp
-        sample_data = _sample_data
-        fit_and_apply_model = fit_and_apply_model
 
     results = defaultdict(list)
 
@@ -59,36 +105,29 @@ def run_benchmark(model_class, estimand,
             parameters=dgp_params, data_source=data_source)
 
         # Sample DGPs
-        async_sample_effect_data = []
+        sample_effect_data = []
         for _ in range(num_dgp_samples):
 
             # Sample data from the DGP
             dgp = sample_dgp(dgp_sampler)
-            for _ in range(num_data_samples_per_dgp):
-                dataset = sample_data(dgp)
+            dgp_sample_effect_data = run_concrete_dgp_benchmark(
+                dgp, model_class, estimand,
+                num_samples_from_dgp=num_data_samples_per_dgp,
+                enable_ray_multiprocessing=enable_ray_multiprocessing,
+                process_results=False)
 
-                # Fit model and use to generate estimates.
-                effect_data = fit_and_apply_model(
-                    model_class, estimand, dataset)
-                async_sample_effect_data.append(effect_data)
-
-        # Process potentially async results.
-        if enable_ray_multiprocessing:
-            sample_effect_data = ray.get(async_sample_effect_data)
-        else:
-            sample_effect_data = async_sample_effect_data
-
-        # Extract estimates and ground truth results.
-        sample_effect_data = np.array(sample_effect_data)
-        estimate_vals = sample_effect_data[:, 0]
-        true_vals = sample_effect_data[:, 1]
+            sample_effect_data.extend(dgp_sample_effect_data)
 
         # Store the params for this run in the results dict
         for param_name, param_value in param_spec.items():
             results[f"param_{param_name.lower()}"].append(param_value)
 
+        # Extract estimates and ground truth results.
+        estimate_vals, true_vals = _process_effect_data(sample_effect_data,
+            ray_enabled=enable_ray_multiprocessing)
+
         # Calculate and store the requested metric values.
-        for metric_name, metric_func in metrics.items():
+        for metric_name, metric_func in ACCURACY_METRICS.items():
             results[metric_name].append(
                 metric_func(estimate_vals, true_vals))
 
