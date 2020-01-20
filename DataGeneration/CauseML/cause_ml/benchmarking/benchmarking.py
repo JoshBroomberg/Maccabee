@@ -35,6 +35,7 @@ def run_benchmark(model_class, estimand,
                    enable_ray_multiprocessing=False,
                    metrics=ACCURACY_METRICS):
 
+    # Configure multiprocessing
     if enable_ray_multiprocessing:
         if not ray.is_initialized():
             ray.init()
@@ -49,33 +50,44 @@ def run_benchmark(model_class, estimand,
 
     results = defaultdict(list)
 
+    # Iterate over all DGP sampler parameter configurations
     for param_spec in ParameterGrid(param_grid):
+
+        # Construct the DGP sampler for these params.
         dgp_params = build_parameters_from_axis_levels(param_spec)
         dgp_sampler = DataGeneratingProcessSampler(
             parameters=dgp_params, data_source=data_source)
 
+        # Sample DGPs
         async_sample_effect_data = []
         for _ in range(num_dgp_samples):
+
+            # Sample data from the DGP
             dgp = sample_dgp(dgp_sampler)
             for _ in range(num_data_samples_per_dgp):
                 dataset = sample_data(dgp)
+
+                # Fit model and use to generate estimates.
                 effect_data = fit_and_apply_model(
                     model_class, estimand, dataset)
                 async_sample_effect_data.append(effect_data)
 
+        # Process potentially async results.
         if enable_ray_multiprocessing:
             sample_effect_data = ray.get(async_sample_effect_data)
         else:
             sample_effect_data = async_sample_effect_data
 
+        # Extract estimates and ground truth results.
         sample_effect_data = np.array(sample_effect_data)
-
         estimate_vals = sample_effect_data[:, 0]
         true_vals = sample_effect_data[:, 1]
 
+        # Store the params for this run in the results dict
         for param_name, param_value in param_spec.items():
             results[f"param_{param_name.lower()}"].append(param_value)
 
+        # Calculate and store the requested metric values.
         for metric_name, metric_func in metrics.items():
             results[metric_name].append(
                 metric_func(estimate_vals, true_vals))
