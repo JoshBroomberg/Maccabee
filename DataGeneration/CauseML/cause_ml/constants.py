@@ -43,6 +43,9 @@ class Constants:
             # Calc type keys
             EXPRESSION_KEY = "expr"
 
+    # TODO: Move all of the below into a namespace equivalent to
+    # other constants.
+
     LINEAR = "LINEAR"
     POLY_QUADRATIC = "POLY_QUAD"
     POLY_CUBIC = "POLY_CUBIC"
@@ -165,3 +168,7 @@ class Constants:
             'x_21_E','x_21_F','x_21_G','x_21_H','x_21_I','x_21_J','x_21_K',
             'x_21_L','x_21_M','x_21_N','x_21_O','x_21_P','x_24_A','x_24_B',
             'x_24_C','x_24_D', 'x_24_E']
+
+    class Model:
+        ITE_ESTIMAND = "ITE"
+        ATE_ESTIMAND = "ATE"
