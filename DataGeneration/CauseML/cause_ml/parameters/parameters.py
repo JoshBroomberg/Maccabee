@@ -119,6 +119,7 @@ def build_parameters_from_axis_levels(metric_levels, save=False):
     Build a parameter store from a set of metric levels. These
     are applied onto the default parameter spec.
     '''
+
     params = ParameterStore(parameter_spec_path=PARAM_CONSTANTS.DEFAULT_SPEC_PATH)
 
     with open(PARAM_CONSTANTS.METRIC_LEVEL_SPEC_PATH, "r") as metric_level_file:

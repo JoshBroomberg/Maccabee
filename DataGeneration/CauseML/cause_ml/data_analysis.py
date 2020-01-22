@@ -145,8 +145,8 @@ data_accessors = {
         "accessor": lambda data: data[AnalysisMetricData.OBSERVED_COVARIATE_DATA],
         "name": "X_obs"
     },
-    AnalysisMetricData.ORACLE_COVARIATE_DATA: {
-        "accessor": lambda data: data[AnalysisMetricData.ORACLE_COVARIATE_DATA],
+    AnalysisMetricData.TRANSFORMED_COVARIATE_DATA: {
+        "accessor": lambda data: data[AnalysisMetricData.TRANSFORMED_COVARIATE_DATA],
         "name": "X_true"
     },
 
@@ -220,7 +220,7 @@ axes = {
         {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": AnalysisMetricData.ORACLE_COVARIATE_DATA,
+                "X": AnalysisMetricData.TRANSFORMED_COVARIATE_DATA,
                 "y": Constants.OBSERVED_OUTCOME_NAME
             },
             "name": "Lin r2(X_true, Y)"
@@ -244,7 +244,7 @@ axes = {
         {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": AnalysisMetricData.ORACLE_COVARIATE_DATA,
+                "X": AnalysisMetricData.TRANSFORMED_COVARIATE_DATA,
                 "y": Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME
             },
             "name": "Lin r2(X_true, Y1)"
@@ -252,7 +252,7 @@ axes = {
         {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": AnalysisMetricData.ORACLE_COVARIATE_DATA,
+                "X": AnalysisMetricData.TRANSFORMED_COVARIATE_DATA,
                 "y": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME
             },
             "name": "Lin r2(X_true, Y0)"
@@ -268,7 +268,7 @@ axes = {
         {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": AnalysisMetricData.ORACLE_COVARIATE_DATA,
+                "X": AnalysisMetricData.TRANSFORMED_COVARIATE_DATA,
                 "y": Constants.TREATMENT_EFFECT_NAME
             },
             "name": "Lin r2(X_true, TE)"
@@ -317,7 +317,7 @@ axes = {
         {
             "function": AnalysisMetricFunctions.NN_CF_MAHALA_DIST,
             "args": {
-                "covariates": AnalysisMetricData.ORACLE_COVARIATE_DATA,
+                "covariates": AnalysisMetricData.TRANSFORMED_COVARIATE_DATA,
                 "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "NN dist X_true: T=1<->T=0"
@@ -328,7 +328,7 @@ axes = {
         {
             "function": AnalysisMetricFunctions.L2_MEAN_DIST,
             "args": {
-                "covariates": AnalysisMetricData.ORACLE_COVARIATE_DATA,
+                "covariates": AnalysisMetricData.TRANSFORMED_COVARIATE_DATA,
                 "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Mean dist X_true: T=1<->T=0"
@@ -336,7 +336,7 @@ axes = {
         {
             "function": AnalysisMetricFunctions.WASS_DIST,
             "args": {
-                "covariates": AnalysisMetricData.ORACLE_COVARIATE_DATA,
+                "covariates": AnalysisMetricData.TRANSFORMED_COVARIATE_DATA,
                 "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Wass dist X_true: T=1<->T=0"
@@ -491,7 +491,7 @@ def calculate_data_axis_metrics(
     data = {
         AnalysisMetricData.OBSERVED_COVARIATE_DATA: data_set.observed_covariate_data,
         AnalysisMetricData.OBSERVED_OUTCOME_DATA: data_set.observed_outcome_data,
-        AnalysisMetricData.ORACLE_COVARIATE_DATA: data_set.oracle_covariate_data,
+        AnalysisMetricData.TRANSFORMED_COVARIATE_DATA: data_set.transformed_covariate_data,
         AnalysisMetricData.ORACLE_OUTCOME_DATA: data_set.oracle_outcome_data
     }
 

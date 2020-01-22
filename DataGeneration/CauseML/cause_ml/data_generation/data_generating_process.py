@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from functools import partial
 
+
 GENERATED_DATA_DICT_NAME = "_generated_data"
 
 class DataGeneratingMethodClass(type):
@@ -79,6 +80,25 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
         self.n_observations = n_observations
         self.analysis_mode = analysis_mode
 
+    # DGP Proc
+    def generate_dataset(self):
+        # Covars
+        self._generate_observed_covars()
+        self._generate_transformed_covars()
+
+        # Treatment assignment
+        self._generate_true_propensity_scores()
+        self._generate_true_propensity_score_logits()
+        self._generate_treatment_assignments()
+
+        # Outcomes
+        self._generate_outcome_noise_samples()
+        self._generate_outcomes_without_treatment()
+        self._generate_treatment_effects()
+        self._generate_outcomes_with_treatment()
+        self._generate_observed_outcomes()
+
+        return self._build_dataset()
 
     # DGP submethods
     @data_generating_method(Constants.COVARIATES_NAME, [])
@@ -158,54 +178,44 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
         data_dict = getattr(self, GENERATED_DATA_DICT_NAME)
         return data_dict.get(name, None)
 
+    def _build_dataframe_for_vars(self, var_names):
+        df = pd.DataFrame()
+        for name in var_names:
+            val = self._get_generated_data(name)
+            df[name] = val
+
+        return df
+
     def _build_dataset(self):
 
-        observed_covars = self._get_generated_data(Constants.COVARIATES_NAME)
-        transformed_covars = self._get_generated_data(Constants.TRANSFORMED_COVARIATES_NAME)
+        # Observed data
+        observed_covariate_data = self._get_generated_data(
+            Constants.COVARIATES_NAME)
+
+        observed_outcome_data = self._build_dataframe_for_vars([
+            Constants.TREATMENT_ASSIGNMENT_NAME,
+            Constants.OBSERVED_OUTCOME_NAME
+        ])
+
+        # Unobserved data
+        transformed_covariate_data = self._get_generated_data(
+            Constants.TRANSFORMED_COVARIATES_NAME)
+
+        oracle_outcome_data = self._build_dataframe_for_vars([
+            Constants.PROPENSITY_SCORE_NAME,
+            Constants.PROPENSITY_LOGIT_NAME,
+            Constants.OUTCOME_NOISE_NAME,
+            Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+            Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
+            Constants.TREATMENT_EFFECT_NAME,
+        ])
 
         # Treatment assignment
-        propensity_scores = self._get_generated_data(Constants.PROPENSITY_SCORE_NAME)
-        propensity_logit = self._get_generated_data(Constants.PROPENSITY_LOGIT_NAME)
-        T = self._get_generated_data(Constants.TREATMENT_ASSIGNMENT_NAME)
-
-        # Outcome
-        outcome_noise = self._get_generated_data(Constants.OUTCOME_NOISE_NAME)
-        Y0 = self._get_generated_data(Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME)
-        TE = self._get_generated_data(Constants.TREATMENT_EFFECT_NAME)
-        Y1 = self._get_generated_data(Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME)
-        Y = self._get_generated_data(Constants.OBSERVED_OUTCOME_NAME)
-
         return DataSet(
-            observed_covars=np.array(observed_covars),
-            observed_covar_names=observed_covars.columns.values,
-            transformed_covars=np.array(transformed_covars),
-            transformed_covar_names=transformed_covars.columns.values,
-            propensity_scores=np.array(propensity_scores),
-            propensity_logit=np.array(propensity_logit),
-            T=np.array(T),
-            outcome_noise=np.array(outcome_noise),
-            Y0=np.array(Y0), TE=np.array(TE), Y1=np.array(Y1), Y=np.array(Y))
-
-    def generate_dataset(self):
-        # Covars
-        self._generate_observed_covars()
-        self._generate_transformed_covars()
-
-        # Treatment assignment
-        self._generate_true_propensity_scores()
-        self._generate_true_propensity_score_logits()
-        self._generate_treatment_assignments()
-
-        # Outcomes
-        self._generate_outcome_noise_samples()
-        self._generate_outcomes_without_treatment()
-        self._generate_treatment_effects()
-        self._generate_outcomes_with_treatment()
-        self._generate_observed_outcomes()
-
-        return self._build_dataset()
-
-
+            observed_covariate_data=observed_covariate_data,
+            observed_outcome_data=observed_outcome_data,
+            oracle_outcome_data=oracle_outcome_data,
+            transformed_covariate_data=transformed_covariate_data)
 
 class ManualDataGeneratingProcess(DataGeneratingProcess):
     pass

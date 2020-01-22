@@ -15,71 +15,55 @@ class DataSet():
     # from standard data frames.
 
     def __init__(self,
-        observed_covars, observed_covar_names,
-        transformed_covars, transformed_covar_names,
-        propensity_scores, propensity_logit, T,
-        outcome_noise, Y0, TE, Y1, Y):
+        observed_covariate_data,
+        observed_outcome_data,
+        oracle_outcome_data,
+        transformed_covariate_data=None):
 
-        self.observed_covars = observed_covars
-        self.observed_covar_names = observed_covar_names
-        self.transformed_covars = transformed_covars
-        self.transformed_covar_names = transformed_covar_names
-
-        self.propensity_scores = propensity_scores.reshape(-1, 1)
-        self.propensity_logit = propensity_logit.reshape(-1, 1)
-        self.T = T.reshape(-1, 1)
-        self.outcome_noise = outcome_noise.reshape(-1, 1)
-        self.Y0 = Y0.reshape(-1, 1)
-        self.TE = TE.reshape(-1, 1)
-        self.Y1 = Y1.reshape(-1, 1)
-        self.Y = Y.reshape(-1, 1)
+        self.observed_covariate_data = observed_covariate_data
+        self.observed_outcome_data = observed_outcome_data
+        self.oracle_outcome_data = oracle_outcome_data
+        self.transformed_covariate_data = transformed_covariate_data
 
     @property
     def X(self):
-        return self.observed_covars
+        return self.observed_covariate_data
+
+    @property
+    def T(self):
+        return self.observed_outcome_data[Constants.TREATMENT_ASSIGNMENT_NAME]
+
+    @property
+    def Y(self):
+        return self.observed_outcome_data[Constants.OBSERVED_OUTCOME_NAME]
+
+    @property
+    def Y0(self):
+        return self.oracle_outcome_data[
+            Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
+
+    @property
+    def Y1(self):
+        return self.oracle_outcome_data[
+            Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME]
 
     @property
     def observed_data(self):
         '''
         Assemble and return the observable data.
         '''
-        data = np.hstack([
-            self.observed_covars,
-            self.T,
-            self.Y])
 
-        return pd.DataFrame(data,
-            columns=np.hstack([self.observed_covar_names, [
-                Constants.TREATMENT_ASSIGNMENT_NAME,
-                Constants.OBSERVED_OUTCOME_NAME
-            ]]))
-
-    @property
-    def oracle_data(self):
-        '''
-        Assemble and return the non-observable/oracle data.
-        '''
-
-        return pd.concat([
-            self.transformed_covars,
-            self.propensity_scores,
-            self.propensity_logit,
-            self.outcome_noise,
-            self.outcome_noise,
-            self.Y0,
-            self.TE,
-            self.Y1
-        ], axis=1)
+        return self.observed_covariate_data.join(self.observed_outcome_data)
 
     # Estimand accessors
 
     @property
     def ITE(self):
-        return self.TE
+        return self.Y1 - self.Y0
 
     @property
     def ATE(self):
-        return np.mean(self.TE)
+        return np.mean(self.ITE)
 
     def ground_truth(self, estimand):
         if estimand == Constants.Model.ATE_ESTIMAND:

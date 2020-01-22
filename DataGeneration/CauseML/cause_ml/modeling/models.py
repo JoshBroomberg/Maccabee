@@ -30,17 +30,17 @@ class LinearRegressionCausalModel(CausalModel):
     def __init__(self, dataset):
         self.dataset = dataset
         self.model = LinearRegression()
-        self.covar_and_treat_data = np.hstack([self.dataset.X, self.dataset.T])
+        self.data = dataset.observed_data.drop("Y", axis=1)
 
     def fit(self):
-        self.model.fit(self.covar_and_treat_data, self.dataset.Y)
+        self.model.fit(self.data, self.dataset.Y)
 
     def estimate_ITE(self):
         # Generate potential outcomes
-        X_under_treatment = self.covar_and_treat_data.copy()
+        X_under_treatment = self.data.copy()
         X_under_treatment["T"] = 1
 
-        X_under_control = self.covar_and_treat_data.copy()
+        X_under_control = self.data.copy()
         X_under_control["T"] = 0
 
         y_1_predicted = self.model.predict(X_under_treatment)
@@ -52,4 +52,4 @@ class LinearRegressionCausalModel(CausalModel):
 
     def estimate_ATE(self):
         # The coefficient on the treatment status
-        return self.model.coef_[0, -1]
+        return self.model.coef_[-1]
