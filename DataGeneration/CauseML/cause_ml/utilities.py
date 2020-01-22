@@ -2,6 +2,8 @@ import numpy as np
 import sympy as sp
 from .constants import Constants
 import pandas as pd
+from functools import partial
+
 
 def random_covar_matrix(dimension, correlation_deg = 0.5):
     """

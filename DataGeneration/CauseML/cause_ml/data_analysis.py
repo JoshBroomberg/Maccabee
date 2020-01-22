@@ -151,52 +151,52 @@ data_accessors = {
     },
 
     # Model Variables
-    Constants.OBSERVED_OUTCOME_VAR_NAME: {
+    Constants.OBSERVED_OUTCOME_NAME: {
         "accessor": lambda data: data[
             AnalysisMetricData.OBSERVED_OUTCOME_DATA][
-            Constants.OBSERVED_OUTCOME_VAR_NAME],
-        "name": Constants.OBSERVED_OUTCOME_VAR_NAME
+            Constants.OBSERVED_OUTCOME_NAME],
+        "name": Constants.OBSERVED_OUTCOME_NAME
     },
 
-    Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME: {
+    Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME: {
         "accessor": lambda data: data[
             AnalysisMetricData.ORACLE_OUTCOME_DATA][
-            Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME],
-        "name": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME
+            Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME],
+        "name": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME
     },
 
-    Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_VAR_NAME: {
+    Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME: {
         "accessor": lambda data: data[
             AnalysisMetricData.ORACLE_OUTCOME_DATA][
-            Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_VAR_NAME],
-        "name": Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_VAR_NAME
+            Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME],
+        "name": Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME
     },
 
-    Constants.TREATMENT_EFFECT_VAR_NAME: {
+    Constants.TREATMENT_EFFECT_NAME: {
         "accessor": lambda data: data[
             AnalysisMetricData.ORACLE_OUTCOME_DATA][
-            Constants.TREATMENT_EFFECT_VAR_NAME],
+            Constants.TREATMENT_EFFECT_NAME],
         "name": "TE"
     },
 
-    Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME: {
+    Constants.PROPENSITY_LOGIT_NAME: {
         "accessor": lambda data: data[
             AnalysisMetricData.ORACLE_OUTCOME_DATA][
-            Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME],
+            Constants.PROPENSITY_LOGIT_NAME],
         "name": "Treat Logit"
     },
 
-    Constants.PROPENSITY_SCORE_VAR_NAME: {
+    Constants.PROPENSITY_SCORE_NAME: {
         "accessor": lambda data: data[
             AnalysisMetricData.ORACLE_OUTCOME_DATA][
-            Constants.PROPENSITY_SCORE_VAR_NAME],
+            Constants.PROPENSITY_SCORE_NAME],
         "name": "P-score"
     },
 
-    Constants.TREATMENT_ASSIGNMENT_VAR_NAME: {
+    Constants.TREATMENT_ASSIGNMENT_NAME: {
         "accessor": lambda data: data[
             AnalysisMetricData.OBSERVED_OUTCOME_DATA][
-            Constants.TREATMENT_ASSIGNMENT_VAR_NAME],
+            Constants.TREATMENT_ASSIGNMENT_NAME],
         "name": "T"
     }
 }
@@ -213,7 +213,7 @@ axes = {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
                 "X": AnalysisMetricData.OBSERVED_COVARIATE_DATA,
-                "y": Constants.OBSERVED_OUTCOME_VAR_NAME
+                "y": Constants.OBSERVED_OUTCOME_NAME
             },
             "name": "Lin r2(X_obs, Y)"
         },
@@ -221,7 +221,7 @@ axes = {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
                 "X": AnalysisMetricData.ORACLE_COVARIATE_DATA,
-                "y": Constants.OBSERVED_OUTCOME_VAR_NAME
+                "y": Constants.OBSERVED_OUTCOME_NAME
             },
             "name": "Lin r2(X_true, Y)"
         },
@@ -229,7 +229,7 @@ axes = {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
                 "X": AnalysisMetricData.OBSERVED_COVARIATE_DATA,
-                "y": Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_VAR_NAME
+                "y": Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME
             },
             "name": "Lin r2(X_obs, Y1)"
         },
@@ -237,7 +237,7 @@ axes = {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
                 "X": AnalysisMetricData.OBSERVED_COVARIATE_DATA,
-                "y": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME
+                "y": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME
             },
             "name": "Lin r2(X_obs, Y0)"
         },
@@ -245,7 +245,7 @@ axes = {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
                 "X": AnalysisMetricData.ORACLE_COVARIATE_DATA,
-                "y": Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_VAR_NAME
+                "y": Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME
             },
             "name": "Lin r2(X_true, Y1)"
         },
@@ -253,7 +253,7 @@ axes = {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
                 "X": AnalysisMetricData.ORACLE_COVARIATE_DATA,
-                "y": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME
+                "y": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME
             },
             "name": "Lin r2(X_true, Y0)"
         },
@@ -261,7 +261,7 @@ axes = {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
                 "X": AnalysisMetricData.OBSERVED_COVARIATE_DATA,
-                "y": Constants.TREATMENT_EFFECT_VAR_NAME
+                "y": Constants.TREATMENT_EFFECT_NAME
             },
             "name": "Lin r2(X_obs, TE)"
         },
@@ -269,7 +269,7 @@ axes = {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
                 "X": AnalysisMetricData.ORACLE_COVARIATE_DATA,
-                "y": Constants.TREATMENT_EFFECT_VAR_NAME
+                "y": Constants.TREATMENT_EFFECT_NAME
             },
             "name": "Lin r2(X_true, TE)"
         }
@@ -280,7 +280,7 @@ axes = {
             "function": AnalysisMetricFunctions.LOGISTIC_R2,
             "args": {
                 "X": AnalysisMetricData.OBSERVED_COVARIATE_DATA,
-                "y": Constants.TREATMENT_ASSIGNMENT_VAR_NAME
+                "y": Constants.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Log r2(X_obs, T)"
         },
@@ -288,7 +288,7 @@ axes = {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
                 "X": AnalysisMetricData.OBSERVED_COVARIATE_DATA,
-                "y": Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME
+                "y": Constants.PROPENSITY_LOGIT_NAME
             },
             "name": "Lin r2(X_obs, Treat Logit)"
         }
@@ -298,7 +298,7 @@ axes = {
         {
             "function": AnalysisMetricFunctions.PERCENT,
             "args": {
-                "x": Constants.TREATMENT_ASSIGNMENT_VAR_NAME,
+                "x": Constants.TREATMENT_ASSIGNMENT_NAME,
                 "value": 1
             },
             "name": "Percent(T==1)"
@@ -310,7 +310,7 @@ axes = {
             "function": AnalysisMetricFunctions.NN_CF_MAHALA_DIST,
             "args": {
                 "covariates": AnalysisMetricData.OBSERVED_COVARIATE_DATA,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_VAR_NAME
+                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "NN dist X_obs: T=1<->T=0"
         },
@@ -318,7 +318,7 @@ axes = {
             "function": AnalysisMetricFunctions.NN_CF_MAHALA_DIST,
             "args": {
                 "covariates": AnalysisMetricData.ORACLE_COVARIATE_DATA,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_VAR_NAME
+                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "NN dist X_true: T=1<->T=0"
         }
@@ -329,7 +329,7 @@ axes = {
             "function": AnalysisMetricFunctions.L2_MEAN_DIST,
             "args": {
                 "covariates": AnalysisMetricData.ORACLE_COVARIATE_DATA,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_VAR_NAME
+                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Mean dist X_true: T=1<->T=0"
         },
@@ -337,7 +337,7 @@ axes = {
             "function": AnalysisMetricFunctions.WASS_DIST,
             "args": {
                 "covariates": AnalysisMetricData.ORACLE_COVARIATE_DATA,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_VAR_NAME
+                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Wass dist X_true: T=1<->T=0"
         },
@@ -345,16 +345,16 @@ axes = {
             "function": AnalysisMetricFunctions.WASS_DIST,
             "args": {
                 "covariates": AnalysisMetricData.OBSERVED_COVARIATE_DATA,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_VAR_NAME
+                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Wass dist X_obs: T=1<->T=0"
         },
         {
             "function": AnalysisMetricFunctions.NAIVE_TE,
             "args": {
-                "TE": Constants.TREATMENT_EFFECT_VAR_NAME,
-                "observed_outcome": Constants.OBSERVED_OUTCOME_VAR_NAME,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_VAR_NAME
+                "TE": Constants.TREATMENT_EFFECT_NAME,
+                "observed_outcome": Constants.OBSERVED_OUTCOME_NAME,
+                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Naive TE"
         }
@@ -364,16 +364,16 @@ axes = {
         {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.OBSERVED_OUTCOME_VAR_NAME,
-                "y": Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME
+                "X": Constants.OBSERVED_OUTCOME_NAME,
+                "y": Constants.PROPENSITY_LOGIT_NAME
             },
             "name": "Lin r2(Y, Treat Logit)"
         },
         {
             "function": AnalysisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_VAR_NAME,
-                "y": Constants.TREATMENT_ASSIGNMENT_LOGIT_VAR_NAME
+                "X": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+                "y": Constants.PROPENSITY_LOGIT_NAME
             },
             "name": "Lin r2(Y0, Treat Logit)"
         }
@@ -383,8 +383,8 @@ axes = {
         {
             "function": AnalysisMetricFunctions.STD_RATIO,
             "args": {
-                "x1": Constants.TREATMENT_EFFECT_VAR_NAME,
-                "x2": Constants.OBSERVED_OUTCOME_VAR_NAME
+                "x1": Constants.TREATMENT_EFFECT_NAME,
+                "x2": Constants.OBSERVED_OUTCOME_NAME
             },
             "name": "std(TE)/std(Y)"
         }
@@ -457,7 +457,7 @@ def gather_axis_metrics_for_given_params(
         dgp_sampler = DataGeneratingProcessSampler(
             parameters=dgp_params, data_source=data_source)
         dgp = dgp_sampler.sample_dgp()
-        data_set = dgp.generate_data()
+        data_set = dgp.generate_dataset()
 
         # Calculate metrics
         metrics = calculate_data_axis_metrics(data_set, observation_spec)

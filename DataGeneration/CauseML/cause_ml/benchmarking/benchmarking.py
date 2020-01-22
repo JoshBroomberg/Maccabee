@@ -17,7 +17,7 @@ def _sample_dgp(dgp_sampler):
 
 def _sample_data(dgp):
     # Sample data
-    dataset = dgp.generate_data()
+    dataset = dgp.generate_dataset()
     return dataset
 
 def _fit_and_apply_model(model_class, estimand, dataset):

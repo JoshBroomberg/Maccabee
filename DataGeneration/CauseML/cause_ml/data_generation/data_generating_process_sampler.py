@@ -5,7 +5,7 @@ import pandas as pd
 from itertools import combinations
 from ..constants import Constants
 from ..utilities import select_given_probability_distribution, evaluate_expression, initialize_expression_constants
-from .data_generating_process import DataGeneratingProcess
+from .data_generating_process import SampledDataGeneratingProcess
 
 class DataGeneratingProcessSampler():
     def __init__(self, parameters, data_source):
@@ -39,7 +39,7 @@ class DataGeneratingProcessSampler():
             self.sample_outcome_function(
                 outcome_covariate_transforms, observed_covariate_data)
 
-        dgp = DataGeneratingProcess(
+        dgp = SampledDataGeneratingProcess(
             params=self.params,
             observed_covariate_data=observed_covariate_data,
             outcome_covariate_transforms=outcome_covariate_transforms,
