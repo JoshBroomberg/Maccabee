@@ -46,7 +46,8 @@ class DataGeneratingProcessSampler():
             treatment_covariate_transforms=treatment_covariate_transforms,
             treatment_assignment_function=treatment_assignment_function,
             treatment_effect_subfunction=treat_effect_subfunc,
-            base_outcome_subfunction=base_outcome_subfunc)
+            base_outcome_subfunction=base_outcome_subfunc,
+            outcome_function=outcome_function)
 
         return dgp
 

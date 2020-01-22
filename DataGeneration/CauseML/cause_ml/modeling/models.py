@@ -1,23 +1,19 @@
 from ..constants import Constants
 from sklearn.linear_model import LinearRegression
 import numpy as np
-import pandas as pd
+
 
 class CausalModel():
     def __init__(self, dataset):
         self.dataset = dataset
 
-
-        self._build_model()
-        self._prepare_data()
-
-    def _build_model(self):
+    def fit(self):
         raise NotImplementedError
 
-    def _prepare_data(self):
-        pass
+    def estimate_ITE(self):
+        raise NotImplementedError
 
-    def fit(self):
+    def estimate_ATE(self):
         raise NotImplementedError
 
     def estimate(self, estimand, *args, **kwargs):
@@ -28,18 +24,13 @@ class CausalModel():
         else:
             raise Exception("Unrecognized estimand.")
 
-    def estimate_ITE(self):
-        raise NotImplementedError
 
-    def estimate_ATE(self):
-        raise NotImplementedError
 
 class LinearRegressionCausalModel(CausalModel):
-    def _build_model(self):
+    def __init__(self, dataset):
+        self.dataset = dataset
         self.model = LinearRegression()
-
-    def _prepare_data(self):
-        self.covar_and_treat_data = self.dataset.X.join(self.dataset.T)
+        self.covar_and_treat_data = np.hstack([self.dataset.X, self.dataset.T])
 
     def fit(self):
         self.model.fit(self.covar_and_treat_data, self.dataset.Y)
@@ -61,4 +52,4 @@ class LinearRegressionCausalModel(CausalModel):
 
     def estimate_ATE(self):
         # The coefficient on the treatment status
-        return self.model.coef_[-1]
+        return self.model.coef_[0, -1]

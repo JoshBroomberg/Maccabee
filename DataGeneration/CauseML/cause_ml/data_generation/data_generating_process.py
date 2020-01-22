@@ -20,17 +20,22 @@ class DataGeneratingMethodClass(type):
 class DataGeneratingMethodWrapper():
     def __init__(self,
         generated_var, required_vars,
-        optional, analysis_mode_only,
+        optional, analysis_mode_only, cache_result,
         func):
+
         self.generated_var = generated_var
         self.required_vars = required_vars
         self.optional = optional
         self.analysis_mode_only = analysis_mode_only
+        self.cache_result = cache_result
         self.func = func
 
     def __call__(self, *args, **kwargs):
         dgp = args[0]
         data_dict = getattr(dgp, GENERATED_DATA_DICT_NAME)
+
+        if self.cache_result and (self.generated_var in data_dict):
+            return data_dict[self.generated_var]
 
         required_var_vals = {
             k:data_dict[k]
@@ -56,10 +61,10 @@ class DataGeneratingMethodWrapper():
 
 def data_generating_method(
     generated_var, required_vars,
-    optional=False, analysis_mode_only=False):
+    optional=False, analysis_mode_only=False, cache_result=False):
     return partial(DataGeneratingMethodWrapper,
         generated_var, required_vars,
-        optional, analysis_mode_only)
+        optional, analysis_mode_only, cache_result)
 
 #TODO: consider refctoring to splat in the args directly rather
 # than via a dict.
@@ -68,8 +73,12 @@ def data_generating_method(
 # and then replace _generate validation to just use this list of names.
 
 class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
-    def __init__(self):
+    def __init__(self, n_observations, analysis_mode=False):
         setattr(self, GENERATED_DATA_DICT_NAME, {})
+
+        self.n_observations = n_observations
+        self.analysis_mode = analysis_mode
+
 
     # DGP submethods
     @data_generating_method(Constants.COVARIATES_NAME, [])
@@ -79,7 +88,6 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
     @data_generating_method(
         Constants.TRANSFORMED_COVARIATES_NAME,
         [Constants.COVARIATES_NAME],
-        optional=True,
         analysis_mode_only=True)
     def _generate_transformed_covars(self, input_vars):
         return None
@@ -115,7 +123,7 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
 
     @data_generating_method(
         Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
-        [Constants.COVARIATES_NAME, Constants.OUTCOME_NOISE_NAME])
+        [Constants.COVARIATES_NAME])
     def _generate_outcomes_without_treatment(self, input_vars):
         raise NotImplementedError
 
@@ -168,13 +176,15 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
         Y = self._get_generated_data(Constants.OBSERVED_OUTCOME_NAME)
 
         return DataSet(
-            observed_covars=observed_covars,
-            transformed_covars=transformed_covars,
-            propensity_scores=propensity_scores,
-            propensity_logit=propensity_logit,
-            T=T,
-            outcome_noise=outcome_noise,
-            Y0=Y0, TE=TE, Y1=Y1, Y=Y)
+            observed_covars=np.array(observed_covars),
+            observed_covar_names=observed_covars.columns.values,
+            transformed_covars=np.array(transformed_covars),
+            transformed_covar_names=transformed_covars.columns.values,
+            propensity_scores=np.array(propensity_scores),
+            propensity_logit=np.array(propensity_logit),
+            T=np.array(T),
+            outcome_noise=np.array(outcome_noise),
+            Y0=np.array(Y0), TE=np.array(TE), Y1=np.array(Y1), Y=np.array(Y))
 
     def generate_dataset(self):
         # Covars
@@ -191,7 +201,7 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
         self._generate_outcomes_without_treatment()
         self._generate_treatment_effects()
         self._generate_outcomes_with_treatment()
-        self._generate_outcomes_with_treatment()
+        self._generate_observed_outcomes()
 
         return self._build_dataset()
 
@@ -209,91 +219,87 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         treatment_assignment_function,
         treatment_effect_subfunction,
         base_outcome_subfunction,
-        generate_oracle_covariate_data=True):
+        treatment_assignment_logit_func=None,
+        outcome_function=None,
+        analysis_mode=True):
 
+        # STANDARD CONFIG
+        n_observations = observed_covariate_data.shape[0]
+        super().__init__(n_observations, analysis_mode)
+
+        # SAMPLED SGP CONFIG
         self.params = params
-
-        # DGP COMPONENTS
 
         # Sampled covariate transforms for the treat and outcome functions.
         self.outcome_covariate_transforms = outcome_covariate_transforms
         self.treatment_covariate_transforms = treatment_covariate_transforms
 
         # Treatment assignment function and subfunctions
-        self.treatment_assignment_logit_function = None
+        self.treatment_assignment_logit_function = treatment_assignment_logit_func
         self.treatment_assignment_function = treatment_assignment_function
 
         # Outcome function and subfunctions
         self.treatment_effect_subfunction = treatment_effect_subfunction
         self.base_outcome_subfunction = base_outcome_subfunction
-        self.outcome_function = None
+        self.outcome_function = outcome_function
 
         # DATA
         self.observed_covariate_data = observed_covariate_data
-        self.n_observations = self.observed_covariate_data.shape[0]
 
-        self._preprocess_component_functions(generate_oracle_covariate_data)
+    @data_generating_method(Constants.COVARIATES_NAME, [], cache_result=True)
+    def _generate_observed_covars(self, input_vars):
+        return self.observed_covariate_data
 
-    def _preprocess_component_functions(self, generate_oracle_covariate_data):
-        '''
-        This function is run at initialization and performs calculations
-        which do not need to be repeated with each data generation.
-        '''
+    @data_generating_method(
+        Constants.TRANSFORMED_COVARIATES_NAME,
+        [Constants.COVARIATES_NAME],
+        analysis_mode_only=True,
+        cache_result=True)
+    def _generate_transformed_covars(self, input_vars):
+        # Generate the values of all the transformed covariates by running the
+        # original covariate data through the transforms used in the outcome and
+        # treatment functions.
 
-        # Generate treatment assignment propensity scores.
-        self.propensity_scores = evaluate_expression(
-            self.treatment_assignment_function,
-            self.observed_covariate_data)
+        observed_covariate_data = input_vars[Constants.COVARIATES_NAME]
 
-        # TODO: can be hidden + automated.
-        self.logit_values = np.log(self.propensity_scores/(1-self.propensity_scores))
-
-        # Generate base outcomes and treatment effects. This is more efficient
-        # than using the complete outcome function which required re-evaluating
-        # the base outcome.
-        self.base_outcomes = evaluate_expression(
-            self.base_outcome_subfunction,
-            self.observed_covariate_data)
-
-        self.treatment_effects = evaluate_expression(
-            self.treatment_effect_subfunction,
-            self.observed_covariate_data)
-
-        # Covariate transforms
-        if generate_oracle_covariate_data:
-            self.oracle_covariate_data = self._generate_transformed_covariate_data()
-        else:
-            self.oracle_covariate_data = pd.DataFrame()
-
-    def _generate_transformed_covariate_data(self):
-        '''
-        Generate the values of all the transformed covariates by running the
-        original covariate data through the transforms used in the outcome and
-        treatment functions.
-        '''
         all_transforms = list(set(self.outcome_covariate_transforms).union(
             self.treatment_covariate_transforms))
 
         data = {}
         for index, transform in enumerate(all_transforms):
             data[f"{Constants.TRANSFORMED_COVARIATES_NAME}{index}"] = \
-                evaluate_expression(transform, self.observed_covariate_data)
+                evaluate_expression(transform, observed_covariate_data)
 
         return pd.DataFrame(data)
 
-    def generate_dataset(self):
-        """Perform data generation"""
+
+    @data_generating_method(
+        Constants.PROPENSITY_SCORE_NAME,
+        [Constants.COVARIATES_NAME],
+        cache_result=True)
+    def _generate_true_propensity_scores(self, input_vars):
+        observed_covariate_data = input_vars[Constants.COVARIATES_NAME]
+
+        return evaluate_expression(
+            self.treatment_assignment_function,
+            observed_covariate_data)
+
+    @data_generating_method(
+        Constants.TREATMENT_ASSIGNMENT_NAME,
+        [Constants.PROPENSITY_SCORE_NAME])
+    def _generate_treatment_assignments(self, input_vars):
+        propensity_scores = input_vars[Constants.PROPENSITY_SCORE_NAME]
 
         # Sample treatment assignment given pre-calculated propensity_scores
         T = (np.random.uniform(
-            size=self.n_observations) < self.propensity_scores).astype(int)
+            size=self.n_observations) < propensity_scores).astype(int)
 
         # Only perform balance adjustment if there is some heterogeneity
         # in the propensity scores.
-        if not np.all(np.isclose(self.propensity_scores, self.propensity_scores[0])):
+        if not np.all(np.isclose(propensity_scores, propensity_scores[0])):
             # Balance adjustment
-            control_p_scores = self.propensity_scores.where(T == 0)
-            treat_p_scores = self.propensity_scores.where(T == 1)
+            control_p_scores = propensity_scores.where(T == 0)
+            treat_p_scores = propensity_scores.where(T == 1)
 
             num_controls = control_p_scores.count()
             n_to_switch = int(num_controls*self.params.FORCED_IMBALANCE_ADJUSTMENT)
@@ -304,30 +310,60 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
             T[control_switch_targets] = 1
             T[treat_switch_targets] = 0
 
-        # Sample and add noise column
-        noise_samples = self.params.sample_outcome_noise(size=self.n_observations)
+        return T
 
-        Y0 = self.base_outcomes + noise_samples
-        Y1 = Y0 + self.treatment_effects
+    @data_generating_method(Constants.OUTCOME_NOISE_NAME, [])
+    def _generate_outcome_noise_samples(self, input_vars):
+        return self.params.sample_outcome_noise(size=self.n_observations)
 
-        # Observed outcome
-        Y = (T*Y1) + ((1-T)*Y0)
+    @data_generating_method(
+        Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+        [Constants.COVARIATES_NAME],
+        cache_result=True)
+    def _generate_outcomes_without_treatment(self, input_vars):
+        observed_covariate_data = input_vars[Constants.COVARIATES_NAME]
+        return evaluate_expression(
+            self.base_outcome_subfunction,
+            observed_covariate_data)
 
-        # Build outcome data frames.
+    @data_generating_method(
+        Constants.TREATMENT_EFFECT_NAME,
+        [Constants.COVARIATES_NAME],
+        cache_result=True)
+    def _generate_treatment_effects(self, input_vars):
+        observed_covariate_data = input_vars[Constants.COVARIATES_NAME]
+        return evaluate_expression(
+            self.treatment_effect_subfunction,
+            observed_covariate_data)
 
-        # Data available for causal inference
-        observed_outcome_data = self._build_observed_outcome_df(T, Y)
+    @data_generating_method(
+        Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
+        [
+            Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+            Constants.TREATMENT_EFFECT_NAME
+        ],
+        cache_result=True)
+    def _generate_outcomes_with_treatment(self, input_vars):
+        outcome_without_treatment = input_vars[Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
+        treatment_effect = input_vars[Constants.TREATMENT_EFFECT_NAME]
+        return outcome_without_treatment + treatment_effect
 
-        # Data not available for causal inference.
-        oracle_outcome_data = self._build_oracle_outcome_df(
-            propensity_logit=self.logit_values,
-            propensity_scores=self.propensity_scores,
-            Y0=Y0, Y1=Y1, treatment_effects=self.treatment_effects,
-            outcome_noise=noise_samples)
+    @data_generating_method(
+        Constants.OBSERVED_OUTCOME_NAME,
+        [
+            Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+            Constants.TREATMENT_ASSIGNMENT_NAME,
+            Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
+            Constants.OUTCOME_NOISE_NAME
+        ])
+    def _generate_observed_outcomes(self, input_vars):
+        outcome_without_treatment = input_vars[Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
+        treatment_assignment = input_vars[Constants.TREATMENT_ASSIGNMENT_NAME]
+        outcome_with_treatment = input_vars[Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME]
+        outcome_noise_samples = input_vars[Constants.OUTCOME_NOISE_NAME]
+        Y = (
+            (treatment_assignment*outcome_with_treatment) +
+            ((1-treatment_assignment)*outcome_without_treatment) +
+            outcome_noise_samples)
 
-
-        return self._build_dataset(
-            observed_covariate_data=self.observed_covariate_data,
-            oracle_covariate_data=self.oracle_covariate_data,
-            observed_outcome_data=observed_outcome_data,
-            oracle_outcome_data=oracle_outcome_data)
+        return Y

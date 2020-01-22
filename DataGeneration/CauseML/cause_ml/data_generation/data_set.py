@@ -1,5 +1,7 @@
 from ..constants import Constants
 import numpy as np
+import pandas as pd
+
 
 class DataSet():
     '''
@@ -13,20 +15,24 @@ class DataSet():
     # from standard data frames.
 
     def __init__(self,
-        observed_covars, transformed_covars,
+        observed_covars, observed_covar_names,
+        transformed_covars, transformed_covar_names,
         propensity_scores, propensity_logit, T,
         outcome_noise, Y0, TE, Y1, Y):
 
         self.observed_covars = observed_covars
-        self.oracle_covars = oracle_covars
-        self.propensity_scores = propensity_scores
-        self.propensity_logit = propensity_logit
-        self.T = T
-        self.outcome_noise = outcome_noise
-        self.Y0 = Y0
-        self.TE = TE
-        self.Y1 = Y1
-        self.Y = Y
+        self.observed_covar_names = observed_covar_names
+        self.transformed_covars = transformed_covars
+        self.transformed_covar_names = transformed_covar_names
+
+        self.propensity_scores = propensity_scores.reshape(-1, 1)
+        self.propensity_logit = propensity_logit.reshape(-1, 1)
+        self.T = T.reshape(-1, 1)
+        self.outcome_noise = outcome_noise.reshape(-1, 1)
+        self.Y0 = Y0.reshape(-1, 1)
+        self.TE = TE.reshape(-1, 1)
+        self.Y1 = Y1.reshape(-1, 1)
+        self.Y = Y.reshape(-1, 1)
 
     @property
     def X(self):
@@ -37,14 +43,16 @@ class DataSet():
         '''
         Assemble and return the observable data.
         '''
+        data = np.hstack([
+            self.observed_covars,
+            self.T,
+            self.Y])
 
-        observable_data = {
-            Constants.COVARIATES_NAME: self.observed_covars,
-            Constants.TREATMENT_ASSIGNMENT_NAME: self.T,
-            Constants.OBSERVED_OUTCOME_NAME: self.Y,
-        }
-
-        return pd.DataFrame(observable_data)
+        return pd.DataFrame(data,
+            columns=np.hstack([self.observed_covar_names, [
+                Constants.TREATMENT_ASSIGNMENT_NAME,
+                Constants.OBSERVED_OUTCOME_NAME
+            ]]))
 
     @property
     def oracle_data(self):
@@ -52,17 +60,16 @@ class DataSet():
         Assemble and return the non-observable/oracle data.
         '''
 
-        oracle_data = {
-            Constants.TRANSFORMED_COVARIATES_NAME: self.transformed_covars,
-            Constants.PROPENSITY_SCORE_NAME: self.propensity_scores,
-            Constants.PROPENSITY_LOGIT_NAME: self.propensity_logit,
-            Constants.OUTCOME_NOISE_NAME: self.outcome_noise,
-            Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME: self.Y0,
-            Constants.TREATMENT_EFFECT_NAME: self.TE,
-            Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME: self.Y1,
-        }
-
-        return pd.DataFrame(oracle_data)
+        return pd.concat([
+            self.transformed_covars,
+            self.propensity_scores,
+            self.propensity_logit,
+            self.outcome_noise,
+            self.outcome_noise,
+            self.Y0,
+            self.TE,
+            self.Y1
+        ], axis=1)
 
     # Estimand accessors
 
