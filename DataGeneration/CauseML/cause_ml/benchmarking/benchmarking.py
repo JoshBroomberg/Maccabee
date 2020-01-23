@@ -15,10 +15,14 @@ ACCURACY_METRICS = {
 def _sample_dgp(dgp_sampler):
     return dgp_sampler.sample_dgp()
 
+_sample_dgp_remote = ray.remote(_sample_dgp).remote
+
 def _sample_data(dgp):
     # Sample data
     dataset = dgp.generate_dataset()
     return dataset
+
+_sample_data_remote = ray.remote(_sample_data).remote
 
 def _fit_and_apply_model(model_class, estimand, dataset):
     model = model_class(dataset)
@@ -27,6 +31,8 @@ def _fit_and_apply_model(model_class, estimand, dataset):
     true_val = dataset.ground_truth(estimand=estimand)
 
     return estimate_val, true_val
+
+_fit_and_apply_model_remote = ray.remote(_fit_and_apply_model).remote
 
 def _process_effect_data(sample_effect_data, ray_enabled):
     # Process potentially async results.
@@ -50,11 +56,11 @@ def run_concrete_dgp_benchmark(
         if not ray.is_initialized():
             ray.init()
 
-        sample_data = ray.remote(_sample_data).remote
-        fit_and_apply_model = ray.remote(_fit_and_apply_model).remote
+        sample_data = _sample_data_remote
+        fit_and_apply_model = _fit_and_apply_model_remote
     else:
         sample_data = _sample_data
-        fit_and_apply_model = fit_and_apply_model
+        fit_and_apply_model = _fit_and_apply_model
 
     sample_effect_data = []
     for _ in range(num_samples_from_dgp):
@@ -83,6 +89,7 @@ def run_sampled_dgp_benchmark(
     data_source, param_grid,
     num_dgp_samples=1,
     num_data_samples_per_dgp=1,
+    dgp_kwargs={},
     enable_ray_multiprocessing=False):
 
     # Configure multiprocessing
@@ -90,7 +97,7 @@ def run_sampled_dgp_benchmark(
         if not ray.is_initialized():
             ray.init()
 
-        sample_dgp = ray.remote(_sample_dgp).remote
+        sample_dgp = _sample_dgp_remote
     else:
         sample_dgp = _sample_dgp
 
@@ -102,7 +109,9 @@ def run_sampled_dgp_benchmark(
         # Construct the DGP sampler for these params.
         dgp_params = build_parameters_from_axis_levels(param_spec)
         dgp_sampler = DataGeneratingProcessSampler(
-            parameters=dgp_params, data_source=data_source)
+            parameters=dgp_params,
+            data_source=data_source,
+            dgp_kwargs=dgp_kwargs)
 
         # Sample DGPs
         sample_effect_data = []

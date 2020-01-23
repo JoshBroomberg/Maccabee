@@ -8,9 +8,10 @@ from ..utilities import select_given_probability_distribution, evaluate_expressi
 from .data_generating_process import SampledDataGeneratingProcess
 
 class DataGeneratingProcessSampler():
-    def __init__(self, parameters, data_source):
+    def __init__(self, parameters, data_source, dgp_kwargs={}):
         self.params = parameters
         self.data_source = data_source
+        self.dgp_kwargs = dgp_kwargs
 
     def sample_dgp(self):
         source_covariate_data = self.data_source.get_data()
@@ -44,10 +45,12 @@ class DataGeneratingProcessSampler():
             observed_covariate_data=observed_covariate_data,
             outcome_covariate_transforms=outcome_covariate_transforms,
             treatment_covariate_transforms=treatment_covariate_transforms,
+            treatment_assignment_logit_func=treatment_assignment_logit_func,
             treatment_assignment_function=treatment_assignment_function,
             treatment_effect_subfunction=treat_effect_subfunc,
             base_outcome_subfunction=base_outcome_subfunc,
-            outcome_function=outcome_function)
+            outcome_function=outcome_function,
+            **self.dgp_kwargs)
 
         return dgp
 
