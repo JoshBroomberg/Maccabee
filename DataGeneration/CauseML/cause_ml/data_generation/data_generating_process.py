@@ -80,7 +80,7 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
         self.n_observations = n_observations
         self.analysis_mode = analysis_mode
 
-    # DGP Proc
+    # DGP PROCESS
     def generate_dataset(self):
         # Covars
         self._generate_observed_covars()
@@ -100,7 +100,7 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
 
         return self._build_dataset()
 
-    # DGP submethods
+    # DGP DEFINITION
     @data_generating_method(Constants.COVARIATES_NAME, [])
     def _generate_observed_covars(self, input_vars):
         raise NotImplementedError
@@ -117,7 +117,7 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
         [],
         optional=True)
     def _generate_true_propensity_scores(self, input_vars):
-        return None
+        raise NotImplementedError
 
     @data_generating_method(
         Constants.PROPENSITY_LOGIT_NAME,
@@ -139,7 +139,7 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
 
     @data_generating_method(Constants.OUTCOME_NOISE_NAME, [])
     def _generate_outcome_noise_samples(self, input_vars):
-        raise NotImplementedError
+        return np.zeros(self.n_observations)
 
     @data_generating_method(
         Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
@@ -173,6 +173,8 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
         treatment_assignment = input_vars[Constants.TREATMENT_ASSIGNMENT_NAME]
         outcome_with_treatment = input_vars[Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME]
         return (treatment_assignment*outcome_with_treatment) + ((1-treatment_assignment)*outcome_without_treatment)
+
+    # HELPER FUNCTIONS
 
     def _get_generated_data(self, name):
         data_dict = getattr(self, GENERATED_DATA_DICT_NAME)

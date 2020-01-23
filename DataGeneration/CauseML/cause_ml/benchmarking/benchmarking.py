@@ -6,8 +6,8 @@ from cause_ml.data_generation import DataGeneratingProcessSampler
 import numpy as np
 
 ACCURACY_METRICS = {
-    "absolute mean bias": lambda estimate_vals, true_vals: np.abs(
-        np.mean(estimate_vals - true_vals)),
+    "absolute mean percentage bias": lambda estimate_vals, true_vals: 100*np.abs(
+        np.mean((estimate_vals - true_vals)/true_vals)),
     "root mean squared error": lambda estimate_vals, true_vals: np.sqrt(
         np.mean((estimate_vals - true_vals)**2))
 }
