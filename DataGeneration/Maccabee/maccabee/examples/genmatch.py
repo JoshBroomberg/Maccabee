@@ -1,4 +1,4 @@
-from cause_ml.data_generation import DataGeneratingProcess, data_generating_method
+from maccabee.data_generation import DataGeneratingProcess, data_generating_method
 from ..constants import Constants
 from ..utilities import evaluate_expression
 from ..modeling.models import CausalModel

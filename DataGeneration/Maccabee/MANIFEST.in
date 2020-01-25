@@ -1,0 +1,3 @@
+include maccabee/data/external_data/*
+include maccabee/data/*.csv
+include maccabee/parameters/*.yml

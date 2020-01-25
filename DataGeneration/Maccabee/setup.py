@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-     name='cause_ml',
+     name='maccabee',
      version='0.0.11',
      scripts=[],
      author="Josh Broomberg",
