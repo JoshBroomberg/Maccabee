@@ -13,23 +13,23 @@ functions.
 
 -----------
 
-First, install Maccabee with: ``pip install maccabee``
+.. toctree::
+  :maxdepth: -1
+  :caption: Installation
 
-.. code-block:: python
-
-    # Some example code here.
+  installation.rst
 
 .. toctree::
-   :maxdepth: -1
-   :caption: Installation
+  :maxdepth: -1
+  :caption: Design
 
-   installation.rst
+  design.rst
 
 .. toctree::
-   :maxdepth: -1
-   :caption: Maccabee Cookbook
+  :maxdepth: -1
+  :caption: Maccabee Cookbook
 
-   usage.rst
+  usage.rst
 
 .. toctree::
   :maxdepth: -1

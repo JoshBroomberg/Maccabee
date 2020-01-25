@@ -1,4 +1,4 @@
-Data Sets
+Generated Data Sets
 ======================
 
-Pending section on custom data sources
+Pending section on DGP-generated data sets
