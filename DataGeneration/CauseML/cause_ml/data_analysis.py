@@ -398,7 +398,7 @@ def _get_arg_value(arg_val_name, data):
         return arg_val_name
 
 def analyze_axis_metrics_across_levels(
-    axes_and_metrics, levels, covar_generator,
+    axes_and_metrics, levels, data_source_generator,
     n_trials=20):
     '''
     Collect values for the given metrics and measures
@@ -414,7 +414,7 @@ def analyze_axis_metrics_across_levels(
         print(f"\nRunning for {axis}. Level: ", end=" ")
 
         # Construct observation list of measures.
-        observation_list = { axis: metrics }
+        observation_spec = { axis: metrics }
 
         # Run trials at all levels of metric.
         for level in levels:
@@ -424,7 +424,7 @@ def analyze_axis_metrics_across_levels(
             })
 
             res = gather_axis_metrics_for_given_params(
-                    dgp_params, observation_list, covar_generator,
+                    dgp_params, observation_spec, data_source_generator,
                     n_trials=n_trials)
 
             for metric, values in res[axis].items():
@@ -434,7 +434,7 @@ def analyze_axis_metrics_across_levels(
 
 def gather_axis_metrics_for_given_params(
         dgp_params, observation_spec,
-        covar_generator,
+        data_source_generator,
         n_trials=10, verbose=False):
 
     '''
@@ -446,12 +446,11 @@ def gather_axis_metrics_for_given_params(
     results = defaultdict(lambda: defaultdict(list))
     for i in range(n_trials):
         if verbose:
-            clear_output()
             print("Trials run:", i+1)
         results
 
         # Generate data
-        data_source = covar_generator()
+        data_source = data_source_generator()
 
         # Sample DGP
         dgp_sampler = DataGeneratingProcessSampler(
@@ -503,7 +502,7 @@ def calculate_data_axis_metrics(
         axis_metric_results[axis] = {}
 
         for metric in axis_metrics:
-            if metric["name"] not in observation_spec[axis]:
+            if (observation_spec is not None) and (metric["name"] not in observation_spec[axis]):
                  continue # this metric not in observation specs.
 
             func_name = metric["function"]

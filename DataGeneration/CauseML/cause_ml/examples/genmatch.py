@@ -60,6 +60,7 @@ class GenmatchDataGeneratingProcess(DataGeneratingProcess):
 
         self.assignment_weights = np.array(
             [0, 0.8, -0.25, 0.6, -0.4, -0.8, -0.5, 0.7, 0, 0, 0])
+
         self.outcome_weights = np.array(
             [-3.85, 0.3, -0.36, -0.73, -0.2, 0, 0, 0, 0.71, -0.19, 0.26])
         self.true_treat_effect = -0.4
@@ -70,14 +71,15 @@ class GenmatchDataGeneratingProcess(DataGeneratingProcess):
         self._preprocess_functions()
 
     def _preprocess_functions(self):
-        self.treatment_logit_expression = np.sum(
-            self.assignment_weights * self.covar_symbols)
+        self.treatment_logit_terms = self.assignment_weights * self.covar_symbols
+
 
          # Add quad terms
         if len(self.quad_terms_indeces) > 0:
-            self.treatment_logit_expression += np.sum(
-                self.assignment_weights[self.quad_terms_indeces] *
-                self.covar_symbols[self.quad_terms_indeces]**2)
+            self.treatment_logit_terms = np.append(
+                self.treatment_logit_terms, (
+                    self.assignment_weights[self.quad_terms_indeces] *
+                    self.covar_symbols[self.quad_terms_indeces]**2))
 
         # Add interact terms
         if len(self.interactions_list) > 0:
@@ -85,28 +87,52 @@ class GenmatchDataGeneratingProcess(DataGeneratingProcess):
             interact_2_indeces = self.interactions_list[:, 1].astype(int)
             interact_weights = self.interactions_list[:, 2]
 
-            self.treatment_logit_expression += np.sum(
-            self.assignment_weights[interact_1_indeces] *
-               self.covar_symbols[interact_1_indeces]*
-               self.covar_symbols[interact_2_indeces]*
-               interact_weights)
+            self.treatment_logit_terms = np.append(
+                self.treatment_logit_terms, (
+                    self.assignment_weights[interact_1_indeces] *
+                       self.covar_symbols[interact_1_indeces]*
+                       self.covar_symbols[interact_2_indeces]*
+                       interact_weights))
 
-        self.base_outcome_expression = np.sum(
-            self.outcome_weights * self.covar_symbols)
+        self.treatment_logit_expression = np.sum(self.treatment_logit_terms)
+
+        self.base_outcome_terms = self.outcome_weights * self.covar_symbols
+        self.base_outcome_expression = np.sum(self.base_outcome_terms)
 
     @data_generating_method(Constants.COVARIATES_NAME, [])
     def _generate_observed_covars(self, input_vars):
         X = np.random.normal(loc=0.0, scale=1.0, size=(
             self.n_observations, self.n_vars - 1))
 
+        # Add bias/intercept dummy column
+        X = np.hstack([np.ones((self.n_observations, 1)), X])
+
         # Make binary columns binary.
         for var in self.binary_indeces:
             X[:, var-1] = (X[:, var -1] > 0).astype(int)
 
-        # Add bias/intercept dummy column
-        X = np.hstack([np.ones((self.n_observations, 1)), X])
-
         return pd.DataFrame(X, columns=self.covar_names)
+
+    @data_generating_method(
+        Constants.TRANSFORMED_COVARIATES_NAME,
+        [Constants.COVARIATES_NAME],
+        analysis_mode_only=True)
+    def _generate_transformed_covars(self, input_vars):
+        # Generate the values of all the transformed covariates by running the
+        # original covariate data through the transforms used in the outcome and
+        # treatment functions.
+
+        observed_covariate_data = input_vars[Constants.COVARIATES_NAME]
+
+        all_transforms = list(set(self.base_outcome_terms).union(
+            self.treatment_logit_terms))
+
+        data = {}
+        for index, transform in enumerate(all_transforms):
+            data[f"{Constants.TRANSFORMED_COVARIATES_NAME}{index}"] = \
+                evaluate_expression(transform, observed_covariate_data)
+
+        return pd.DataFrame(data)
 
     @data_generating_method(Constants.PROPENSITY_SCORE_NAME, [Constants.COVARIATES_NAME])
     def _generate_true_propensity_scores(self, input_vars):

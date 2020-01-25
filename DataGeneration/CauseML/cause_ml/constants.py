@@ -104,7 +104,7 @@ class Constants:
     MAX_RATIO_TRANSFORMED_TO_ORIGINAL_TERMS = 5
 
     # How much of the covariate data to use when normalizing functions.
-    NORMALIZATION_DATA_SAMPLE_FRACTION = 0.25
+    NORMALIZATION_DATA_SAMPLE_FRACTION = 1
 
     COVARIATES_NAME = "X"
     TRANSFORMED_COVARIATES_NAME = "TRANSFORMED_X"

@@ -1,13 +1,19 @@
 from sklearn.model_selection import ParameterGrid
 import ray
 from collections import defaultdict
-from cause_ml.parameters import build_parameters_from_axis_levels
-from cause_ml.data_generation import DataGeneratingProcessSampler
+from ..parameters import build_parameters_from_axis_levels
+from ..data_generation import DataGeneratingProcessSampler
 import numpy as np
 
+
+def absolute_mean_error(estimate_vals, true_vals):
+    non_zeros = np.logical_not(np.isclose(true_vals, 0))
+    return 100*np.abs(
+        np.mean(
+            (estimate_vals[non_zeros] - true_vals[non_zeros])/true_vals[non_zeros]))
+
 ACCURACY_METRICS = {
-    "absolute mean percentage bias": lambda estimate_vals, true_vals: 100*np.abs(
-        np.mean((estimate_vals - true_vals)/true_vals)),
+    "absolute mean bias %": absolute_mean_error,
     "root mean squared error": lambda estimate_vals, true_vals: np.sqrt(
         np.mean((estimate_vals - true_vals)**2))
 }
@@ -48,8 +54,7 @@ def _process_effect_data(sample_effect_data, ray_enabled):
 
 def run_concrete_dgp_benchmark(
     dgp, model_class, estimand, num_samples_from_dgp,
-    enable_ray_multiprocessing=False,
-    process_results=True):
+    enable_ray_multiprocessing=False):
 
     # Configure multiprocessing
     if enable_ray_multiprocessing:
@@ -71,25 +76,24 @@ def run_concrete_dgp_benchmark(
             model_class, estimand, dataset)
         sample_effect_data.append(effect_data)
 
-    if process_results:
-        # Extract estimates and ground truth results.
-        estimate_vals, true_vals = _process_effect_data(
-            sample_effect_data, ray_enabled=enable_ray_multiprocessing)
+    # Extract estimates and ground truth results.
+    estimate_vals, true_vals = _process_effect_data(
+        sample_effect_data, ray_enabled=enable_ray_multiprocessing)
 
-        results = {}
-        for metric_name, metric_func in ACCURACY_METRICS.items():
-            results[metric_name] = metric_func(estimate_vals, true_vals)
+    results = {}
+    for metric_name, metric_func in ACCURACY_METRICS.items():
+        results[metric_name] = metric_func(estimate_vals, true_vals)
 
-        return results
-
-    return sample_effect_data
+    return results
 
 def run_sampled_dgp_benchmark(
+    dgp_class,
     model_class, estimand,
-    data_source, param_grid,
+    data_source_generator, param_grid,
     num_dgp_samples=1,
     num_data_samples_per_dgp=1,
     dgp_kwargs={},
+    param_overrides={},
     enable_ray_multiprocessing=False):
 
     # Configure multiprocessing
@@ -108,36 +112,43 @@ def run_sampled_dgp_benchmark(
 
         # Construct the DGP sampler for these params.
         dgp_params = build_parameters_from_axis_levels(param_spec)
-        dgp_sampler = DataGeneratingProcessSampler(
-            parameters=dgp_params,
-            data_source=data_source,
-            dgp_kwargs=dgp_kwargs)
+
+        for param_name in param_overrides:
+            dgp_params.set_parameter(param_name, param_overrides[param_name])
 
         # Sample DGPs
-        sample_effect_data = []
+        # sample_effect_data = []
+        metric_results = defaultdict(list)
         for _ in range(num_dgp_samples):
+            data_source = data_source_generator()
+
+            dgp_sampler = DataGeneratingProcessSampler(
+                dgp_class=dgp_class,
+                parameters=dgp_params,
+                data_source=data_source,
+                dgp_kwargs=dgp_kwargs)
 
             # Sample data from the DGP
             dgp = sample_dgp(dgp_sampler)
-            dgp_sample_effect_data = run_concrete_dgp_benchmark(
+
+            metric_data = run_concrete_dgp_benchmark(
                 dgp, model_class, estimand,
                 num_samples_from_dgp=num_data_samples_per_dgp,
-                enable_ray_multiprocessing=enable_ray_multiprocessing,
-                process_results=False)
+                enable_ray_multiprocessing=enable_ray_multiprocessing)
 
-            sample_effect_data.extend(dgp_sample_effect_data)
+            # sample_effect_data.extend(dgp_sample_effect_data)
+            for metric_name, _ in ACCURACY_METRICS.items():
+                metric_results[metric_name].append(metric_data[metric_name])
+
+            metric_results["eqn"].append(dgp.treatment_assignment_logit_function)
 
         # Store the params for this run in the results dict
         for param_name, param_value in param_spec.items():
             results[f"param_{param_name.lower()}"].append(param_value)
 
-        # Extract estimates and ground truth results.
-        estimate_vals, true_vals = _process_effect_data(sample_effect_data,
-            ray_enabled=enable_ray_multiprocessing)
-
         # Calculate and store the requested metric values.
-        for metric_name, metric_func in ACCURACY_METRICS.items():
-            results[metric_name].append(
-                metric_func(estimate_vals, true_vals))
+        for metric_name, _ in ACCURACY_METRICS.items():
+            results[metric_name] = np.mean(metric_results[metric_name])
+            results[metric_name + " (std)"] = np.std(metric_results[metric_name])
 
-    return results
+    return results, metric_results
