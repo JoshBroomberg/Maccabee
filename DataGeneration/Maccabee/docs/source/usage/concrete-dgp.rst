@@ -82,6 +82,9 @@ With the DGP specified, we can perform a quick manual data generation to ensure 
 >>> dataset.observed_data.head()
 
 .. image:: res_2.png
+  :width: 850px
+  :height: 300px
+  :align: center
 
 The table above shows the three covariates, and a treatment and outcome which are roughly in line with expectations. Given the linearity of the model, we would expect a logistic regression to recover the true ATE and, indeed, it does:
 

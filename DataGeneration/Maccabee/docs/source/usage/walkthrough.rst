@@ -40,6 +40,9 @@ As you can see, Maccabee makes this complex process extremely easy::
 Running ``pd.DataFrame(results)`` produces the following table (sorted by RMSE):
 
 .. image:: res_1.png
+  :width: 850px
+  :height: 150px
+  :align: center
 
 The results are consistent with the well known fact that the performance of a linear regression estimator degrades as the non-linearity of the outcome function increases.
 
