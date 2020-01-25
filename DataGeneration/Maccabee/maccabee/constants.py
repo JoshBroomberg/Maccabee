@@ -155,6 +155,7 @@ class Constants:
         LOW = "LOW"
         MEDIUM = "MEDIUM"
         HIGH = "HIGH"
+        LEVELS = (LOW, MEDIUM, HIGH)
 
     class Data:
         get_dataset_path = lambda file_name: resource_filename(

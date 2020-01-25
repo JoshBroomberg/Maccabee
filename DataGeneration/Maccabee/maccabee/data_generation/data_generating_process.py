@@ -308,19 +308,23 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
 
         # Only perform balance adjustment if there is some heterogeneity
         # in the propensity scores.
-        if not np.all(np.isclose(propensity_scores, propensity_scores[0])):
-            # Balance adjustment
-            control_p_scores = propensity_scores.where(T == 0)
-            treat_p_scores = propensity_scores.where(T == 1)
+        try:
+            if not np.all(np.isclose(propensity_scores, propensity_scores[0])):
+                # Balance adjustment
+                control_p_scores = propensity_scores.where(T == 0)
+                treat_p_scores = propensity_scores.where(T == 1)
 
-            num_controls = control_p_scores.count()
-            n_to_switch = int(num_controls*self.params.FORCED_IMBALANCE_ADJUSTMENT)
+                num_controls = control_p_scores.count()
+                n_to_switch = int(num_controls*self.params.FORCED_IMBALANCE_ADJUSTMENT)
 
-            control_switch_targets = control_p_scores.nlargest(n_to_switch).index.values
-            treat_switch_targets = treat_p_scores.nsmallest(n_to_switch).index.values
+                control_switch_targets = control_p_scores.nlargest(n_to_switch).index.values
+                treat_switch_targets = treat_p_scores.nsmallest(n_to_switch).index.values
 
-            T[control_switch_targets] = 1
-            T[treat_switch_targets] = 0
+                T[control_switch_targets] = 1
+                T[treat_switch_targets] = 0
+        except IndexError:
+            # All observations have the same propensity score.
+            pass
 
         return T
 

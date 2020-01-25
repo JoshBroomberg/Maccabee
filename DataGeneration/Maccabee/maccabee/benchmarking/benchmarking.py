@@ -2,7 +2,7 @@ from sklearn.model_selection import ParameterGrid
 import ray
 from collections import defaultdict
 from ..parameters import build_parameters_from_axis_levels
-from ..data_generation import DataGeneratingProcessSampler
+from ..data_generation import DataGeneratingProcessSampler, SampledDataGeneratingProcess
 import numpy as np
 
 
@@ -87,11 +87,11 @@ def run_concrete_dgp_benchmark(
     return results
 
 def run_sampled_dgp_benchmark(
-    dgp_class,
     model_class, estimand,
     data_source_generator, param_grid,
     num_dgp_samples=1,
     num_data_samples_per_dgp=1,
+    dgp_class=SampledDataGeneratingProcess,
     dgp_kwargs={},
     param_overrides={},
     enable_ray_multiprocessing=False):
@@ -120,6 +120,9 @@ def run_sampled_dgp_benchmark(
         # sample_effect_data = []
         metric_results = defaultdict(list)
         for _ in range(num_dgp_samples):
+
+            # TODO: this generator functionality should be wrapped up
+            # into the data source object.
             data_source = data_source_generator()
 
             dgp_sampler = DataGeneratingProcessSampler(
@@ -148,7 +151,7 @@ def run_sampled_dgp_benchmark(
 
         # Calculate and store the requested metric values.
         for metric_name, _ in ACCURACY_METRICS.items():
-            results[metric_name] = np.mean(metric_results[metric_name])
-            results[metric_name + " (std)"] = np.std(metric_results[metric_name])
+            results[metric_name].append(np.mean(metric_results[metric_name]))
+            results[metric_name + " (std)"].append(np.std(metric_results[metric_name]))
 
     return results, metric_results

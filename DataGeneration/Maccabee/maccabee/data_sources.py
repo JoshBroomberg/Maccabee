@@ -29,7 +29,7 @@ class DataSource():
     # cpp_covars = cpp_covars.head(200)
 
 def load_cpp():
-    cpp_covars = load_covars_from_path(Constants.Data.CPP_PATH)
+    cpp_covars = _load_covars_from_path(Constants.Data.CPP_PATH)
 
 
     cpp_data_source = DataSource(
@@ -39,21 +39,13 @@ def load_cpp():
     return cpp_data_source
 
 def load_lalonde():
-    lalonde_covars = load_covars_from_path(Constants.Data.LALONDE_PATH)
+    lalonde_covars = _load_covars_from_path(Constants.Data.LALONDE_PATH)
 
     lalone_data_source = DataSource(
         covariate_data=lalonde_covars,
         binary_column_names=Constants.Data.LALONDE_DISCRETE_COVARS)
 
     return lalone_data_source
-
-def load_covars_from_path(covar_path):
-    '''
-    Fetches covariate data from the supplied path. This function expects
-    a CSV file with column names in the first row.
-    '''
-
-    return pd.read_csv(covar_path)
 
 def load_random_normal_covariates(
     n_covars = 20, n_observations = 1000,
@@ -89,6 +81,23 @@ def load_random_normal_covariates(
         binary_column_names=[])
 
     return norm_data_source
+
+def load_csv(path, binary_cols=[]):
+    covars = _load_covars_from_path(path)
+
+    data_source = DataSource(
+        covariate_data=covars,
+        binary_column_names=binary_cols)
+
+    return data_source
+    
+def _load_covars_from_path(covar_path):
+    '''
+    Fetches covariate data from the supplied path. This function expects
+    a CSV file with column names in the first row.
+    '''
+
+    return pd.read_csv(covar_path)
 
 def _build_covar_data_frame(data, column_names, index):
     return pd.DataFrame(
