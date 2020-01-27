@@ -35,6 +35,10 @@ class LinearRegressionCausalModel(CausalModel):
     def fit(self):
         self.model.fit(self.data, self.dataset.Y)
 
+    def estimate_ATE(self):
+        # The coefficient on the treatment status
+        return self.model.coef_[-1]
+
     def estimate_ITE(self):
         # Generate potential outcomes
         X_under_treatment = self.data.copy()
@@ -49,7 +53,3 @@ class LinearRegressionCausalModel(CausalModel):
         ITE = y_1_predicted - y_0_predicted
 
         return ITE
-
-    def estimate_ATE(self):
-        # The coefficient on the treatment status
-        return self.model.coef_[-1]

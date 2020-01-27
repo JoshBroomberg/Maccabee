@@ -86,6 +86,12 @@ class ParameterStore():
         if recalculate_calculated_params:
             self.recalculate_calculated_params()
 
+    def set_parameters(self, param_dict, recalculate_calculated_params=True):
+        for param_name in param_dict:
+            self.set_parameter(
+                param_name, param_dict[param_name],
+                recalculate_calculated_params=recalculate_calculated_params)
+
     def write(self):
         # TODO: dump parsed params to valid yaml spec
         # with open('data.yml', 'w') as outfile:
@@ -108,6 +114,9 @@ class ParameterStore():
         return np.round(np.random.standard_t(
                             self.TREATMENT_EFFECT_TAIL_THICKNESS, size=size), 3)
 
+def build_default_parameters():
+    return ParameterStore(parameter_spec_path=PARAM_CONSTANTS.DEFAULT_SPEC_PATH)
+
 def build_parameters_from_specification(parameter_spec_path):
     '''
     Build a parameter store from a give specification file.
@@ -120,7 +129,7 @@ def build_parameters_from_axis_levels(metric_levels, save=False):
     are applied onto the default parameter spec.
     '''
 
-    params = ParameterStore(parameter_spec_path=PARAM_CONSTANTS.DEFAULT_SPEC_PATH)
+    params = build_default_parameters()
 
     with open(PARAM_CONSTANTS.METRIC_LEVEL_SPEC_PATH, "r") as metric_level_file:
         metric_level_param_specs = yaml.safe_load(metric_level_file)

@@ -1,10 +1,22 @@
-from maccabee.data_generation import DataGeneratingProcess, data_generating_method
+from ..data_generation import DataGeneratingProcess, data_generating_method
+from ..data_sources.data_sources import StochasticDataSource
+
 from ..constants import Constants
 from ..utilities import evaluate_expression
 from ..modeling.models import CausalModel
+
+from threadpoolctl import threadpool_limits, threadpool_info
 import numpy as np
 import sympy as sp
 import pandas as pd
+from functools import partial
+
+try:
+    NP_USER_API = threadpool_info()[0]["user_api"]
+except:
+    NP_USER_API = "blas"
+
+from sklearn.linear_model import LogisticRegression
 
 # RPY2 is used an interconnect between Python and R. It allows
 # my to run R code from python which makes this experimentation
@@ -43,6 +55,34 @@ GENMATCH_SPECS = {
     "G": (MODERATE_NONLINEARITY, MODERATE_NONADDITIVITY)
 }
 
+GENMATCH_N_COVARS = 11
+GENMATCH_BINARY_COVAR_INDECES = [1, 3, 5, 6, 8, 9]
+GENMATCH_COVAR_NAMES = np.array([f"X{i}" for i in range(GENMATCH_N_COVARS)])
+
+def build_genmatch_datasource(n_observations=1000):
+
+    def gen_random_normal_df(n_observations):
+
+        X = np.random.normal(loc=0.0, scale=1.0, size=(
+                n_observations, GENMATCH_N_COVARS-1))
+
+        # Add bias/intercept dummy column
+        X = np.hstack([np.ones((n_observations, 1)), X])
+
+        # Make binary columns binary.
+        for var in GENMATCH_BINARY_COVAR_INDECES:
+            X[:, var-1] = (X[:, var -1] > 0).astype(int)
+
+        # Build DF
+        covar_df = pd.DataFrame(X, columns=GENMATCH_COVAR_NAMES)
+
+        return covar_df
+
+    return StochasticDataSource(
+        covar_df_generator=partial(gen_random_normal_df, n_observations),
+        discrete_column_names=list(
+            GENMATCH_COVAR_NAMES[GENMATCH_BINARY_COVAR_INDECES]) + ["X0"])
+
 class GenmatchDataGeneratingProcess(DataGeneratingProcess):
     def __init__(self,
                  quadratic_indeces, interactions_list,
@@ -50,13 +90,8 @@ class GenmatchDataGeneratingProcess(DataGeneratingProcess):
 
         super().__init__(n_observations, analysis_mode)
 
-        # Var count
-        self.n_vars = 11
-        self.covar_names = [f"X_{i}" for i in range(self.n_vars)]
-        self.covar_symbols = np.array(sp.symbols(self.covar_names))
-
-        # Data types (default is standard normal)
-        self.binary_indeces = [1, 3, 5, 6, 8, 9]
+        self.data_source = build_genmatch_datasource(n_observations)
+        self.covar_symbols = np.array(sp.symbols(list(GENMATCH_COVAR_NAMES)))
 
         self.assignment_weights = np.array(
             [0, 0.8, -0.25, 0.6, -0.4, -0.8, -0.5, 0.7, 0, 0, 0])
@@ -101,17 +136,7 @@ class GenmatchDataGeneratingProcess(DataGeneratingProcess):
 
     @data_generating_method(Constants.COVARIATES_NAME, [])
     def _generate_observed_covars(self, input_vars):
-        X = np.random.normal(loc=0.0, scale=1.0, size=(
-            self.n_observations, self.n_vars - 1))
-
-        # Add bias/intercept dummy column
-        X = np.hstack([np.ones((self.n_observations, 1)), X])
-
-        # Make binary columns binary.
-        for var in self.binary_indeces:
-            X[:, var-1] = (X[:, var -1] > 0).astype(int)
-
-        return pd.DataFrame(X, columns=self.covar_names)
+        return self.data_source.get_data()
 
     @data_generating_method(
         Constants.TRANSFORMED_COVARIATES_NAME,
@@ -167,22 +192,21 @@ class LogisticPropensityMatchingCausalModel(CausalModel):
         self.data = dataset.observed_data.drop("Y", axis=1)
 
     def fit(self):
-        fmla = Formula('y ~ X')
-        env = fmla.environment
-        env['X'] = self.dataset.X.to_numpy()
-        env['y'] = IntVector(self.dataset.T)
-
-        # Run propensiy regression
-        fitted_logistic = stats.glm(fmla, family="binomial")
-
-        propensity_scores = fitted_logistic.rx2("fitted.values")
+        with threadpool_limits(limits=1, user_api=NP_USER_API):
+            logistic_model = LogisticRegression(solver='lbfgs', n_jobs=1)
+            logistic_model.fit(
+                self.dataset.X.to_numpy(), self.dataset.T.to_numpy())
+            class_proba = logistic_model.predict_proba(
+                self.dataset.X.to_numpy())
+            propensity_scores = class_proba[:, logistic_model.classes_ == 1].flatten()
 
         # Run matching on prop scores
         self.match_out = matching.Match(
             Y=FloatVector(self.dataset.Y),
             Tr=IntVector(self.dataset.T),
-            X=propensity_scores,
-            replace=True)
+            X=FloatVector(propensity_scores),
+            replace=True,
+            version="fast")
 
     def estimate_ITE(self):
         raise NotImplementedError

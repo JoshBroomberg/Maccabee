@@ -8,13 +8,13 @@ However, it may be useful to customize the DGP sampling process. For example, to
 
 .. code-block:: python
 
-  from maccabee.data_sources import load_random_normal_covariates
+  from maccabee.data_sources import build_random_normal_datasource
   from maccabee.constants import Constants
   from maccabee.parameters import build_parameters_from_axis_levels
   from maccabee.data_generation import DataGeneratingProcessSampler
 
   # Build the data source
-  covar_data_source = load_random_normal_covariates(
+  covar_data_source = build_random_normal_datasource(
       n_covars = 10, n_observations=2000)
 
   # Build the parameters

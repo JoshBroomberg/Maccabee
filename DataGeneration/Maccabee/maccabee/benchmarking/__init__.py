@@ -1,1 +1,1 @@
-from .benchmarking import run_sampled_dgp_benchmark, run_concrete_dgp_benchmark
+from .benchmarking import *

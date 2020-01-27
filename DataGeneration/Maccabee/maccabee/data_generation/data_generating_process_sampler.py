@@ -110,7 +110,7 @@ class DataGeneratingProcessSampler():
             usable_covariate_symbols = covariate_symbols
             if not transform_discrete_allowed:
                 usable_covariate_symbols = list(filter(
-                    lambda sym: str(sym) not in self.data_source.binary_column_names,
+                    lambda sym: str(sym) not in self.data_source.discrete_column_names,
                     covariate_symbols))
 
             # All possible combinations of covariates for the given transform.

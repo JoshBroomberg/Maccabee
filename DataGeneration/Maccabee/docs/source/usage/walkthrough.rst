@@ -24,7 +24,7 @@ As you can see, Maccabee makes this complex process extremely easy::
     Constants.AxisNames.OUTCOME_NONLINEARITY: [HIGH, MEDIUM, LOW]
   }
 
-  normal_data_source = data_sources.load_random_normal_covariates(
+  normal_data_source = data_sources.build_random_normal_datasource(
     n_covars=10,
     n_observations=750)
 
@@ -91,14 +91,14 @@ Data Sources
 
 The second step is supplying a data source. Fundamentally, a ``DataSource`` is defined by a set of covariate observations. Under the hood, the ``DataSource`` object is responsible for concretizing stochastically defined covariate specification and for the data normalization and management required for DGP sampling. The vast majority of users will not need to worry about the specifics of these processes because the ``data_sources`` module contains a number of ready to use ``DataSource`` generators. These correspond to:
 
-1. High-quality empirical data - accessible via ``load_lalonde()`` and ``load_cpp()`` (*with more to come*). See the theory paper for a discussion on these datasets .
+1. High-quality empirical data - accessible via ``build_lalonde_datasource()`` and ``build_cpp_datasource()`` (*with more to come*). See the theory paper for a discussion on these datasets .
 2. Random normal covariates with user-controlled degree of pair-wise correlation. See ``load_random_normal()``.
 3. Utilities for loading covariates from CSV files and automating the normalization and processing - see ``load_csv()``.
 
 For these common use cases, building a ``DataSource`` is as simple as::
 
-  from maccabee.data_sources import load_lalonde
-  data_source = load_lalonde()
+  from maccabee.data_sources import build_lalonde_datasource
+  data_source = build_lalonde_datasource()
 
 
 Parameter Specification
