@@ -3,7 +3,8 @@ from collections import defaultdict
 from ..parameters import build_parameters_from_axis_levels
 from ..data_generation import DataGeneratingProcessSampler, SampledDataGeneratingProcess
 import numpy as np
-
+from multiprocessing import Pool
+from functools import partial
 
 def _absolute_mean_error(estimate_vals, true_vals):
     non_zeros = np.logical_not(np.isclose(true_vals, 0))
@@ -37,28 +38,36 @@ def _aggregate_metric_results(metric_results):
 
     return aggregated_results
 
+def _gen_data_and_apply_model(dgp, model_class, estimand, index):
+    np.random.seed()
+    dataset = dgp.generate_dataset()
+    model = model_class(dataset)
+    model.fit()
+    estimate_val = model.estimate(estimand=estimand)
+    true_val = dataset.ground_truth(estimand=estimand)
+
+    return index, (estimate_val, true_val)
+
 def benchmark_model_using_concrete_dgp(
     dgp,
     model_class, estimand,
-    num_runs, num_samples_from_dgp):
+    num_runs, num_samples_from_dgp,
+    n_jobs=1):
+
+    runner = partial(_gen_data_and_apply_model, dgp, model_class, estimand)
+    sample_index = range(num_samples_from_dgp)
 
     metric_run_results = defaultdict(list)
     for run_index in range(num_runs):
 
-        estimand_sample_results = []
-        for sample_index in range(num_samples_from_dgp):
-            dataset = dgp.generate_dataset()
-
-            # Fit model and generate estimates + ground truth.
-            effect_data = _apply_model_to_dataset(
-                model_class, estimand, dataset)
-
-            estimand_sample_results.append(effect_data)
+        estimand_sample_results = np.empty((num_samples_from_dgp, 2))
+        with Pool(processes=n_jobs) as pool:
+            for index, data in pool.imap_unordered(runner, sample_index):
+                estimand_sample_results[index, :] = data
 
         # Process sample results into metric estimates
-        sample_effect_data = np.array(estimand_sample_results)
-        estimate_vals = sample_effect_data[:, 0]
-        true_vals = sample_effect_data[:, 1]
+        estimate_vals = estimand_sample_results[:, 0]
+        true_vals = estimand_sample_results[:, 1]
 
         for metric_name, metric_func in ACCURACY_METRICS.items():
             metric_run_results[metric_name].append(metric_func(
@@ -68,12 +77,16 @@ def benchmark_model_using_concrete_dgp(
 
     return metric_aggregated_results, metric_run_results
 
+def _sample_dgp(dgp_sampler, index):
+    return index, dgp_sampler.sample_dgp()
+
 def benchmark_model_using_sampled_dgp(
     dgp_sampling_params, data_source,
     model_class, estimand,
     num_dgp_samples, num_samples_from_dgp,
     dgp_class=SampledDataGeneratingProcess,
-    dgp_kwargs={}):
+    dgp_kwargs={},
+    n_jobs=1):
 
     dgp_sampler = DataGeneratingProcessSampler(
         dgp_class=dgp_class,
@@ -81,16 +94,17 @@ def benchmark_model_using_sampled_dgp(
         data_source=data_source,
         dgp_kwargs=dgp_kwargs)
 
+    dgp_sampler = partial(_sample_dgp, dgp_sampler)
+    with Pool(processes=n_jobs) as pool:
+        dgps = pool.map(dgp_sampler, range(num_dgp_samples))
+
     metric_dgp_results = defaultdict(list)
-    for dgp_index in range(num_dgp_samples):
-
-        # Sample DGPs
-        dgp = dgp_sampler.sample_dgp()
-
+    for _, dgp in dgps:
         dgp_metric_data, _ = benchmark_model_using_concrete_dgp(
             dgp, model_class, estimand,
             num_runs=1,
-            num_samples_from_dgp=num_samples_from_dgp)
+            num_samples_from_dgp=num_samples_from_dgp,
+            n_jobs=n_jobs)
 
         for metric_name in ACCURACY_METRICS:
             metric_dgp_results[metric_name].append(dgp_metric_data[metric_name])

@@ -59,27 +59,25 @@ GENMATCH_N_COVARS = 11
 GENMATCH_BINARY_COVAR_INDECES = [1, 3, 5, 6, 8, 9]
 GENMATCH_COVAR_NAMES = np.array([f"X{i}" for i in range(GENMATCH_N_COVARS)])
 
+def _generate_genmatch_df(n_observations):
+    X = np.random.normal(loc=0.0, scale=1.0, size=(
+            n_observations, GENMATCH_N_COVARS-1))
+
+    # Add bias/intercept dummy column
+    X = np.hstack([np.ones((n_observations, 1)), X])
+
+    # Make binary columns binary.
+    for var in GENMATCH_BINARY_COVAR_INDECES:
+        X[:, var-1] = (X[:, var -1] > 0).astype(int)
+
+    # Build DF
+    covar_df = pd.DataFrame(X, columns=GENMATCH_COVAR_NAMES)
+
+    return covar_df
+
 def build_genmatch_datasource(n_observations=1000):
-
-    def gen_random_normal_df(n_observations):
-
-        X = np.random.normal(loc=0.0, scale=1.0, size=(
-                n_observations, GENMATCH_N_COVARS-1))
-
-        # Add bias/intercept dummy column
-        X = np.hstack([np.ones((n_observations, 1)), X])
-
-        # Make binary columns binary.
-        for var in GENMATCH_BINARY_COVAR_INDECES:
-            X[:, var-1] = (X[:, var -1] > 0).astype(int)
-
-        # Build DF
-        covar_df = pd.DataFrame(X, columns=GENMATCH_COVAR_NAMES)
-
-        return covar_df
-
     return StochasticDataSource(
-        covar_df_generator=partial(gen_random_normal_df, n_observations),
+        covar_df_generator=partial(_generate_genmatch_df, n_observations),
         discrete_column_names=list(
             GENMATCH_COVAR_NAMES[GENMATCH_BINARY_COVAR_INDECES]) + ["X0"])
 
