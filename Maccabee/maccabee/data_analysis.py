@@ -291,6 +291,14 @@ AXES = {
                 "y": Constants.PROPENSITY_LOGIT_NAME
             },
             "name": "Lin r2(X_obs, Treat Logit)"
+        },
+        {
+            "function": AnalysisMetricFunctions.LINEAR_R2,
+            "args": {
+                "X": AnalysisMetricData.TRANSFORMED_COVARIATE_DATA,
+                "y": Constants.PROPENSITY_LOGIT_NAME
+            },
+            "name": "Lin r2(X_true, Treat Logit)"
         }
     ],
 
@@ -456,7 +464,7 @@ def gather_axis_metrics_for_given_params(
         dataset = dgp.generate_dataset()
 
         # Calculate metrics
-        metrics = calculate_data_axis_metrics(dataset, observation_spec)
+        metrics, _ = calculate_data_axis_metrics(dataset, observation_spec)
 
         # Build results
         for metric, measures in observation_spec.items():
@@ -476,9 +484,7 @@ def gather_axis_metrics_for_given_params(
 
     return results
 
-def calculate_data_axis_metrics(
-    dataset,
-    observation_spec = None):
+def calculate_data_axis_metrics(dataset, observation_spec=None):
     '''
     Given a set of generated data, calculate all metrics
     in the observation spec.
@@ -492,6 +498,8 @@ def calculate_data_axis_metrics(
     }
 
     axis_metric_results = {}
+    axis_metric_results_flat = {}
+
     for axis, metrics in AXES.items():
         if (observation_spec is not None) and (axis not in observation_spec):
             continue # this axis not in observation specs.
@@ -507,17 +515,19 @@ def calculate_data_axis_metrics(
 
             # Assemble the argument values by fetching the relevant portions
             # of the data
-            args = dict([(arg_name, _get_arg_value(arg_val_name, data))
+            kwargs = dict([(arg_name, _get_arg_value(arg_val_name, data))
                 for arg_name, arg_val_name in metric["args"].items()])
 
             # Call the metric function with the args.
-            res = func(**args)
+
+            res = func(**kwargs)
 
             # Store results.
             metric_name = metric["name"]
             axis_metric_results[axis][metric_name] = res
+            axis_metric_results_flat[f"{axis} {metric_name}"] = res
 
-    return axis_metric_results
+    return axis_metric_results, axis_metric_results_flat
 
 def plot_axis_metric_analysis(results, levels, max_measure_count=1, mean=False, min_max=False):
     '''

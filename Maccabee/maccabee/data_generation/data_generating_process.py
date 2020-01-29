@@ -21,13 +21,13 @@ class DataGeneratingMethodClass(type):
 class DataGeneratingMethodWrapper():
     def __init__(self,
         generated_var, required_vars,
-        optional, analysis_mode_only, cache_result,
+        optional, data_analysis_mode_only, cache_result,
         func):
 
         self.generated_var = generated_var
         self.required_vars = required_vars
         self.optional = optional
-        self.analysis_mode_only = analysis_mode_only
+        self.data_analysis_mode_only = data_analysis_mode_only
         self.cache_result = cache_result
         self.func = func
 
@@ -46,8 +46,8 @@ class DataGeneratingMethodWrapper():
 
         # Have all required inputs.
         if len(required_var_vals) == len(self.required_vars):
-            # Only run analysis_mode_only methods if dgp in analysis mode.
-            if dgp.analysis_mode or not self.analysis_mode_only:
+            # Only run data_analysis_mode_only methods if dgp in analysis mode.
+            if dgp.data_analysis_mode or not self.data_analysis_mode_only:
                 val = self.func(args[0], required_var_vals, *args[1:], **kwargs)
                 data_dict[self.generated_var] = val
                 return val
@@ -62,10 +62,10 @@ class DataGeneratingMethodWrapper():
 
 def data_generating_method(
     generated_var, required_vars,
-    optional=False, analysis_mode_only=False, cache_result=False):
+    optional=False, data_analysis_mode_only=False, cache_result=False):
     return partial(DataGeneratingMethodWrapper,
         generated_var, required_vars,
-        optional, analysis_mode_only, cache_result)
+        optional, data_analysis_mode_only, cache_result)
 
 #TODO: consider refctoring to splat in the args directly rather
 # than via a dict.
@@ -74,11 +74,17 @@ def data_generating_method(
 # and then replace _generate validation to just use this list of names.
 
 class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
-    def __init__(self, n_observations, analysis_mode=False):
+    def __init__(self, n_observations, data_analysis_mode=False):
         setattr(self, GENERATED_DATA_DICT_NAME, {})
 
         self.n_observations = n_observations
-        self.analysis_mode = analysis_mode
+        self.data_analysis_mode = data_analysis_mode
+
+    def set_data_analysis_mode(self, val):
+        self.data_analysis_mode = val
+
+    def get_data_analysis_mode(self):
+        return self.data_analysis_mode
 
     # DGP PROCESS
     def generate_dataset(self):
@@ -108,7 +114,7 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
     @data_generating_method(
         Constants.TRANSFORMED_COVARIATES_NAME,
         [Constants.COVARIATES_NAME],
-        analysis_mode_only=True)
+        data_analysis_mode_only=True)
     def _generate_transformed_covars(self, input_vars):
         return None
 
@@ -123,7 +129,7 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
         Constants.PROPENSITY_LOGIT_NAME,
         [Constants.PROPENSITY_SCORE_NAME],
         optional=True,
-        analysis_mode_only=True)
+        data_analysis_mode_only=True)
     def _generate_true_propensity_score_logits(self, input_vars):
         propensity_scores = input_vars[Constants.PROPENSITY_SCORE_NAME]
         return np.log(propensity_scores/(1-propensity_scores))
@@ -233,11 +239,11 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         base_outcome_subfunction,
         treatment_assignment_logit_func=None,
         outcome_function=None,
-        analysis_mode=True):
+        data_analysis_mode=True):
 
         # STANDARD CONFIG
         n_observations = observed_covariate_data.shape[0]
-        super().__init__(n_observations, analysis_mode)
+        super().__init__(n_observations, data_analysis_mode)
 
         # SAMPLED SGP CONFIG
         self.params = params
@@ -265,7 +271,7 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
     @data_generating_method(
         Constants.TRANSFORMED_COVARIATES_NAME,
         [Constants.COVARIATES_NAME],
-        analysis_mode_only=True,
+        data_analysis_mode_only=True,
         cache_result=True)
     def _generate_transformed_covars(self, input_vars):
         # Generate the values of all the transformed covariates by running the

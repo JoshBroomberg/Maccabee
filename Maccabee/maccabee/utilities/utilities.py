@@ -1,6 +1,6 @@
 import numpy as np
 import sympy as sp
-from .constants import Constants
+from ..constants import Constants
 import pandas as pd
 from functools import partial
 

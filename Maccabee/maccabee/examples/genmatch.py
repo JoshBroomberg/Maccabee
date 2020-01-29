@@ -5,16 +5,10 @@ from ..constants import Constants
 from ..utilities import evaluate_expression
 from ..modeling.models import CausalModel
 
-from threadpoolctl import threadpool_limits, threadpool_info
 import numpy as np
 import sympy as sp
 import pandas as pd
 from functools import partial
-
-try:
-    NP_USER_API = threadpool_info()[0]["user_api"]
-except:
-    NP_USER_API = "blas"
 
 from sklearn.linear_model import LogisticRegression
 
@@ -84,9 +78,9 @@ def build_genmatch_datasource(n_observations=1000):
 class GenmatchDataGeneratingProcess(DataGeneratingProcess):
     def __init__(self,
                  quadratic_indeces, interactions_list,
-                 n_observations, analysis_mode):
+                 n_observations, data_analysis_mode):
 
-        super().__init__(n_observations, analysis_mode)
+        super().__init__(n_observations, data_analysis_mode)
 
         self.data_source = build_genmatch_datasource(n_observations)
         self.covar_symbols = np.array(sp.symbols(list(GENMATCH_COVAR_NAMES)))
@@ -139,7 +133,7 @@ class GenmatchDataGeneratingProcess(DataGeneratingProcess):
     @data_generating_method(
         Constants.TRANSFORMED_COVARIATES_NAME,
         [Constants.COVARIATES_NAME],
-        analysis_mode_only=True)
+        data_analysis_mode_only=True)
     def _generate_transformed_covars(self, input_vars):
         # Generate the values of all the transformed covariates by running the
         # original covariate data through the transforms used in the outcome and
@@ -190,13 +184,12 @@ class LogisticPropensityMatchingCausalModel(CausalModel):
         self.data = dataset.observed_data.drop("Y", axis=1)
 
     def fit(self):
-        with threadpool_limits(limits=1, user_api=NP_USER_API):
-            logistic_model = LogisticRegression(solver='lbfgs', n_jobs=1)
-            logistic_model.fit(
-                self.dataset.X.to_numpy(), self.dataset.T.to_numpy())
-            class_proba = logistic_model.predict_proba(
-                self.dataset.X.to_numpy())
-            propensity_scores = class_proba[:, logistic_model.classes_ == 1].flatten()
+        logistic_model = LogisticRegression(solver='lbfgs', n_jobs=1)
+        logistic_model.fit(
+            self.dataset.X.to_numpy(), self.dataset.T.to_numpy())
+        class_proba = logistic_model.predict_proba(
+            self.dataset.X.to_numpy())
+        propensity_scores = class_proba[:, logistic_model.classes_ == 1].flatten()
 
         # Run matching on prop scores
         self.match_out = matching.Match(

@@ -20,7 +20,7 @@ The code below specifies a concrete DGP with three normally distributed covariat
   class CustomConcreteDataGeneratingProcess(DataGeneratingProcess):
       def __init__(self, n_observations):
 
-          super().__init__(n_observations, analysis_mode=False)
+          super().__init__(n_observations, data_analysis_mode=False)
 
           # Three covariates - A, B and C.
           self.n_vars = 3
