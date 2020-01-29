@@ -20,14 +20,6 @@ ACCURACY_METRICS = {
 
 METRIC_ROUNDING = 3
 
-def _apply_model_to_dataset(model_class, estimand, dataset):
-    model = model_class(dataset)
-    model.fit()
-    estimate_val = model.estimate(estimand=estimand)
-    true_val = dataset.ground_truth(estimand=estimand)
-
-    return estimate_val, true_val
-
 def _aggregate_metric_results(metric_results):
     aggregated_results = {}
     for metric, results_list in metric_results.items():
@@ -41,12 +33,16 @@ def _aggregate_metric_results(metric_results):
 def _gen_data_and_apply_model(dgp, model_class, estimand, index):
     np.random.seed()
     dataset = dgp.generate_dataset()
+
+    # Fit model
     model = model_class(dataset)
     model.fit()
+
+    # Collect estimand result
     estimate_val = model.estimate(estimand=estimand)
     true_val = dataset.ground_truth(estimand=estimand)
 
-    return index, (estimate_val, true_val)
+    return index, (estimate_val, true_val), dataset
 
 def benchmark_model_using_concrete_dgp(
     dgp,
@@ -54,16 +50,21 @@ def benchmark_model_using_concrete_dgp(
     num_runs, num_samples_from_dgp,
     n_jobs=1):
 
-    runner = partial(_gen_data_and_apply_model, dgp, model_class, estimand)
-    sample_index = range(num_samples_from_dgp)
+    run_model_on_dgp = partial(_gen_data_and_apply_model, dgp, model_class, estimand)
+    sample_indeces = range(num_samples_from_dgp)
 
     metric_run_results = defaultdict(list)
     for run_index in range(num_runs):
 
         estimand_sample_results = np.empty((num_samples_from_dgp, 2))
+        datasets = np.empty(num_samples_from_dgp, dtype="O")
+
         with Pool(processes=n_jobs) as pool:
-            for index, data in pool.imap_unordered(runner, sample_index):
-                estimand_sample_results[index, :] = data
+            for sample_index, estimand_data, dataset in pool.imap_unordered(
+                run_model_on_dgp, sample_indeces):
+
+                estimand_sample_results[sample_index, :] = estimand_data
+                datasets[sample_index] = dataset
 
         # Process sample results into metric estimates
         estimate_vals = estimand_sample_results[:, 0]

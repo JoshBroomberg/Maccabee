@@ -21,6 +21,7 @@ setuptools.setup(
           'sympy',
           'POT',
           'pyyaml',
+          'threadpoolctl'
       ],
      classifiers=[
          "Programming Language :: Python :: 3",

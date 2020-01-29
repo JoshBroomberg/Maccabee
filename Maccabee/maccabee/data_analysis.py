@@ -207,7 +207,7 @@ data_accessors = {
 # Each axis has a list of metrics which are defined
 # by a metric calculation function and the arguments to be supplied to it
 # as well as a unique name.
-axes = {
+AXES = {
     AxisNames.OUTCOME_NONLINEARITY: [
         {
             "function": AnalysisMetricFunctions.LINEAR_R2,
@@ -398,7 +398,7 @@ def _get_arg_value(arg_val_name, data):
         return arg_val_name
 
 def analyze_axis_metrics_across_levels(
-    axes_and_metrics, levels, data_source_generator,
+    axes_and_metrics, levels, data_source,
     n_trials=20):
     '''
     Collect values for the given metrics and measures
@@ -424,7 +424,7 @@ def analyze_axis_metrics_across_levels(
             })
 
             res = gather_axis_metrics_for_given_params(
-                    dgp_params, observation_spec, data_source_generator,
+                    dgp_params, observation_spec, data_source,
                     n_trials=n_trials)
 
             for metric, values in res[axis].items():
@@ -434,7 +434,7 @@ def analyze_axis_metrics_across_levels(
 
 def gather_axis_metrics_for_given_params(
         dgp_params, observation_spec,
-        data_source_generator,
+        data_source,
         n_trials=10, verbose=False):
 
     '''
@@ -447,19 +447,16 @@ def gather_axis_metrics_for_given_params(
     for i in range(n_trials):
         if verbose:
             print("Trials run:", i+1)
-        results
-
-        # Generate data
-        data_source = data_source_generator()
 
         # Sample DGP
         dgp_sampler = DataGeneratingProcessSampler(
             parameters=dgp_params, data_source=data_source)
         dgp = dgp_sampler.sample_dgp()
-        data_set = dgp.generate_dataset()
+        print(dgp.base_outcome_subfunction, dgp.treatment_effect_subfunction)
+        dataset = dgp.generate_dataset()
 
         # Calculate metrics
-        metrics = calculate_data_axis_metrics(data_set, observation_spec)
+        metrics = calculate_data_axis_metrics(dataset, observation_spec)
 
         # Build results
         for metric, measures in observation_spec.items():
@@ -480,7 +477,7 @@ def gather_axis_metrics_for_given_params(
     return results
 
 def calculate_data_axis_metrics(
-    data_set,
+    dataset,
     observation_spec = None):
     '''
     Given a set of generated data, calculate all metrics
@@ -488,20 +485,20 @@ def calculate_data_axis_metrics(
     '''
 
     data = {
-        AnalysisMetricData.OBSERVED_COVARIATE_DATA: data_set.observed_covariate_data,
-        AnalysisMetricData.OBSERVED_OUTCOME_DATA: data_set.observed_outcome_data,
-        AnalysisMetricData.TRANSFORMED_COVARIATE_DATA: data_set.transformed_covariate_data,
-        AnalysisMetricData.ORACLE_OUTCOME_DATA: data_set.oracle_outcome_data
+        AnalysisMetricData.OBSERVED_COVARIATE_DATA: dataset.observed_covariate_data,
+        AnalysisMetricData.OBSERVED_OUTCOME_DATA: dataset.observed_outcome_data,
+        AnalysisMetricData.TRANSFORMED_COVARIATE_DATA: dataset.transformed_covariate_data,
+        AnalysisMetricData.ORACLE_OUTCOME_DATA: dataset.oracle_outcome_data
     }
 
     axis_metric_results = {}
-    for axis, axis_metrics in axes.items():
+    for axis, metrics in AXES.items():
         if (observation_spec is not None) and (axis not in observation_spec):
             continue # this axis not in observation specs.
 
         axis_metric_results[axis] = {}
 
-        for metric in axis_metrics:
+        for metric in metrics:
             if (observation_spec is not None) and (metric["name"] not in observation_spec[axis]):
                  continue # this metric not in observation specs.
 
@@ -518,7 +515,7 @@ def calculate_data_axis_metrics(
 
             # Store results.
             metric_name = metric["name"]
-            axis_metric_results[axis][f"{metric_name}"] = res
+            axis_metric_results[axis][metric_name] = res
 
     return axis_metric_results
 
