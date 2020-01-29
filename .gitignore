@@ -1,4 +1,9 @@
+# Project
+
 Data/
+results/
+
+# Mac
 .DS_Store
 built_docs
 
@@ -128,6 +133,3 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .Rproj.user
-
-results/
-Capstone-Writeup/
