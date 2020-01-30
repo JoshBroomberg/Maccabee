@@ -1,4 +1,6 @@
 Covariate Data Sources
 ======================
 
-Pending section on custom data sources
+.. py:module:: maccabee.data_sources
+
+.. autoclass:: DataSource

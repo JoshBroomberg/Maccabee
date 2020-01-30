@@ -1,13 +1,61 @@
 import numpy as np
 
-
 class DataSource():
+    """Short summary.
+
+    Args:
+        discrete_column_names (type): Description of parameter `discrete_column_names`.
+        normalize (type): Description of parameter `normalize`. Defaults to True.
+
+    Examples
+        Examples should be written in doctest format, and
+        should illustrate how to use the function/class.
+        >>>
+
+    Attributes:
+        discrete_column_names
+        normalize
+
+    """
 
     def __init__(self, discrete_column_names, normalize=True):
+        """Short summary.
+
+        Args:
+            discrete_column_names (type): Description of parameter `discrete_column_names`.
+            normalize (type): Description of parameter `normalize`. Defaults to True.
+
+        Returns:
+            type: Description of returned object.
+
+        Raises:
+            ExceptionName: Why the exception is raised.
+
+        Examples
+            Examples should be written in doctest format, and
+            should illustrate how to use the function/class.
+            >>>
+
+        """
         self.discrete_column_names = discrete_column_names
         self.normalize = normalize
 
+
     def _get_covariate_dataframe(self):
+        """Short summary.
+
+        Returns:
+            type: Description of returned object.
+
+        Raises:
+            ExceptionName: Why the exception is raised.
+
+        Examples
+            Examples should be written in doctest format, and
+            should illustrate how to use the function/class.
+            >>>
+
+        """
         raise NotImplementedError
 
     def _normalize_covariate_data(self, covariate_data):

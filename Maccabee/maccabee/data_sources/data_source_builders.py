@@ -7,6 +7,24 @@ from .utils import random_covar_matrix, load_covars_from_csv_path, build_covar_d
 
 
 def build_csv_datasource(csv_path, discrete_column_names):
+    """Short summary.
+
+    Args:
+        csv_path (type): Description of parameter `csv_path`.
+        discrete_column_names (type): Description of parameter `discrete_column_names`.
+
+    Returns:
+        type: Description of returned object.
+
+    Raises:
+        ExceptionName: Why the exception is raised.
+
+    Examples
+        Examples should be written in doctest format, and
+        should illustrate how to use the function/class.
+        >>>
+
+    """
     covars = load_covars_from_csv_path(csv_path)
 
     return StaticDataSource(
@@ -14,6 +32,20 @@ def build_csv_datasource(csv_path, discrete_column_names):
         discrete_column_names=discrete_column_names)
 
 def build_cpp_datasource():
+    """Short summary.
+
+    Returns:
+        type: Description of returned object.
+
+    Raises:
+        ExceptionName: Why the exception is raised.
+
+    Examples
+        Examples should be written in doctest format, and
+        should illustrate how to use the function/class.
+        >>>
+
+    """
     return build_csv_datasource(
         Constants.Data.CPP_PATH, Constants.Data.CPP_DISCRETE_COVARS)
 

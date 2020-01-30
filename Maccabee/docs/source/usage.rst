@@ -1,7 +1,5 @@
-Using Maccabee
-==============
-
-This is an overview of the using Maccabee section...
+Cookbook: walkthrough and examples
+==================================
 
 .. toctree::
    :maxdepth: -1

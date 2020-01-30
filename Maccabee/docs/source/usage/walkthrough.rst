@@ -1,15 +1,16 @@
-Intro & Overview
-======================
+Benchmarking with Sampled DGPs
+==============================
 
-This is an introductory overview of Maccabee's features and functionality. It provides minimal detail focusing instead on providing a big picture sense of the tools Maccabee provides.
+This walkthrough previews Maccabee's core functionality - benchmarking causal inference estimators using sampled, synthetic treatment and outcome functions combined with empirical covariate data. It provides an overview of how the various components of this package fit together into a benchmarking procedure. You'll find detail on each of the methods and objects mentioned below in the :doc:`/reference` section.
 
 **NOTE:** linking to function/class definitions is not yet in place in the docs below. It will be soon.
 
 The Destination: Sampled DGP Benchmarks
 ---------------------------------------
 
-The code below demonstrates the core of Maccabee's functionality - exploring a set
-of different, well-defined distributional settings by sampling synthetic functions defined over supplied covariate data, generating treatment and outcome data, and then collecting estimator performance in each setting.
+The code below benchmarks a standard linear regression estimate of the Average Treatement Effect (ATE)
+under 3 distributional settings - low/medium/high outcome mechanism nonlinearity combined with low treatment assignment mechanism nonlinearity. This is achieved by (repeatedly) sampling parameter-conformant synthetic functions defined over fixed (static/stochastic) covariate data, generating treatment and outcome data by applying the sampled functions to the covariate data,
+fitting the estimator using this data, collecting estimates, calculating estimator performance metrics based on the known ground-truth, and then averaging these metrics appropriately across sets of sampled estimand values to account for the various sources of variance.
 
 As you can see, Maccabee makes this complex process extremely easy::
 
@@ -20,7 +21,7 @@ As you can see, Maccabee makes this complex process extremely easy::
   LOW, MEDIUM, HIGH = Constants.AxisLevels.LEVELS
 
   param_grid = {
-    Constants.AxisNames.TREATMENT_NONLINEARITY: [HIGH, MEDIUM, LOW],
+    Constants.AxisNames.TREATMENT_NONLINEARITY: [LOW],
     Constants.AxisNames.OUTCOME_NONLINEARITY: [HIGH, MEDIUM, LOW]
   }
 

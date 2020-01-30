@@ -23,6 +23,14 @@ setuptools.setup(
           'pyyaml',
           'threadpoolctl'
       ],
+      extras_require = {
+        "docs": [
+          "sphinx",
+          "sphinx-autobuild",
+          "sphinx_rtd_theme",
+          "nbsphinx"
+        ]
+     },
      classifiers=[
          "Programming Language :: Python :: 3",
          "License :: OSI Approved :: MIT License",
