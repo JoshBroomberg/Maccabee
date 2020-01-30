@@ -6,7 +6,7 @@ with open(os.path.abspath('.') + "/Maccabee/README.md", "r") as fh:
 
 setuptools.setup(
      name='maccabee',
-     version='0.0.12',
+     version='0.1.0',
      scripts=[],
      author="Josh Broomberg",
      author_email="joshbroomberg@gmail.com",
