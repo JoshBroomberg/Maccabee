@@ -1,3 +1,7 @@
+import numpy as np
+import pandas as pd
+
+
 def random_covar_matrix(dimension, correlation_deg = 0.5):
     """
     Generate random covariance matrix by approximating the random
@@ -21,10 +25,11 @@ def load_covars_from_csv_path(covar_path):
     a CSV file with column names in the first row.
     '''
 
-    return pd.read_csv(covar_path)
+    covar_data = np.genfromtxt(covar_path, delimiter=',', names=True)
+    covar_names = list(covar_data.dtype.names)
+    return covar_names, covar_data
 
-def build_covar_data_frame(data, column_names, index):
+def build_covar_data_frame(data, covar_names):
     return pd.DataFrame(
             data=data,
-            columns=column_names,
-            index=index)
+            columns=covar_names)

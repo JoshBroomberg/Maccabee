@@ -1,7 +1,10 @@
 import setuptools
 import os
 
-with open(os.path.abspath('.') + "/Maccabee/README.md", "r") as fh:
+setup_path = os.path.abspath(os.path.dirname(__file__))
+readme_path = os.path.join(setup_path, "./README.md")
+
+with open(readme_path, "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(

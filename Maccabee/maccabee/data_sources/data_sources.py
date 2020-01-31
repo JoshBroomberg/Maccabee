@@ -1,47 +1,35 @@
 import numpy as np
+from .utils import build_covar_data_frame
+
 
 class DataSource():
-    """Short summary.
+    """Abstract class which encapsulates a source of covariate data and the
+    methods/data required to sample and normalize this data prior to application
+    of the treatment/outcome functions as well as meta-data used during
+    function application: covar names, data type etc.
+
+    The key abstract method is :meth:`_generate_covar_df` which returns a DataFrame
+    containing the covariate observations.
 
     Args:
-        discrete_column_names (type): Description of parameter `discrete_column_names`.
-        normalize (type): Description of parameter `normalize`. Defaults to True.
+        covar_names (list): `covar_names` is a list of the string names of the covariates present in the DataFrame produced by `_generate_covar_df`.
 
-    Examples
-        Examples should be written in doctest format, and
-        should illustrate how to use the function/class.
-        >>>
+        discrete_covar_names (list): `discrete_covar_names` is a list of the string names of the discrete covariates present in the DataFrame produced by `_generate_covar_df`.
+
+        normalize (bool): `normalize` indicates whether the DataFrame returned by :meth:`_generate_covar_df` should be normalized prior to use by applying the :meth:`_normalize_covariate_data` method. The default normalize scheme provided by this method assumes a normal distribution over the data in each continuous covariate and leaves discrete covariates as is. Defaults to `True`.
 
     Attributes:
-        discrete_column_names
-        normalize
-
+        covar_names: a list of the string names of the covariates present in the DataFrame produced by `_generate_covar_df`.
+        discrete_covar_names: list of the string names of the discrete covariates present in the DataFrame produced by :meth:`_generate_covar_df`.
+        normalize: indicates whether the DataFrame returned by :meth:`_generate_covar_df`` will be normalized prior to use.
     """
 
-    def __init__(self, discrete_column_names, normalize=True):
-        """Short summary.
-
-        Args:
-            discrete_column_names (type): Description of parameter `discrete_column_names`.
-            normalize (type): Description of parameter `normalize`. Defaults to True.
-
-        Returns:
-            type: Description of returned object.
-
-        Raises:
-            ExceptionName: Why the exception is raised.
-
-        Examples
-            Examples should be written in doctest format, and
-            should illustrate how to use the function/class.
-            >>>
-
-        """
-        self.discrete_column_names = discrete_column_names
+    def __init__(self, covar_names, discrete_covar_names, normalize=True):
+        self.covar_names = covar_names
+        self.discrete_covar_names = discrete_covar_names
         self.normalize = normalize
 
-
-    def _get_covariate_dataframe(self):
+    def _generate_covar_df(self):
         """Short summary.
 
         Returns:
@@ -59,10 +47,9 @@ class DataSource():
         raise NotImplementedError
 
     def _normalize_covariate_data(self, covariate_data):
-
         discrete_column_indeces = [
             covariate_data.columns.get_loc(name)
-            for name in self.discrete_column_names
+            for name in self.discrete_covar_names
         ]
 
         included_filter = np.ones(covariate_data.shape[1])
@@ -88,30 +75,47 @@ class DataSource():
 
         return rescaled_data
 
-    def get_data(self):
-        covar_df = self._get_covariate_dataframe()
+    def get_covar_names(self):
+        return self.covar_names
+
+    def get_discrete_covar_names(self):
+        return self.discrete_covar_names
+
+    def get_covar_df(self):
+        covar_df = self._generate_covar_df()
 
         if self.normalize:
             covar_df = self._normalize_covariate_data(covar_df)
 
         return covar_df
 
-class StochasticDataSource(DataSource):
-    def __init__(self, covar_df_generator, discrete_column_names, normalize=True):
-        super().__init__(discrete_column_names, normalize)
-        self.covar_df_generator = covar_df_generator
 
-    def _get_covariate_dataframe(self):
-        return self.covar_df_generator()
+class StochasticDataSource(DataSource):
+    def __init__(self, covar_data_generator,
+        covar_names, discrete_covar_names,
+        normalize=True):
+
+        super().__init__(covar_names, discrete_covar_names, normalize)
+        self.covar_data_generator = covar_data_generator
+
+    def _generate_covar_df(self):
+        covar_data = self.covar_data_generator()
+        covar_df = build_covar_data_frame(covar_data, self.covar_names)
+        return covar_df
 
 class StaticDataSource(DataSource):
-    def __init__(self, covar_df, discrete_column_names, normalize=True):
-        super().__init__(discrete_column_names, normalize=False)
+    def __init__(self, covar_data,
+        covar_names, discrete_covar_names,
+        normalize=True):
 
+        super().__init__(covar_names, discrete_covar_names, normalize=False)
+
+        covar_df = build_covar_data_frame(covar_data, covar_names)
         self.static_covar_df = covar_df
+
         if normalize:
             self.static_covar_df = self._normalize_covariate_data(
                 self.static_covar_df)
 
-    def _get_covariate_dataframe(self):
+    def _generate_covar_df(self):
         return self.static_covar_df

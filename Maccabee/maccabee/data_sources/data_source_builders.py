@@ -1,51 +1,22 @@
 import numpy as np
 import pandas as pd
+from functools import partial
+
 from ..constants import Constants
 
 from .data_sources import StaticDataSource, StochasticDataSource
 from .utils import random_covar_matrix, load_covars_from_csv_path, build_covar_data_frame
 
 
-def build_csv_datasource(csv_path, discrete_column_names):
-    """Short summary.
-
-    Args:
-        csv_path (type): Description of parameter `csv_path`.
-        discrete_column_names (type): Description of parameter `discrete_column_names`.
-
-    Returns:
-        type: Description of returned object.
-
-    Raises:
-        ExceptionName: Why the exception is raised.
-
-    Examples
-        Examples should be written in doctest format, and
-        should illustrate how to use the function/class.
-        >>>
-
-    """
-    covars = load_covars_from_csv_path(csv_path)
+def build_csv_datasource(csv_path, discrete_covar_names):
+    covar_data, covar_names = load_covars_from_csv_path(csv_path)
 
     return StaticDataSource(
-        covariate_data=covars,
-        discrete_column_names=discrete_column_names)
+        covariate_data=covar_data,
+        covar_names=covar_names,
+        discrete_covar_names=discrete_covar_names)
 
 def build_cpp_datasource():
-    """Short summary.
-
-    Returns:
-        type: Description of returned object.
-
-    Raises:
-        ExceptionName: Why the exception is raised.
-
-    Examples
-        Examples should be written in doctest format, and
-        should illustrate how to use the function/class.
-        >>>
-
-    """
     return build_csv_datasource(
         Constants.Data.CPP_PATH, Constants.Data.CPP_DISCRETE_COVARS)
 
@@ -61,24 +32,28 @@ def build_random_normal_datasource(
     supplied parameters.
     '''
 
-    def gen_random_normal_df():
-        covar = random_covar_matrix(
-            dimension=n_covars,
-            correlation_deg=partial_correlation_degree)
+    # Name covars sequentially
+    covar_names = np.array([f"X{i}" for i in range(n_covars)])
 
-        # Generate random covariates
-        covar_data = np.random.multivariate_normal(
-            mean=np.full((n_covars,), mean),
-            cov=std*covar,
-            size=n_observations)
-
-        # Name sequentially
-        covar_names = np.array([f"X{i}" for i in range(n_covars)])
-
-        # Build and return DF
-        return build_covar_data_frame(
-            covar_data, covar_names, np.arange(n_observations))
+    gen_random_normal_data = partial(_gen_random_normal_data,
+        n_covars, n_observations, partial_correlation_degree)
 
     return StochasticDataSource(
-        covar_df_generator=gen_random_normal_df,
-        discrete_column_names=[])
+        covar_data_generator=gen_random_normal_data,
+        covar_names=covar_names,
+        discrete_covar_names=[])
+
+def _gen_random_normal_data(n_covars, n_observations,
+    correlation_deg):
+
+    covar = random_covar_matrix(
+        dimension=n_covars,
+        correlation_deg=partial_correlation_degree)
+
+    # Generate random covariates
+    covar_data = np.random.multivariate_normal(
+        mean=np.full((n_covars,), mean),
+        cov=std*covar,
+        size=n_observations)
+
+    return covar_data

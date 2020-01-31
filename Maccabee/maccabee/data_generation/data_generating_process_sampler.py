@@ -17,8 +17,8 @@ class DataGeneratingProcessSampler():
         self.dgp_kwargs = dgp_kwargs
 
     def sample_dgp(self):
-        source_covariate_data = self.data_source.get_data()
-        covariate_symbols = np.array(sp.symbols(list(source_covariate_data.columns)))
+        source_covariate_data = self.data_source.get_covar_df()
+        covariate_symbols = np.array(sp.symbols(self.data_source.get_covar_names()))
 
         # Sample the source data to generate the observed covariate data.
         observed_covariate_data = self.sample_observed_covariate_data(
@@ -110,7 +110,7 @@ class DataGeneratingProcessSampler():
             usable_covariate_symbols = covariate_symbols
             if not transform_discrete_allowed:
                 usable_covariate_symbols = list(filter(
-                    lambda sym: str(sym) not in self.data_source.discrete_column_names,
+                    lambda sym: str(sym) not in self.data_source.get_discrete_covar_names(),
                     covariate_symbols))
 
             # All possible combinations of covariates for the given transform.

@@ -53,26 +53,24 @@ GENMATCH_N_COVARS = 11
 GENMATCH_BINARY_COVAR_INDECES = [1, 3, 5, 6, 8, 9]
 GENMATCH_COVAR_NAMES = np.array([f"X{i}" for i in range(GENMATCH_N_COVARS)])
 
-def _generate_genmatch_df(n_observations):
-    X = np.random.normal(loc=0.0, scale=1.0, size=(
+def _generate_genmatch_data(n_observations):
+    covar_data = np.random.normal(loc=0.0, scale=1.0, size=(
             n_observations, GENMATCH_N_COVARS-1))
 
     # Add bias/intercept dummy column
-    X = np.hstack([np.ones((n_observations, 1)), X])
+    covar_data = np.hstack([np.ones((n_observations, 1)), covar_data])
 
     # Make binary columns binary.
     for var in GENMATCH_BINARY_COVAR_INDECES:
-        X[:, var-1] = (X[:, var -1] > 0).astype(int)
+        covar_data[:, var-1] = (covar_data[:, var -1] > 0).astype(int)
 
-    # Build DF
-    covar_df = pd.DataFrame(X, columns=GENMATCH_COVAR_NAMES)
-
-    return covar_df
+    return covar_data
 
 def build_genmatch_datasource(n_observations=1000):
     return StochasticDataSource(
-        covar_df_generator=partial(_generate_genmatch_df, n_observations),
-        discrete_column_names=list(
+        covar_data_generator=partial(_generate_genmatch_data, n_observations),
+        covar_names=list(GENMATCH_COVAR_NAMES),
+        discrete_covar_names=list(
             GENMATCH_COVAR_NAMES[GENMATCH_BINARY_COVAR_INDECES]) + ["X0"])
 
 class GenmatchDataGeneratingProcess(DataGeneratingProcess):
@@ -128,7 +126,7 @@ class GenmatchDataGeneratingProcess(DataGeneratingProcess):
 
     @data_generating_method(Constants.COVARIATES_NAME, [])
     def _generate_observed_covars(self, input_vars):
-        return self.data_source.get_data()
+        return self.data_source.get_covar_df()
 
     @data_generating_method(
         Constants.TRANSFORMED_COVARIATES_NAME,
