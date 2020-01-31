@@ -1,3 +1,5 @@
+"""This module contains the high-levels functions used to run benchmarks."""
+
 from sklearn.model_selection import ParameterGrid
 from collections import defaultdict
 import numpy as np

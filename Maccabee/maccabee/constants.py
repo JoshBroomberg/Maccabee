@@ -1,3 +1,5 @@
+"""This module contains operational constants."""
+
 from sympy.abc import a, c, x, y, z
 import sympy as sp
 from pkg_resources import resource_filename
@@ -45,6 +47,8 @@ class Constants:
 
     # TODO: Move all of the below into a namespace equivalent to
     # other constants.
+
+    ### DGP Sampling constants ###
 
     LINEAR = "LINEAR"
     POLY_QUADRATIC = "POLY_QUAD"
@@ -106,6 +110,8 @@ class Constants:
     # How much of the covariate data to use when normalizing functions.
     NORMALIZATION_DATA_SAMPLE_FRACTION = 1
 
+    ### DGP Component constants ###
+
     COVARIATES_NAME = "X"
     TRANSFORMED_COVARIATES_NAME = "TRANSFORMED_X"
 
@@ -122,25 +128,7 @@ class Constants:
     OUTCOME_NOISE_NAME = "NOISE(Y)"
     OUTCOME_NOISE_SYMBOL = sp.symbols(OUTCOME_NOISE_NAME)
 
-    ### Metric constants ###
-
-    # Data inputs
-    class AnalysisMetricData:
-        OBSERVED_COVARIATE_DATA = "OBSERVED_COVARIATES"
-        OBSERVED_OUTCOME_DATA = "OBSERVED_OUTCOMES"
-        TRANSFORMED_COVARIATE_DATA = "TRANSFORMED_COVARIATES"
-        ORACLE_OUTCOME_DATA = "ORACLE_OUTCOMES"
-
-    # Functions
-    class AnalysisMetricFunctions:
-        LINEAR_R2 = "Lin r2"
-        LOGISTIC_R2 = "Log r2"
-        PERCENT = "Percent"
-        L2_MEAN_DIST = "mean dist"
-        NN_CF_MAHALA_DIST = "NN c-factual dist"
-        STD_RATIO = "Normed std"
-        WASS_DIST = "Wass dist"
-        NAIVE_TE = "Naive TE"
+    ### Data Metric constants ###
 
     class AxisNames:
         OUTCOME_NONLINEARITY = "OUTCOME_NONLINEARITY"
@@ -157,6 +145,19 @@ class Constants:
         HIGH = "HIGH"
         LEVELS = (LOW, MEDIUM, HIGH)
 
+    # Functions
+    class AxisMetricFunctions:
+        LINEAR_R2 = "Lin r2"
+        LOGISTIC_R2 = "Log r2"
+        PERCENT = "Percent"
+        L2_MEAN_DIST = "mean dist"
+        NN_CF_MAHALA_DIST = "NN c-factual dist"
+        STD_RATIO = "Normed std"
+        WASS_DIST = "Wass dist"
+        NAIVE_TE = "Naive TE"
+
+    ### External Data constants ###
+
     class Data:
         get_dataset_path = lambda file_name: resource_filename(
             'maccabee', f"data/{file_name}.csv")
@@ -170,6 +171,8 @@ class Constants:
             'x_21_E','x_21_F','x_21_G','x_21_H','x_21_I','x_21_J','x_21_K',
             'x_21_L','x_21_M','x_21_N','x_21_O','x_21_P','x_24_A','x_24_B',
             'x_24_C','x_24_D', 'x_24_E']
+
+    ### Modeling constants ###
 
     class Model:
         ITE_ESTIMAND = "ITE"

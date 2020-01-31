@@ -1,3 +1,5 @@
+"""This module contains the ParameterStore Class which stores sampling parameters."""
+
 import numpy as np
 import sympy as sp
 from sympy.abc import x

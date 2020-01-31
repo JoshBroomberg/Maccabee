@@ -1,10 +1,12 @@
+"""This module contains the DGP Sampler class which samples DGP instances given sampling parameters."""
+
 from sympy.abc import x
 import sympy as sp
 import numpy as np
 import pandas as pd
 from itertools import combinations
 from ..constants import Constants
-from ..utilities import select_given_probability_distribution, evaluate_expression, initialize_expression_constants
+from .utils import select_given_probability_distribution, evaluate_expression, initialize_expression_constants
 from .data_generating_process import SampledDataGeneratingProcess
 
 class DataGeneratingProcessSampler():

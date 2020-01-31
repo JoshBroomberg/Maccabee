@@ -2,7 +2,7 @@ from ..data_generation import DataGeneratingProcess, data_generating_method
 from ..data_sources.data_sources import StochasticDataSource
 
 from ..constants import Constants
-from ..utilities import evaluate_expression
+from ..data_generation.utils import evaluate_expression
 from ..modeling.models import CausalModel
 
 import numpy as np

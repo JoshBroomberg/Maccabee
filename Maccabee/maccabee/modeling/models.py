@@ -1,3 +1,5 @@
+"""This module contains the Model classes which represent causal estimators."""
+
 from ..constants import Constants
 from sklearn.linear_model import LinearRegression
 import numpy as np
@@ -23,7 +25,6 @@ class CausalModel():
             return self.estimate_ITE(*args, **kwargs)
         else:
             raise Exception("Unrecognized estimand.")
-
 
 
 class LinearRegressionCausalModel(CausalModel):

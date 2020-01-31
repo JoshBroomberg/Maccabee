@@ -1,6 +1,8 @@
+"""This module contains the DGP classes which represent concrete/sampled DGPs."""
+
 from ..constants import Constants
-from .data_set import DataSet
-from ..utilities import evaluate_expression
+from .generated_data_set import GeneratedDataSet
+from .utils import evaluate_expression
 import pandas as pd
 import numpy as np
 from functools import partial
@@ -219,7 +221,7 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
         ])
 
         # Treatment assignment
-        return DataSet(
+        return GeneratedDataSet(
             observed_covariate_data=observed_covariate_data,
             observed_outcome_data=observed_outcome_data,
             oracle_outcome_data=oracle_outcome_data,

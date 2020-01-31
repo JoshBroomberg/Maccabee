@@ -1,14 +1,9 @@
 import numpy as np
 import sympy as sp
-from ..constants import Constants
 import pandas as pd
 from functools import partial
 
-
-def extract_treat_and_control_data(covariates, treatment_status):
-    X_treated = covariates[(treatment_status==1).to_numpy()]
-    X_control = covariates[(treatment_status==0).to_numpy()]
-    return X_treated, X_control
+from ..constants import Constants
 
 def select_given_probability_distribution(full_list, selection_probabilities):
     full_list = np.array(full_list)

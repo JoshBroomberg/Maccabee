@@ -1,9 +1,11 @@
+"""This module contains the Generated Data Set class which represents Generated Data."""
+
 from ..constants import Constants
 import numpy as np
 import pandas as pd
 
 
-class DataSet():
+class GeneratedDataSet():
     '''
     Philosophy: this is an external facing object, so we switch
     to easily usable names and a nice API.
@@ -11,7 +13,7 @@ class DataSet():
     # TODO: write tooling to go to and from file to support static
     # benchmarking runs in future.
 
-    # TODO: write tooling for convenient creation of DataSet objects
+    # TODO: write tooling for convenient creation of GeneratedDataSet objects
     # from standard data frames.
 
     def __init__(self,
@@ -24,6 +26,8 @@ class DataSet():
         self.observed_outcome_data = observed_outcome_data
         self.oracle_outcome_data = oracle_outcome_data
         self.transformed_covariate_data = transformed_covariate_data
+
+    # TODO: this external API maps to the various component names defined in constants. It could be implemented programtically to avoid the mapping in data_metrics.py.
 
     @property
     def X(self):
@@ -44,6 +48,11 @@ class DataSet():
 
     @property
     def Y1(self):
+        return self.oracle_outcome_data[
+            Constants.TREATMENT_EFFECT_NAME]
+
+    @property
+    def TE(self):
         return self.oracle_outcome_data[
             Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME]
 
