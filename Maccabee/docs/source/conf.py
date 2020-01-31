@@ -38,9 +38,16 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx',
     'sphinx_rtd_theme',
     'nbsphinx'
 ]
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', 'https://pandas.pydata.org/pandas-docs/stable/objects.inv'),
+    'numpy': ('https://docs.scipy.org/doc/numpy/', 'https://docs.scipy.org/doc/numpy/objects.inv')
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

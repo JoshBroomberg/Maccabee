@@ -12,7 +12,7 @@ The code below specifies a concrete DGP with three normally distributed covariat
 
   from maccabee.data_generation import DataGeneratingProcess, data_generating_method
   from maccabee.constants import Constants
-  from maccabee.utilities import evaluate_expression
+  from maccabee.data_generation.utils import evaluate_expression
   import numpy as np
   import sympy as sp
   import pandas as pd

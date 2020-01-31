@@ -7,5 +7,6 @@ Cookbook: walkthrough and examples
    usage/walkthrough
    usage/concrete-dgp
    usage/custom-sampled-dgp
+   usage/empirical-datasets
    usage/data-analysis
    usage/parallel-and-cluster

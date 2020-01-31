@@ -3,7 +3,7 @@ Maccabee
 
 Maccabee is a package for benchmarking causal inference methods
 using empirical covariates and sampled, synthetic treatment and outcome
-functions. Test
+functions.
 
 -----------
 
@@ -27,6 +27,6 @@ functions. Test
 
 .. toctree::
   :maxdepth: -1
-  :caption: Reference
+  :caption: Package/Module Reference
 
   reference.rst

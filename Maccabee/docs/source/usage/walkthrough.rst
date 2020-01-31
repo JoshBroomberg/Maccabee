@@ -68,7 +68,7 @@ Model Specification
 
 Although it is not displayed above, the first step in using Maccabee is to define a ``Model``. Model's represent causal inference methods, they are fit to a dataset and produce an estimate of one or more estimands.
 
-The definition of the ``LinearRegressionCausalModel`` used above is below. All models take a `DataSet` object at construction time and implement ``fit()`` and ``estimate_*()`` functions. Arbitrary code can be run at initialization, fit and estimate time.
+The definition of the ``LinearRegressionCausalModel`` used above is below. All models take a `GeneratedDataSet` object at construction time and implement ``fit()`` and ``estimate_*()`` functions. Arbitrary code can be run at initialization, fit and estimate time.
 
 .. code-block:: python
 

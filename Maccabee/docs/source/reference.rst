@@ -1,7 +1,5 @@
-Object and Package Reference
-============================
-
-This is an overview of the using Maccabee section...
+The :mod:`maccabee` package
+===========================
 
 .. toctree::
    :maxdepth: -1
