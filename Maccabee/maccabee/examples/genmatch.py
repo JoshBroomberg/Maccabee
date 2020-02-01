@@ -179,7 +179,6 @@ class GenmatchDataGeneratingProcess(DataGeneratingProcess):
 class LogisticPropensityMatchingCausalModel(CausalModel):
     def __init__(self, dataset):
         self.dataset = dataset
-        self.data = dataset.observed_data.drop("Y", axis=1)
 
     def fit(self):
         logistic_model = LogisticRegression(solver='lbfgs', n_jobs=1)
@@ -194,11 +193,13 @@ class LogisticPropensityMatchingCausalModel(CausalModel):
             Y=FloatVector(self.dataset.Y),
             Tr=IntVector(self.dataset.T),
             X=FloatVector(propensity_scores),
+            estimand="ATT",
             replace=True,
             version="fast")
 
     def estimate_ITE(self):
-        raise NotImplementedError
+        ate = self.estimate_ATE()
+        return np.full(len(self.dataset.X), ate)
 
     def estimate_ATE(self):
         return np.array(self.match_out.rx2("est").rx(1,1))[0]

@@ -10,19 +10,9 @@ from ..parameters import build_parameters_from_axis_levels
 from ..data_generation import DataGeneratingProcessSampler, SampledDataGeneratingProcess
 from ..data_analysis import calculate_data_axis_metrics
 from ..utilities.threading import single_threaded_context
-
-
-def _absolute_mean_error(estimate_vals, true_vals):
-    non_zeros = np.logical_not(np.isclose(true_vals, 0))
-    return 100*np.abs(
-        np.mean(
-            (estimate_vals[non_zeros] - true_vals[non_zeros])/true_vals[non_zeros]))
-
-ACCURACY_METRICS = {
-    "absolute mean bias %": _absolute_mean_error,
-    "root mean squared error": lambda estimate_vals, true_vals: np.sqrt(
-        np.mean((estimate_vals - true_vals)**2))
-}
+from ..modeling.model_metrics import ATE_ACCURACY_METRICS, ITE_ACCURACY_METRICS
+from ..exceptions import UnknownEstimandException
+from ..constants import Constants
 
 METRIC_ROUNDING = 3
 
@@ -56,6 +46,26 @@ def _sample_dgp(dgp_sampler, index):
     np.random.seed()
     return index, dgp_sampler.sample_dgp()
 
+def _get_performance_metric_data_structures(num_samples_from_dgp, n_observations, estimand):
+    if estimand == Constants.Model.ATE_ESTIMAND:
+        data_store_shape = (num_samples_from_dgp, 2)
+    elif estimand == Constants.Model.ITE_ESTIMAND:
+        data_store_shape = (num_samples_from_dgp, 2, n_observations)
+    else:
+        raise UnknownEstimandException()
+
+    return data_store_shape
+
+def _get_performance_metric_functions(estimand):
+    if estimand == Constants.Model.ATE_ESTIMAND:
+        perf_metric_names_and_funcs = ATE_ACCURACY_METRICS
+    elif estimand == Constants.Model.ITE_ESTIMAND:
+        perf_metric_names_and_funcs = ITE_ACCURACY_METRICS
+    else:
+        raise UnknownEstimandException()
+
+    return perf_metric_names_and_funcs
+
 def benchmark_model_using_concrete_dgp(
     dgp,
     model_class, estimand,
@@ -77,18 +87,21 @@ def benchmark_model_using_concrete_dgp(
     performance_metric_run_results = defaultdict(list)
     data_metric_run_results = defaultdict(list)
 
-    for run_index in range(num_runs):
+    data_store_shape = _get_performance_metric_data_structures(
+        num_samples_from_dgp, dgp.n_observations, estimand)
+    perf_metric_names_and_funcs = _get_performance_metric_functions(estimand)
 
-        estimand_sample_results = np.empty((num_samples_from_dgp, 2))
+    for run_index in range(num_runs):
+        estimand_sample_results = np.empty(data_store_shape)
         data_analysis_sample_results = defaultdict(list)
         datasets = np.empty(num_samples_from_dgp, dtype="O")
 
         with single_threaded_context():
             with Pool(processes=min(n_jobs, num_samples_from_dgp)) as pool:
-                for sample_index, estimand_data, dataset in pool.imap_unordered(
+                for sample_index, effect_estimate_and_truth, dataset in pool.imap_unordered(
                     run_model_on_dgp, sample_indeces):
 
-                    estimand_sample_results[sample_index, :] = estimand_data
+                    estimand_sample_results[sample_index, :] = effect_estimate_and_truth
                     datasets[sample_index] = dataset
 
                 if data_analysis_mode:
@@ -96,7 +109,8 @@ def benchmark_model_using_concrete_dgp(
                         calculate_data_axis_metrics,
                         observation_spec=data_metrics_spec)
 
-                    for _, data_metric_results in pool.imap_unordered(
+                    # Preserve order to associate results with datasets.
+                    for _, data_metric_results in pool.map(
                         collect_dataset_metrics, datasets):
 
                         for axis_metric_name, axis_metric_val in data_metric_results.items():
@@ -107,7 +121,7 @@ def benchmark_model_using_concrete_dgp(
         estimate_vals = estimand_sample_results[:, 0]
         true_vals = estimand_sample_results[:, 1]
 
-        for metric_name, metric_func in ACCURACY_METRICS.items():
+        for metric_name, metric_func in perf_metric_names_and_funcs.items():
             performance_metric_run_results[metric_name].append(metric_func(
                 estimate_vals, true_vals))
 
@@ -136,6 +150,8 @@ def benchmark_model_using_sampled_dgp(
     dgp_kwargs={},
     n_jobs=1):
 
+    perf_metric_names_and_funcs = _get_performance_metric_functions(estimand)
+
     dgp_sampler = DataGeneratingProcessSampler(
         dgp_class=dgp_class,
         parameters=dgp_sampling_params,
@@ -158,7 +174,7 @@ def benchmark_model_using_sampled_dgp(
                 data_metrics_spec=data_metrics_spec,
                 n_jobs=n_jobs)
 
-        for metric_name in ACCURACY_METRICS:
+        for metric_name in perf_metric_names_and_funcs:
             performance_metric_dgp_results[metric_name].append(
                 performance_metric_data[metric_name])
 
