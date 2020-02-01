@@ -12,10 +12,10 @@ from .utils import extract_treat_and_control_data
 from ..parameters import build_parameters_from_axis_levels
 from ..data_generation import DataGeneratingProcessSampler
 
-
-# TODO: rename these constants for the data/perf dichotomy.
 AxisNames = Constants.AxisNames
 AxisMetricFunctions = Constants.AxisMetricFunctions
+DGPComponents = Constants.DGPComponents
+
 
 #: This dict specifies the measured axes and the metrics for each axis.
 #: Each axis has a list of metrics which are defined
@@ -26,64 +26,64 @@ AXES_AND_METRICS = {
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.COVARIATES_NAME,
-                "y": Constants.OBSERVED_OUTCOME_NAME
+                "X": DGPComponents.COVARIATES_NAME,
+                "y": DGPComponents.OBSERVED_OUTCOME_NAME
             },
             "name": "Lin r2(X_obs, Y)"
         },
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.TRANSFORMED_COVARIATES_NAME,
-                "y": Constants.OBSERVED_OUTCOME_NAME
+                "X": DGPComponents.TRANSFORMED_COVARIATES_NAME,
+                "y": DGPComponents.OBSERVED_OUTCOME_NAME
             },
             "name": "Lin r2(X_true, Y)"
         },
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.COVARIATES_NAME,
-                "y": Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME
+                "X": DGPComponents.COVARIATES_NAME,
+                "y": DGPComponents.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME
             },
             "name": "Lin r2(X_obs, Y1)"
         },
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.COVARIATES_NAME,
-                "y": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME
+                "X": DGPComponents.COVARIATES_NAME,
+                "y": DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME
             },
             "name": "Lin r2(X_obs, Y0)"
         },
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.TRANSFORMED_COVARIATES_NAME,
-                "y": Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME
+                "X": DGPComponents.TRANSFORMED_COVARIATES_NAME,
+                "y": DGPComponents.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME
             },
             "name": "Lin r2(X_true, Y1)"
         },
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.TRANSFORMED_COVARIATES_NAME,
-                "y": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME
+                "X": DGPComponents.TRANSFORMED_COVARIATES_NAME,
+                "y": DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME
             },
             "name": "Lin r2(X_true, Y0)"
         },
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.COVARIATES_NAME,
-                "y": Constants.TREATMENT_EFFECT_NAME
+                "X": DGPComponents.COVARIATES_NAME,
+                "y": DGPComponents.TREATMENT_EFFECT_NAME
             },
             "name": "Lin r2(X_obs, TE)"
         },
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.TRANSFORMED_COVARIATES_NAME,
-                "y": Constants.TREATMENT_EFFECT_NAME
+                "X": DGPComponents.TRANSFORMED_COVARIATES_NAME,
+                "y": DGPComponents.TREATMENT_EFFECT_NAME
             },
             "name": "Lin r2(X_true, TE)"
         }
@@ -93,24 +93,24 @@ AXES_AND_METRICS = {
         {
             "function": AxisMetricFunctions.LOGISTIC_R2,
             "args": {
-                "X": Constants.COVARIATES_NAME,
-                "y": Constants.TREATMENT_ASSIGNMENT_NAME
+                "X": DGPComponents.COVARIATES_NAME,
+                "y": DGPComponents.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Log r2(X_obs, T)"
         },
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.COVARIATES_NAME,
-                "y": Constants.PROPENSITY_LOGIT_NAME
+                "X": DGPComponents.COVARIATES_NAME,
+                "y": DGPComponents.PROPENSITY_LOGIT_NAME
             },
             "name": "Lin r2(X_obs, Treat Logit)"
         },
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.TRANSFORMED_COVARIATES_NAME,
-                "y": Constants.PROPENSITY_LOGIT_NAME
+                "X": DGPComponents.TRANSFORMED_COVARIATES_NAME,
+                "y": DGPComponents.PROPENSITY_LOGIT_NAME
             },
             "name": "Lin r2(X_true, Treat Logit)"
         }
@@ -120,7 +120,7 @@ AXES_AND_METRICS = {
         {
             "function": AxisMetricFunctions.PERCENT,
             "args": {
-                "x": Constants.TREATMENT_ASSIGNMENT_NAME,
+                "x": DGPComponents.TREATMENT_ASSIGNMENT_NAME,
                 "value": 1
             },
             "name": "Percent(T==1)"
@@ -131,16 +131,16 @@ AXES_AND_METRICS = {
         {
             "function": AxisMetricFunctions.NN_CF_MAHALA_DIST,
             "args": {
-                "covariates": Constants.COVARIATES_NAME,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
+                "covariates": DGPComponents.COVARIATES_NAME,
+                "treatment_status": DGPComponents.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "NN dist X_obs: T=1<->T=0"
         },
         {
             "function": AxisMetricFunctions.NN_CF_MAHALA_DIST,
             "args": {
-                "covariates": Constants.TRANSFORMED_COVARIATES_NAME,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
+                "covariates": DGPComponents.TRANSFORMED_COVARIATES_NAME,
+                "treatment_status": DGPComponents.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "NN dist X_true: T=1<->T=0"
         }
@@ -150,33 +150,33 @@ AXES_AND_METRICS = {
         {
             "function": AxisMetricFunctions.L2_MEAN_DIST,
             "args": {
-                "covariates": Constants.TRANSFORMED_COVARIATES_NAME,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
+                "covariates": DGPComponents.TRANSFORMED_COVARIATES_NAME,
+                "treatment_status": DGPComponents.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Mean dist X_true: T=1<->T=0"
         },
         {
             "function": AxisMetricFunctions.WASS_DIST,
             "args": {
-                "covariates": Constants.TRANSFORMED_COVARIATES_NAME,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
+                "covariates": DGPComponents.TRANSFORMED_COVARIATES_NAME,
+                "treatment_status": DGPComponents.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Wass dist X_true: T=1<->T=0"
         },
         {
             "function": AxisMetricFunctions.WASS_DIST,
             "args": {
-                "covariates": Constants.COVARIATES_NAME,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
+                "covariates": DGPComponents.COVARIATES_NAME,
+                "treatment_status": DGPComponents.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Wass dist X_obs: T=1<->T=0"
         },
         {
             "function": AxisMetricFunctions.NAIVE_TE,
             "args": {
-                "TE": Constants.TREATMENT_EFFECT_NAME,
-                "observed_outcome": Constants.OBSERVED_OUTCOME_NAME,
-                "treatment_status": Constants.TREATMENT_ASSIGNMENT_NAME
+                "TE": DGPComponents.TREATMENT_EFFECT_NAME,
+                "observed_outcome": DGPComponents.OBSERVED_OUTCOME_NAME,
+                "treatment_status": DGPComponents.TREATMENT_ASSIGNMENT_NAME
             },
             "name": "Naive TE"
         }
@@ -186,16 +186,16 @@ AXES_AND_METRICS = {
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.OBSERVED_OUTCOME_NAME,
-                "y": Constants.PROPENSITY_LOGIT_NAME
+                "X": DGPComponents.OBSERVED_OUTCOME_NAME,
+                "y": DGPComponents.PROPENSITY_LOGIT_NAME
             },
             "name": "Lin r2(Y, Treat Logit)"
         },
         {
             "function": AxisMetricFunctions.LINEAR_R2,
             "args": {
-                "X": Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
-                "y": Constants.PROPENSITY_LOGIT_NAME
+                "X": DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+                "y": DGPComponents.PROPENSITY_LOGIT_NAME
             },
             "name": "Lin r2(Y0, Treat Logit)"
         }
@@ -205,8 +205,8 @@ AXES_AND_METRICS = {
         {
             "function": AxisMetricFunctions.STD_RATIO,
             "args": {
-                "x1": Constants.TREATMENT_EFFECT_NAME,
-                "x2": Constants.OBSERVED_OUTCOME_NAME
+                "x1": DGPComponents.TREATMENT_EFFECT_NAME,
+                "x2": DGPComponents.OBSERVED_OUTCOME_NAME
             },
             "name": "std(TE)/std(Y)"
         }
@@ -345,17 +345,17 @@ AXIS_METRIC_FUNCTIONS = {
 
 AXIS_METRIC_FUNC_INPUT_ACCESSORS = {
     # Covariate Data
-    Constants.COVARIATES_NAME: lambda ds: ds.observed_covariate_data,
-    Constants.TRANSFORMED_COVARIATES_NAME: lambda ds: ds.transformed_covariate_data,
+    DGPComponents.COVARIATES_NAME: lambda ds: ds.observed_covariate_data,
+    DGPComponents.TRANSFORMED_COVARIATES_NAME: lambda ds: ds.transformed_covariate_data,
 
     # Observed Variables
-    Constants.OBSERVED_OUTCOME_NAME: lambda ds: ds.Y,
-    Constants.TREATMENT_ASSIGNMENT_NAME: lambda ds: ds.T,
+    DGPComponents.OBSERVED_OUTCOME_NAME: lambda ds: ds.Y,
+    DGPComponents.TREATMENT_ASSIGNMENT_NAME: lambda ds: ds.T,
 
     # Oracle
-    Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME: lambda ds: ds.Y0,
-    Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME: lambda ds: ds.Y1,
-    Constants.TREATMENT_EFFECT_NAME: lambda ds: ds.TE,
-    Constants.PROPENSITY_LOGIT_NAME: lambda ds: ds.oracle_outcome_data[Constants.PROPENSITY_LOGIT_NAME],
-    Constants.PROPENSITY_SCORE_NAME: lambda ds: ds.oracle_outcome_data[Constants.PROPENSITY_SCORE_NAME],
+    DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME: lambda ds: ds.Y0,
+    DGPComponents.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME: lambda ds: ds.Y1,
+    DGPComponents.TREATMENT_EFFECT_NAME: lambda ds: ds.TE,
+    DGPComponents.PROPENSITY_LOGIT_NAME: lambda ds: ds.oracle_outcome_data[DGPComponents.PROPENSITY_LOGIT_NAME],
+    DGPComponents.PROPENSITY_SCORE_NAME: lambda ds: ds.oracle_outcome_data[DGPComponents.PROPENSITY_SCORE_NAME],
 }

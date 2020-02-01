@@ -7,8 +7,9 @@ import pandas as pd
 import numpy as np
 from functools import partial
 
-
 GENERATED_DATA_DICT_NAME = "_generated_data"
+DGPComponents = Constants.DGPComponents
+
 
 class DataGeneratingMethodClass(type):
     def __init__(cls, name, bases, clsdict):
@@ -109,77 +110,77 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
         return self._build_dataset()
 
     # DGP DEFINITION
-    @data_generating_method(Constants.COVARIATES_NAME, [])
+    @data_generating_method(DGPComponents.COVARIATES_NAME, [])
     def _generate_observed_covars(self, input_vars):
         raise NotImplementedError
 
     @data_generating_method(
-        Constants.TRANSFORMED_COVARIATES_NAME,
-        [Constants.COVARIATES_NAME],
+        DGPComponents.TRANSFORMED_COVARIATES_NAME,
+        [DGPComponents.COVARIATES_NAME],
         data_analysis_mode_only=True)
     def _generate_transformed_covars(self, input_vars):
         return None
 
     @data_generating_method(
-        Constants.PROPENSITY_SCORE_NAME,
+        DGPComponents.PROPENSITY_SCORE_NAME,
         [],
         optional=True)
     def _generate_true_propensity_scores(self, input_vars):
         raise NotImplementedError
 
     @data_generating_method(
-        Constants.PROPENSITY_LOGIT_NAME,
-        [Constants.PROPENSITY_SCORE_NAME],
+        DGPComponents.PROPENSITY_LOGIT_NAME,
+        [DGPComponents.PROPENSITY_SCORE_NAME],
         optional=True,
         data_analysis_mode_only=True)
     def _generate_true_propensity_score_logits(self, input_vars):
-        propensity_scores = input_vars[Constants.PROPENSITY_SCORE_NAME]
+        propensity_scores = input_vars[DGPComponents.PROPENSITY_SCORE_NAME]
         return np.log(propensity_scores/(1-propensity_scores))
 
     @data_generating_method(
-        Constants.TREATMENT_ASSIGNMENT_NAME,
-        [Constants.PROPENSITY_SCORE_NAME])
+        DGPComponents.TREATMENT_ASSIGNMENT_NAME,
+        [DGPComponents.PROPENSITY_SCORE_NAME])
     def _generate_treatment_assignments(self, input_vars):
-        propensity_scores = input_vars[Constants.PROPENSITY_SCORE_NAME]
+        propensity_scores = input_vars[DGPComponents.PROPENSITY_SCORE_NAME]
         return (np.random.uniform(
             size=len(propensity_scores)) < propensity_scores).astype(int)
 
 
-    @data_generating_method(Constants.OUTCOME_NOISE_NAME, [])
+    @data_generating_method(DGPComponents.OUTCOME_NOISE_NAME, [])
     def _generate_outcome_noise_samples(self, input_vars):
         return np.zeros(self.n_observations)
 
     @data_generating_method(
-        Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
-        [Constants.COVARIATES_NAME])
+        DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+        [DGPComponents.COVARIATES_NAME])
     def _generate_outcomes_without_treatment(self, input_vars):
         raise NotImplementedError
 
     @data_generating_method(
-        Constants.TREATMENT_EFFECT_NAME,
-        [Constants.COVARIATES_NAME])
+        DGPComponents.TREATMENT_EFFECT_NAME,
+        [DGPComponents.COVARIATES_NAME])
     def _generate_treatment_effects(self, input_vars):
         raise NotImplementedError
 
     @data_generating_method(
-        Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
-        [Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME, Constants.TREATMENT_EFFECT_NAME])
+        DGPComponents.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
+        [DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME, DGPComponents.TREATMENT_EFFECT_NAME])
     def _generate_outcomes_with_treatment(self, input_vars):
-        outcome_without_treatment = input_vars[Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
-        treatment_effect = input_vars[Constants.TREATMENT_EFFECT_NAME]
+        outcome_without_treatment = input_vars[DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
+        treatment_effect = input_vars[DGPComponents.TREATMENT_EFFECT_NAME]
         return outcome_without_treatment + treatment_effect
 
     @data_generating_method(
-        Constants.OBSERVED_OUTCOME_NAME,
+        DGPComponents.OBSERVED_OUTCOME_NAME,
         [
-            Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
-            Constants.TREATMENT_ASSIGNMENT_NAME,
-            Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
+            DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+            DGPComponents.TREATMENT_ASSIGNMENT_NAME,
+            DGPComponents.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
         ])
     def _generate_observed_outcomes(self, input_vars):
-        outcome_without_treatment = input_vars[Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
-        treatment_assignment = input_vars[Constants.TREATMENT_ASSIGNMENT_NAME]
-        outcome_with_treatment = input_vars[Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME]
+        outcome_without_treatment = input_vars[DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
+        treatment_assignment = input_vars[DGPComponents.TREATMENT_ASSIGNMENT_NAME]
+        outcome_with_treatment = input_vars[DGPComponents.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME]
         return (treatment_assignment*outcome_with_treatment) + ((1-treatment_assignment)*outcome_without_treatment)
 
     # HELPER FUNCTIONS
@@ -200,24 +201,24 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
 
         # Observed data
         observed_covariate_data = self._get_generated_data(
-            Constants.COVARIATES_NAME)
+            DGPComponents.COVARIATES_NAME)
 
         observed_outcome_data = self._build_dataframe_for_vars([
-            Constants.TREATMENT_ASSIGNMENT_NAME,
-            Constants.OBSERVED_OUTCOME_NAME
+            DGPComponents.TREATMENT_ASSIGNMENT_NAME,
+            DGPComponents.OBSERVED_OUTCOME_NAME
         ])
 
         # Unobserved data
         transformed_covariate_data = self._get_generated_data(
-            Constants.TRANSFORMED_COVARIATES_NAME)
+            DGPComponents.TRANSFORMED_COVARIATES_NAME)
 
         oracle_outcome_data = self._build_dataframe_for_vars([
-            Constants.PROPENSITY_SCORE_NAME,
-            Constants.PROPENSITY_LOGIT_NAME,
-            Constants.OUTCOME_NOISE_NAME,
-            Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
-            Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
-            Constants.TREATMENT_EFFECT_NAME,
+            DGPComponents.PROPENSITY_SCORE_NAME,
+            DGPComponents.PROPENSITY_LOGIT_NAME,
+            DGPComponents.OUTCOME_NOISE_NAME,
+            DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+            DGPComponents.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
+            DGPComponents.TREATMENT_EFFECT_NAME,
         ])
 
         # Treatment assignment
@@ -266,13 +267,13 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         # DATA
         self.observed_covariate_data = observed_covariate_data
 
-    @data_generating_method(Constants.COVARIATES_NAME, [], cache_result=True)
+    @data_generating_method(DGPComponents.COVARIATES_NAME, [], cache_result=True)
     def _generate_observed_covars(self, input_vars):
         return self.observed_covariate_data
 
     @data_generating_method(
-        Constants.TRANSFORMED_COVARIATES_NAME,
-        [Constants.COVARIATES_NAME],
+        DGPComponents.TRANSFORMED_COVARIATES_NAME,
+        [DGPComponents.COVARIATES_NAME],
         data_analysis_mode_only=True,
         cache_result=True)
     def _generate_transformed_covars(self, input_vars):
@@ -280,35 +281,35 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         # original covariate data through the transforms used in the outcome and
         # treatment functions.
 
-        observed_covariate_data = input_vars[Constants.COVARIATES_NAME]
+        observed_covariate_data = input_vars[DGPComponents.COVARIATES_NAME]
 
         all_transforms = list(set(self.outcome_covariate_transforms).union(
             self.treatment_covariate_transforms))
 
         data = {}
         for index, transform in enumerate(all_transforms):
-            data[f"{Constants.TRANSFORMED_COVARIATES_NAME}{index}"] = \
+            data[f"{DGPComponents.TRANSFORMED_COVARIATES_NAME}{index}"] = \
                 evaluate_expression(transform, observed_covariate_data)
 
         return pd.DataFrame(data)
 
 
     @data_generating_method(
-        Constants.PROPENSITY_SCORE_NAME,
-        [Constants.COVARIATES_NAME],
+        DGPComponents.PROPENSITY_SCORE_NAME,
+        [DGPComponents.COVARIATES_NAME],
         cache_result=True)
     def _generate_true_propensity_scores(self, input_vars):
-        observed_covariate_data = input_vars[Constants.COVARIATES_NAME]
+        observed_covariate_data = input_vars[DGPComponents.COVARIATES_NAME]
 
         return evaluate_expression(
             self.treatment_assignment_function,
             observed_covariate_data)
 
     @data_generating_method(
-        Constants.TREATMENT_ASSIGNMENT_NAME,
-        [Constants.PROPENSITY_SCORE_NAME])
+        DGPComponents.TREATMENT_ASSIGNMENT_NAME,
+        [DGPComponents.PROPENSITY_SCORE_NAME])
     def _generate_treatment_assignments(self, input_vars):
-        propensity_scores = input_vars[Constants.PROPENSITY_SCORE_NAME]
+        propensity_scores = input_vars[DGPComponents.PROPENSITY_SCORE_NAME]
 
         # Sample treatment assignment given pre-calculated propensity_scores
         T = (np.random.uniform(
@@ -336,55 +337,55 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
 
         return T
 
-    @data_generating_method(Constants.OUTCOME_NOISE_NAME, [])
+    @data_generating_method(DGPComponents.OUTCOME_NOISE_NAME, [])
     def _generate_outcome_noise_samples(self, input_vars):
         return self.params.sample_outcome_noise(size=self.n_observations)
 
     @data_generating_method(
-        Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
-        [Constants.COVARIATES_NAME],
+        DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+        [DGPComponents.COVARIATES_NAME],
         cache_result=True)
     def _generate_outcomes_without_treatment(self, input_vars):
-        observed_covariate_data = input_vars[Constants.COVARIATES_NAME]
+        observed_covariate_data = input_vars[DGPComponents.COVARIATES_NAME]
         return evaluate_expression(
             self.base_outcome_subfunction,
             observed_covariate_data)
 
     @data_generating_method(
-        Constants.TREATMENT_EFFECT_NAME,
-        [Constants.COVARIATES_NAME],
+        DGPComponents.TREATMENT_EFFECT_NAME,
+        [DGPComponents.COVARIATES_NAME],
         cache_result=True)
     def _generate_treatment_effects(self, input_vars):
-        observed_covariate_data = input_vars[Constants.COVARIATES_NAME]
+        observed_covariate_data = input_vars[DGPComponents.COVARIATES_NAME]
         return evaluate_expression(
             self.treatment_effect_subfunction,
             observed_covariate_data)
 
     @data_generating_method(
-        Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
+        DGPComponents.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
         [
-            Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
-            Constants.TREATMENT_EFFECT_NAME
+            DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+            DGPComponents.TREATMENT_EFFECT_NAME
         ],
         cache_result=True)
     def _generate_outcomes_with_treatment(self, input_vars):
-        outcome_without_treatment = input_vars[Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
-        treatment_effect = input_vars[Constants.TREATMENT_EFFECT_NAME]
+        outcome_without_treatment = input_vars[DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
+        treatment_effect = input_vars[DGPComponents.TREATMENT_EFFECT_NAME]
         return outcome_without_treatment + treatment_effect
 
     @data_generating_method(
-        Constants.OBSERVED_OUTCOME_NAME,
+        DGPComponents.OBSERVED_OUTCOME_NAME,
         [
-            Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
-            Constants.TREATMENT_ASSIGNMENT_NAME,
-            Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
-            Constants.OUTCOME_NOISE_NAME
+            DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+            DGPComponents.TREATMENT_ASSIGNMENT_NAME,
+            DGPComponents.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
+            DGPComponents.OUTCOME_NOISE_NAME
         ])
     def _generate_observed_outcomes(self, input_vars):
-        outcome_without_treatment = input_vars[Constants.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
-        treatment_assignment = input_vars[Constants.TREATMENT_ASSIGNMENT_NAME]
-        outcome_with_treatment = input_vars[Constants.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME]
-        outcome_noise_samples = input_vars[Constants.OUTCOME_NOISE_NAME]
+        outcome_without_treatment = input_vars[DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
+        treatment_assignment = input_vars[DGPComponents.TREATMENT_ASSIGNMENT_NAME]
+        outcome_with_treatment = input_vars[DGPComponents.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME]
+        outcome_noise_samples = input_vars[DGPComponents.OUTCOME_NOISE_NAME]
         Y = (
             (treatment_assignment*outcome_with_treatment) +
             ((1-treatment_assignment)*outcome_without_treatment) +

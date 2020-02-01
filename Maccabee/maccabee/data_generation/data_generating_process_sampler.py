@@ -9,6 +9,9 @@ from ..constants import Constants
 from .utils import select_given_probability_distribution, evaluate_expression, initialize_expression_constants
 from .data_generating_process import SampledDataGeneratingProcess
 
+SamplingConstants = Constants.DGPSampling
+ComponentConstants = Constants.DGPComponents
+
 class DataGeneratingProcessSampler():
     def __init__(self, parameters, data_source,
         dgp_class=SampledDataGeneratingProcess, dgp_kwargs={}):
@@ -104,10 +107,10 @@ class DataGeneratingProcessSampler():
         # combinations of different covariates.
 
         selected_covariate_transforms = []
-        for transform_name, transform_spec in Constants.SUBFUNCTION_FORMS.items():
-            transform_expression = transform_spec[Constants.EXPRESSION_KEY]
-            transform_covariate_symbols = transform_spec[Constants.COVARIATE_SYMBOLS_KEY]
-            transform_discrete_allowed = transform_spec[Constants.DISCRETE_ALLOWED_KEY]
+        for transform_name, transform_spec in SamplingConstants.SUBFUNCTION_FORMS.items():
+            transform_expression = transform_spec[SamplingConstants.EXPRESSION_KEY]
+            transform_covariate_symbols = transform_spec[SamplingConstants.COVARIATE_SYMBOLS_KEY]
+            transform_discrete_allowed = transform_spec[SamplingConstants.DISCRETE_ALLOWED_KEY]
 
             usable_covariate_symbols = covariate_symbols
             if not transform_discrete_allowed:
@@ -134,24 +137,14 @@ class DataGeneratingProcessSampler():
         # and no transforms selected above.
         # TODO: this is an ugly solution to a complex problem. Improve this.
         if len(selected_covariate_transforms) == 0 and not empty_allowed:
-
-            # TODO: eval and delete this if no longer desired.
-            # transform_spec = Constants.SUBFUNCTION_FORMS[Constants.LINEAR]
-            # transform_expression = transform_spec[Constants.EXPRESSION_KEY]
-            # transform_covariate_symbols = transform_spec[Constants.COVARIATE_SYMBOLS_KEY]
-            # required_covars = covariate_symbols[:len(transform_covariate_symbols)]
-            #
-            # selected_covariate_transforms = [
-            #     transform_expression.subs(zip(
-            #     transform_covariate_symbols, required_covars))
-            # ]
-            selected_covariate_transforms.append(list(Constants.SUBFUNCTION_CONSTANT_SYMBOLS)[0])
+            selected_covariate_transforms.append(
+                list(SamplingConstants.SUBFUNCTION_CONSTANT_SYMBOLS)[0])
 
         # The number of combinations grows factorially with the number of
         # covariates. Cap the number of covariate transforms at a multiple
         # of the number of base covariates.
         max_transform_count = \
-            Constants.MAX_RATIO_TRANSFORMED_TO_ORIGINAL_TERMS*len(covariate_symbols)
+            SamplingConstants.MAX_RATIO_TRANSFORMED_TO_ORIGINAL_TERMS*len(covariate_symbols)
 
         if len(selected_covariate_transforms) > max_transform_count:
             # Randomly sample selected transforms with expected number selected
@@ -232,7 +225,7 @@ class DataGeneratingProcessSampler():
 
         # Sample data to evaluate distribution.
         sampled_data = observed_covariate_data.sample(
-            frac=Constants.NORMALIZATION_DATA_SAMPLE_FRACTION)
+            frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
         # Adjust logit
         logit_values = evaluate_expression(
@@ -309,7 +302,7 @@ class DataGeneratingProcessSampler():
             # TODO: vaidate the approach to normalization used here
             # vs other function construction.
             sampled_data = observed_covariate_data.sample(
-                frac=Constants.NORMALIZATION_DATA_SAMPLE_FRACTION)
+                frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
             treatment_effect_multiplier_values = evaluate_expression(
                 treatment_effect_multiplier_expr, sampled_data)
@@ -346,7 +339,7 @@ class DataGeneratingProcessSampler():
 
         # Sample data to evaluate distribution.
         sampled_data = observed_covariate_data.sample(
-            frac=Constants.NORMALIZATION_DATA_SAMPLE_FRACTION)
+            frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
         # Normalized outcome values to have approximate mean=0 and std=1.
         # This prevents situations where large outcome values drown out
@@ -366,7 +359,8 @@ class DataGeneratingProcessSampler():
 
         base_outcome_subfunction = normalized_outcome_expression
         outcome_function = base_outcome_subfunction + \
-            Constants.OUTCOME_NOISE_SYMBOL + \
-            (Constants.TREATMENT_ASSIGNMENT_SYMBOL*treat_effect_subfunction)
+            ComponentConstants.OUTCOME_NOISE_SYMBOL + \
+            (ComponentConstants.TREATMENT_ASSIGNMENT_SYMBOL *
+                treat_effect_subfunction)
 
         return outcome_function, base_outcome_subfunction, treat_effect_subfunction

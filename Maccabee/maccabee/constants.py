@@ -4,6 +4,23 @@ from sympy.abc import a, c, x, y, z
 import sympy as sp
 from pkg_resources import resource_filename
 import yaml
+import pprint
+
+class ConstantGroup:
+    pp = pprint.PrettyPrinter(indent=2, width=40)
+
+    @classmethod
+    def all(cls, print=True):
+        constants = {
+            k: v
+            for k, v in cls.__dict__.items()
+            if (not k.startswith("_")) and (True)
+        }
+
+        if print:
+            cls.pp.pprint(constants)
+
+        return constants
 
 ### Define constants ###
 
@@ -26,7 +43,7 @@ class Constants:
         METRIC_LEVEL_SPEC_PATH = resource_filename(
             'maccabee', 'parameters/metric_level_parameter_specifications.yml')
 
-        class ParamInfo:
+        class ParamSchemaKeysAndVals(ConstantGroup):
             DESCRIPTION_KEY = "description"
 
             TYPE_KEY = "type"
@@ -45,92 +62,91 @@ class Constants:
             # Calc type keys
             EXPRESSION_KEY = "expr"
 
-    # TODO: Move all of the below into a namespace equivalent to
-    # other constants.
-
     ### DGP Sampling constants ###
+    class DGPSampling(ConstantGroup):
+        LINEAR = "LINEAR"
+        POLY_QUADRATIC = "POLY_QUAD"
+        POLY_CUBIC = "POLY_CUBIC"
+        STEP_CONSTANT = "STEP_JUMP"
+        STEP_VARIABLE = "STEP_KINK"
+        INTERACTION_TWO_WAY = "INTERACTION_TWO_WAY"
+        INTERACTION_THREE_WAY = "INTERACTION_THREE_WAY"
 
-    LINEAR = "LINEAR"
-    POLY_QUADRATIC = "POLY_QUAD"
-    POLY_CUBIC = "POLY_CUBIC"
-    STEP_CONSTANT = "STEP_JUMP"
-    STEP_VARIABLE = "STEP_KINK"
-    INTERACTION_TWO_WAY = "INTERACTION_TWO_WAY"
-    INTERACTION_THREE_WAY = "INTERACTION_THREE_WAY"
+        COVARIATE_SYMBOLS_KEY = "covariates"
+        EXPRESSION_KEY = "expr"
+        DISCRETE_ALLOWED_KEY = "disc"
 
-    COVARIATE_SYMBOLS_KEY = "covariates"
-    EXPRESSION_KEY = "expr"
-    DISCRETE_ALLOWED_KEY = "disc"
+        SUBFUNCTION_CONSTANT_SYMBOLS = {a, c}
 
-    SUBFUNCTION_CONSTANT_SYMBOLS = {a, c}
+        # The various transforms which can be applied to covariates
+        # and combinations of covariates.
+        SUBFUNCTION_FORMS = {
+            LINEAR: {
+                    COVARIATE_SYMBOLS_KEY: [x],
+                    EXPRESSION_KEY: c*x,
+                    DISCRETE_ALLOWED_KEY: True
+            },
+            POLY_QUADRATIC: {
+                    COVARIATE_SYMBOLS_KEY: [x],
+                    EXPRESSION_KEY: c*(x**2),
+                    DISCRETE_ALLOWED_KEY: False
+            },
+            POLY_CUBIC: {
+                    COVARIATE_SYMBOLS_KEY: [x],
+                    EXPRESSION_KEY: c*(x**3),
+                    DISCRETE_ALLOWED_KEY: False
+            },
+            STEP_CONSTANT: {
+                    COVARIATE_SYMBOLS_KEY: [x],
+                    EXPRESSION_KEY: sp.Piecewise((0, x < a), (c, True)),
+                    DISCRETE_ALLOWED_KEY: False
+            },
+            STEP_VARIABLE: {
+                    COVARIATE_SYMBOLS_KEY: [x],
+                    EXPRESSION_KEY: sp.Piecewise((0, x < a), (c*x, True)),
+                    DISCRETE_ALLOWED_KEY: False
+            },
+            INTERACTION_TWO_WAY: {
+                    COVARIATE_SYMBOLS_KEY: [x, y],
+                    EXPRESSION_KEY: c*x*y,
+                    DISCRETE_ALLOWED_KEY: True
+            },
+            INTERACTION_THREE_WAY: {
+                    COVARIATE_SYMBOLS_KEY: [x, y, z],
+                    EXPRESSION_KEY: c*x*y*z,
+                    DISCRETE_ALLOWED_KEY: True
+            },
+        }
 
-    # The various transforms which can be applied to covariates
-    # and combinations of covariates.
-    SUBFUNCTION_FORMS = {
-        LINEAR: {
-                COVARIATE_SYMBOLS_KEY: [x],
-                EXPRESSION_KEY: c*x,
-                DISCRETE_ALLOWED_KEY: True
-        },
-        POLY_QUADRATIC: {
-                COVARIATE_SYMBOLS_KEY: [x],
-                EXPRESSION_KEY: c*(x**2),
-                DISCRETE_ALLOWED_KEY: False
-        },
-        POLY_CUBIC: {
-                COVARIATE_SYMBOLS_KEY: [x],
-                EXPRESSION_KEY: c*(x**3),
-                DISCRETE_ALLOWED_KEY: False
-        },
-        STEP_CONSTANT: {
-                COVARIATE_SYMBOLS_KEY: [x],
-                EXPRESSION_KEY: sp.Piecewise((0, x < a), (c, True)),
-                DISCRETE_ALLOWED_KEY: False
-        },
-        STEP_VARIABLE: {
-                COVARIATE_SYMBOLS_KEY: [x],
-                EXPRESSION_KEY: sp.Piecewise((0, x < a), (c*x, True)),
-                DISCRETE_ALLOWED_KEY: False
-        },
-        INTERACTION_TWO_WAY: {
-                COVARIATE_SYMBOLS_KEY: [x, y],
-                EXPRESSION_KEY: c*x*y,
-                DISCRETE_ALLOWED_KEY: True
-        },
-        INTERACTION_THREE_WAY: {
-                COVARIATE_SYMBOLS_KEY: [x, y, z],
-                EXPRESSION_KEY: c*x*y*z,
-                DISCRETE_ALLOWED_KEY: True
-        },
-    }
+        # All X times the number of original covariates.
+        MAX_RATIO_TRANSFORMED_TO_ORIGINAL_TERMS = 5
 
-    # All X times the number of original covariates.
-    MAX_RATIO_TRANSFORMED_TO_ORIGINAL_TERMS = 5
-
-    # How much of the covariate data to use when normalizing functions.
-    NORMALIZATION_DATA_SAMPLE_FRACTION = 1
+        # How much of the covariate data to use when normalizing functions.
+        NORMALIZATION_DATA_SAMPLE_FRACTION = 1
 
     ### DGP Component constants ###
 
-    COVARIATES_NAME = "X"
-    TRANSFORMED_COVARIATES_NAME = "TRANSFORMED_X"
+    class DGPComponents(ConstantGroup):
+        COVARIATES_NAME = "X"
+        TRANSFORMED_COVARIATES_NAME = "TRANSFORMED_X"
 
-    PROPENSITY_LOGIT_NAME = "logit(P(T|X))"
-    PROPENSITY_SCORE_NAME = "P(T|X)"
-    TREATMENT_ASSIGNMENT_NAME = "T"
-    TREATMENT_ASSIGNMENT_SYMBOL = sp.symbols(TREATMENT_ASSIGNMENT_NAME)
+        PROPENSITY_LOGIT_NAME = "logit(P(T|X))"
+        PROPENSITY_SCORE_NAME = "P(T|X)"
+        TREATMENT_ASSIGNMENT_NAME = "T"
 
-    OBSERVED_OUTCOME_NAME = "Y"
-    POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME = "Y0"
-    POTENTIAL_OUTCOME_WITH_TREATMENT_NAME = "Y1"
-    TREATMENT_EFFECT_NAME = "TE"
+        OBSERVED_OUTCOME_NAME = "Y"
+        POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME = "Y0"
+        POTENTIAL_OUTCOME_WITH_TREATMENT_NAME = "Y1"
+        TREATMENT_EFFECT_NAME = "TE"
 
-    OUTCOME_NOISE_NAME = "NOISE(Y)"
-    OUTCOME_NOISE_SYMBOL = sp.symbols(OUTCOME_NOISE_NAME)
+        OUTCOME_NOISE_NAME = "NOISE(Y)"
+
+        TREATMENT_ASSIGNMENT_SYMBOL = sp.symbols(TREATMENT_ASSIGNMENT_NAME)
+        OUTCOME_NOISE_SYMBOL = sp.symbols(OUTCOME_NOISE_NAME)
 
     ### Data Metric constants ###
 
-    class AxisNames:
+    class AxisNames(ConstantGroup):
         OUTCOME_NONLINEARITY = "OUTCOME_NONLINEARITY"
         TREATMENT_NONLINEARITY = "TREATMENT_NONLINEARITY"
         PERCENT_TREATED = "PERCENT_TREATED"
@@ -139,13 +155,13 @@ class Constants:
         ALIGNMENT = "ALIGNMENT"
         TE_HETEROGENEITY = "TE_HETEROGENEITY"
 
-    class AxisLevels:
+    class AxisLevels(ConstantGroup):
         LOW = "LOW"
         MEDIUM = "MEDIUM"
         HIGH = "HIGH"
         LEVELS = (LOW, MEDIUM, HIGH)
 
-    class AxisMetricFunctions:
+    class AxisMetricFunctions(ConstantGroup):
         LINEAR_R2 = "Lin r2"
         LOGISTIC_R2 = "Log r2"
         PERCENT = "Percent"
@@ -157,7 +173,7 @@ class Constants:
 
     ### External Data constants ###
 
-    class Data:
+    class Data(ConstantGroup):
         get_dataset_path = lambda file_name: resource_filename(
             'maccabee', f"data/{file_name}.csv")
 
@@ -173,6 +189,6 @@ class Constants:
 
     ### Modeling constants ###
 
-    class Model:
+    class Model(ConstantGroup):
         ITE_ESTIMAND = "ITE"
         ATE_ESTIMAND = "ATE"

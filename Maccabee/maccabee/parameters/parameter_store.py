@@ -26,10 +26,10 @@ class ParameterStore():
         # Read in the parameter values for each param in the
         # schema.
         for param_name, param_info in PARAM_CONSTANTS.SCHEMA.items():
-            param_type = param_info[PARAM_CONSTANTS.ParamInfo.TYPE_KEY]
+            param_type = param_info[PARAM_CONSTANTS.ParamSchemaKeysAndVals.TYPE_KEY]
 
             # If param should be calculated
-            if param_type == PARAM_CONSTANTS.ParamInfo.TYPE_CALCULATED:
+            if param_type == PARAM_CONSTANTS.ParamSchemaKeysAndVals.TYPE_CALCULATED:
                 if param_name in raw_parameter_dict:
                     raise Exception(
                         "{} is calculated. It can't be supplied.".format(
@@ -54,7 +54,7 @@ class ParameterStore():
                 recalculate_calculated_params=False)
 
     def get_calculated_param_value(self, param_info):
-        expr = param_info[PARAM_CONSTANTS.ParamInfo.EXPRESSION_KEY]
+        expr = param_info[PARAM_CONSTANTS.ParamSchemaKeysAndVals.EXPRESSION_KEY]
         return eval(expr, globals(), self.parsed_parameter_dict)
 
     def recalculate_calculated_params(self):
@@ -64,16 +64,16 @@ class ParameterStore():
                 recalculate_calculated_params=False)
 
     def validate_param_value(self, param_info, param_value):
-        param_type = param_info[PARAM_CONSTANTS.ParamInfo.TYPE_KEY]
-        if param_type == PARAM_CONSTANTS.ParamInfo.TYPE_NUMBER:
-            return param_info[PARAM_CONSTANTS.ParamInfo.MIN_KEY] <= param_value <= param_info[PARAM_CONSTANTS.ParamInfo.MAX_KEY]
+        param_type = param_info[PARAM_CONSTANTS.ParamSchemaKeysAndVals.TYPE_KEY]
+        if param_type == PARAM_CONSTANTS.ParamSchemaKeysAndVals.TYPE_NUMBER:
+            return param_info[PARAM_CONSTANTS.ParamSchemaKeysAndVals.MIN_KEY] <= param_value <= param_info[PARAM_CONSTANTS.ParamSchemaKeysAndVals.MAX_KEY]
 
-        elif param_type == PARAM_CONSTANTS.ParamInfo.TYPE_DICTIONARY:
-            required_keys = set(param_info[PARAM_CONSTANTS.ParamInfo.DICT_KEYS_KEY])
+        elif param_type == PARAM_CONSTANTS.ParamSchemaKeysAndVals.TYPE_DICTIONARY:
+            required_keys = set(param_info[PARAM_CONSTANTS.ParamSchemaKeysAndVals.DICT_KEYS_KEY])
             supplied_keys = set(param_value.keys())
             return required_keys == supplied_keys
 
-        elif param_type == PARAM_CONSTANTS.ParamInfo.TYPE_BOOL:
+        elif param_type == PARAM_CONSTANTS.ParamSchemaKeysAndVals.TYPE_BOOL:
             return param_value in [True, False]
 
         else:

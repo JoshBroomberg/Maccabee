@@ -47,7 +47,8 @@ def initialize_expression_constants(parameters, expressions):
 
     for expression in expressions:
         constants_to_initialize = \
-            Constants.SUBFUNCTION_CONSTANT_SYMBOLS.intersection(expression.free_symbols)
+            Constants.DGPSampling.SUBFUNCTION_CONSTANT_SYMBOLS.intersection(
+                expression.free_symbols)
 
         initialized_expressions.append(expression.subs(
             zip(constants_to_initialize,
