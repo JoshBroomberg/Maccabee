@@ -1,4 +1,19 @@
-"""This module contains operational constants."""
+"""This module contains constants which are used throughout the package both in the internal operation code and to simplify and standardize user interaction with the external API.
+
+All constants are stored as attributes of the :class:`~maccabee.constants.Constants` class. So, all usage of constants will involve importing this class using the line ``from maccabee.constants import Constants``. For convenience and clarity, constants are nested into ``ConstantGroup`` classes which are the only attributes of the :class:`~maccabee.constants.Constants` class and which store actual parameters as their attributes. So, for example, the axis names for the axes of the distributional setting space can be accessed as the attributes of the class ``Constants.AxisNames``.
+
+All of the ``ConstantGroup`` classes can be introspected to view the constants stored in the group. This is done by calling the ``.all()`` method. By default this will (pretty) print a dictionary of the constant names and values and return the dictionary. Call the function with ``print=False`` to avoid printing the dictionary
+
+>>> from maccabee.constants import Constants
+>>> Constants.AxisNames.all(print=False)
+    { 'ALIGNMENT': 'ALIGNMENT',
+      'BALANCE': 'BALANCE',
+      'OUTCOME_NONLINEARITY': 'OUTCOME_NONLINEARITY',
+      'OVERLAP': 'OVERLAP',
+      'PERCENT_TREATED': 'PERCENT_TREATED',
+      'TE_HETEROGENEITY': 'TE_HETEROGENEITY',
+      'TREATMENT_NONLINEARITY': 'TREATMENT_NONLINEARITY'}
+"""
 
 from sympy.abc import a, c, x, y, z
 import sympy as sp
@@ -26,12 +41,14 @@ class ConstantGroup:
 
 # OPERATIONAL CONSTANTS
 class Constants:
-    '''
-    This class defines constants which are used throughout
-    the package.
-    '''
+    """
+    This Constants class contains the operational and interaction constants which are used throughout the package. Its attributes are subclasses of the ``ConstantGroup`` class each of which groups together a set of related constants. All of the ``ConstantGroup`` classes are below. Constants which are predominantly for internal use are marked [INTERNAL] and do not have explanations here. See the source code in :download:`constants.py </../../maccabee/constants.py>` for in-line comments.
+    """
 
-    class Params:
+    class ParamFilesAndPaths:
+        """[INTERNAL] Constants related to the location and parsed content of the YAML parameter specification files which control the parameter schema, default parameter values and metric-level parameter values. See the docs for the :mod:`maccabee.parameters` module for more detail.
+        """
+
         _SCHEMA_PATH = resource_filename(
             'maccabee', 'parameters/parameter_schema.yml')
 
@@ -43,27 +60,32 @@ class Constants:
         METRIC_LEVEL_SPEC_PATH = resource_filename(
             'maccabee', 'parameters/metric_level_parameter_specifications.yml')
 
-        class ParamSchemaKeysAndVals(ConstantGroup):
-            DESCRIPTION_KEY = "description"
+    class ParamSchemaKeysAndVals(ConstantGroup):
+        """[INTERNAL] Constants related to the keys and values of the parameter specification files mentioned under :class:`~maccabee.constants.Constants.ParamFilesAndPaths`."""
 
-            TYPE_KEY = "type"
-            TYPE_NUMBER = "number"
-            TYPE_BOOL = "bool"
-            TYPE_DICTIONARY = "dictionary"
-            TYPE_CALCULATED = "calculated"
+        DESCRIPTION_KEY = "description"
 
-            # Number type keys
-            MIN_KEY = "min"
-            MAX_KEY = "max"
+        TYPE_KEY = "type"
+        TYPE_NUMBER = "number"
+        TYPE_BOOL = "bool"
+        TYPE_DICTIONARY = "dictionary"
+        TYPE_CALCULATED = "calculated"
 
-            # Dict type keys
-            DICT_KEYS_KEY = "required_keys"
+        # Number type keys
+        MIN_KEY = "min"
+        MAX_KEY = "max"
 
-            # Calc type keys
-            EXPRESSION_KEY = "expr"
+        # Dict type keys
+        DICT_KEYS_KEY = "required_keys"
+
+        # Calc type keys
+        EXPRESSION_KEY = "expr"
 
     ### DGP Sampling constants ###
     class DGPSampling(ConstantGroup):
+        """[INTERNAL] Constants related to the sampling of the subfunctions which make up the sampled DGP treatment and outcome functions.
+        """
+
         LINEAR = "LINEAR"
         POLY_QUADRATIC = "POLY_QUAD"
         POLY_CUBIC = "POLY_CUBIC"
@@ -126,7 +148,10 @@ class Constants:
 
     ### DGP Component constants ###
 
-    class DGPComponents(ConstantGroup):
+    class DGPVariables(ConstantGroup):
+        """Constants related to the naming of the variables over which DGPs are defined. These will be of interest for users when handing the data properties of :class:`~maccabee.data_generation.GeneratedDataSet` instances as the columns of the :class:`~pandas.DataFrame` instances returned by these properties will be named according to these constants.
+        """
+
         COVARIATES_NAME = "X"
         TRANSFORMED_COVARIATES_NAME = "TRANSFORMED_X"
 
@@ -147,21 +172,56 @@ class Constants:
     ### Data Metric constants ###
 
     class AxisNames(ConstantGroup):
+        """Constants for the names of the :term:`axes <distributional problem space axis>` of the :term:`distributional problem space`. Maccabee allows for the sampling of DGPs (and associated data samples) at different 'levels' (locations) along these axes. See the :doc:`Design doc </design>` for more on Maccabee's theoretical approach.
+        """
+
+        #: The outcome nonlinearity axis - controls the degree of nonlinearity
+        #: in the outcome mechanism.
         OUTCOME_NONLINEARITY = "OUTCOME_NONLINEARITY"
+
+        #: The treatment nonlinearity axis - controls the degree of nonlinearity
+        #: in the treatment assignment mechanism.
         TREATMENT_NONLINEARITY = "TREATMENT_NONLINEARITY"
+
+        #: The percent treated axis - controls the percent of units that are exposed to treatment.
         PERCENT_TREATED = "PERCENT_TREATED"
+
+        #: The overlap axis - controls to covariate distribution overlap in
+        #: the treated and control groups.
+        #: WARNING: not currently supported in sampling.
         OVERLAP = "OVERLAP"
+
+        #: The balance axis - controls the degree of similarity between the
+        #: covariate distribution in the treated and control group.
         BALANCE = "BALANCE"
+
+        #: The alignment axis - controls the degree of overlap of appearance of covariates
+        #: in the treatment and outcome mechanisms. Effectively controlling
+        #: the number of confounders and ratio of confounders to non-confounders.
         ALIGNMENT = "ALIGNMENT"
+
+        #: The treatment effect heterogeneity axis - controls the degree to which
+        #: the treatment effect varies per unit.
         TE_HETEROGENEITY = "TE_HETEROGENEITY"
 
     class AxisLevels(ConstantGroup):
+        """Constants related to the 'levels' of each axis at which Maccabee can sample DGPs. These levels represent the existing presets but do not preclude sampling at any other point by manually specifying sampling parameters. See :class:`~maccabee.constants.Constants.AxisNames` for links to further explanation.
+        """
+
+        #: The constant for a 'low' level on a specific axis.
         LOW = "LOW"
+
+        #: The constant for a 'medium' level on a specific axis.
         MEDIUM = "MEDIUM"
+
+        #: The constant for a 'high' level on a specific axis.
         HIGH = "HIGH"
+
+        #: The constant for conveniently loading all of the level constants.
         LEVELS = (LOW, MEDIUM, HIGH)
 
-    class AxisMetricFunctions(ConstantGroup):
+    class DataMetricFunctions(ConstantGroup):
+        """[INTERNAL] Constants related to the functions used to calculate the metrics which quantify the location of data in the distributional problem space."""
         LINEAR_R2 = "Lin r2"
         LOGISTIC_R2 = "Log r2"
         PERCENT = "Percent"
@@ -173,7 +233,10 @@ class Constants:
 
     ### External Data constants ###
 
-    class Data(ConstantGroup):
+    class ExternalCovariateData(ConstantGroup):
+        """[INTERNAL] Constants related to external covariate data. See the :doc:`doc </usage/empirical-datasets>` on the empirical data sets built into Maccabee for more detail.
+        """
+
         get_dataset_path = lambda file_name: resource_filename(
             'maccabee', f"data/{file_name}.csv")
 
@@ -190,5 +253,6 @@ class Constants:
     ### Modeling constants ###
 
     class Model(ConstantGroup):
+        """Constants related to models and estimands."""
         ITE_ESTIMAND = "ITE"
         ATE_ESTIMAND = "ATE"

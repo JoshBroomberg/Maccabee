@@ -10,7 +10,7 @@ from .utils import select_given_probability_distribution, evaluate_expression, i
 from .data_generating_process import SampledDataGeneratingProcess
 
 SamplingConstants = Constants.DGPSampling
-ComponentConstants = Constants.DGPComponents
+ComponentConstants = Constants.DGPVariables
 
 class DataGeneratingProcessSampler():
     def __init__(self, parameters, data_source,

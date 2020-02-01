@@ -4,7 +4,7 @@ from ..constants import Constants
 import numpy as np
 import pandas as pd
 
-DGPComponents = Constants.DGPComponents
+DGPVariables = Constants.DGPVariables
 
 
 class GeneratedDataSet():
@@ -37,26 +37,26 @@ class GeneratedDataSet():
 
     @property
     def T(self):
-        return self.observed_outcome_data[DGPComponents.TREATMENT_ASSIGNMENT_NAME]
+        return self.observed_outcome_data[DGPVariables.TREATMENT_ASSIGNMENT_NAME]
 
     @property
     def Y(self):
-        return self.observed_outcome_data[DGPComponents.OBSERVED_OUTCOME_NAME]
+        return self.observed_outcome_data[DGPVariables.OBSERVED_OUTCOME_NAME]
 
     @property
     def Y0(self):
         return self.oracle_outcome_data[
-            DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
+            DGPVariables.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME]
 
     @property
     def Y1(self):
         return self.oracle_outcome_data[
-            DGPComponents.TREATMENT_EFFECT_NAME]
+            DGPVariables.TREATMENT_EFFECT_NAME]
 
     @property
     def TE(self):
         return self.oracle_outcome_data[
-            DGPComponents.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME]
+            DGPVariables.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME]
 
     @property
     def observed_data(self):

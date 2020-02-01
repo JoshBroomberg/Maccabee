@@ -5,7 +5,7 @@ from ..constants import Constants
 from ..data_generation.utils import evaluate_expression
 from ..modeling.models import CausalModel
 
-DGPComponents = Constants.DGPComponents
+DGPVariables = Constants.DGPVariables
 
 import numpy as np
 import sympy as sp
@@ -126,34 +126,34 @@ class GenmatchDataGeneratingProcess(DataGeneratingProcess):
         self.base_outcome_terms = self.outcome_weights * self.covar_symbols
         self.base_outcome_expression = np.sum(self.base_outcome_terms)
 
-    @data_generating_method(DGPComponents.COVARIATES_NAME, [])
+    @data_generating_method(DGPVariables.COVARIATES_NAME, [])
     def _generate_observed_covars(self, input_vars):
         return self.data_source.get_covar_df()
 
     @data_generating_method(
-        DGPComponents.TRANSFORMED_COVARIATES_NAME,
-        [DGPComponents.COVARIATES_NAME],
+        DGPVariables.TRANSFORMED_COVARIATES_NAME,
+        [DGPVariables.COVARIATES_NAME],
         data_analysis_mode_only=True)
     def _generate_transformed_covars(self, input_vars):
         # Generate the values of all the transformed covariates by running the
         # original covariate data through the transforms used in the outcome and
         # treatment functions.
 
-        observed_covariate_data = input_vars[DGPComponents.COVARIATES_NAME]
+        observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
 
         all_transforms = list(set(self.base_outcome_terms).union(
             self.treatment_logit_terms))
 
         data = {}
         for index, transform in enumerate(all_transforms):
-            data[f"{DGPComponents.TRANSFORMED_COVARIATES_NAME}{index}"] = \
+            data[f"{DGPVariables.TRANSFORMED_COVARIATES_NAME}{index}"] = \
                 evaluate_expression(transform, observed_covariate_data)
 
         return pd.DataFrame(data)
 
-    @data_generating_method(DGPComponents.PROPENSITY_SCORE_NAME, [DGPComponents.COVARIATES_NAME])
+    @data_generating_method(DGPVariables.PROPENSITY_SCORE_NAME, [DGPVariables.COVARIATES_NAME])
     def _generate_true_propensity_scores(self, input_vars):
-        observed_covariate_data = input_vars[DGPComponents.COVARIATES_NAME]
+        observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
 
         logits = evaluate_expression(
             self.treatment_logit_expression,
@@ -162,20 +162,20 @@ class GenmatchDataGeneratingProcess(DataGeneratingProcess):
         return 1/(1 + np.exp(-1*logits))
 
     @data_generating_method(
-        DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
-        [DGPComponents.COVARIATES_NAME])
+        DGPVariables.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+        [DGPVariables.COVARIATES_NAME])
     def _generate_outcomes_without_treatment(self, input_vars):
-        observed_covariate_data = input_vars[DGPComponents.COVARIATES_NAME]
+        observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
 
         return evaluate_expression(
             self.base_outcome_expression,
             observed_covariate_data)
 
     @data_generating_method(
-        DGPComponents.TREATMENT_EFFECT_NAME,
-        [DGPComponents.COVARIATES_NAME])
+        DGPVariables.TREATMENT_EFFECT_NAME,
+        [DGPVariables.COVARIATES_NAME])
     def _generate_treatment_effects(self, input_vars):
-        observed_covariate_data = input_vars[DGPComponents.COVARIATES_NAME]
+        observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
         return self.true_treat_effect
 
 class LogisticPropensityMatchingCausalModel(CausalModel):

@@ -52,7 +52,7 @@ def build_cpp_datasource():
 
     """
     return build_csv_datasource(
-        Constants.Data.CPP_PATH, Constants.Data.CPP_DISCRETE_COVARS)
+        Constants.ExternalCovariateData.CPP_PATH, Constants.ExternalCovariateData.CPP_DISCRETE_COVARS)
 
 def build_lalonde_datasource():
     """Short summary.
@@ -70,7 +70,7 @@ def build_lalonde_datasource():
 
     """
     return build_csv_datasource(
-        Constants.Data.LALONDE_PATH, Constants.Data.LALONDE_DISCRETE_COVARS)
+        Constants.ExternalCovariateData.LALONDE_PATH, Constants.ExternalCovariateData.LALONDE_DISCRETE_COVARS)
 
 def build_random_normal_datasource(
     n_covars = 20, n_observations = 1000,

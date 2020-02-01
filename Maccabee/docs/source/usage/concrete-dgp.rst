@@ -17,7 +17,7 @@ The code below specifies a concrete DGP with three normally distributed covariat
   import sympy as sp
   import pandas as pd
 
-  DGPComponents = Constants.DGPComponents
+  DGPVariables = Constants.DGPVariables
 
 
   class CustomConcreteDataGeneratingProcess(DataGeneratingProcess):
@@ -36,39 +36,39 @@ The code below specifies a concrete DGP with three normally distributed covariat
           # Linear untreated outcome function.
           self.base_outcome_function = 4*self.C
 
-      @data_generating_method(DGPComponents.COVARIATES_NAME, [])
+      @data_generating_method(DGPVariables.COVARIATES_NAME, [])
       def _generate_observed_covars(self, input_vars):
           X = np.random.normal(loc=0.0, scale=1.0, size=(
               self.n_observations, self.n_vars))
 
           return pd.DataFrame(X, columns=self.covar_names)
 
-      @data_generating_method(DGPComponents.PROPENSITY_SCORE_NAME,
-                              [DGPComponents.COVARIATES_NAME])
+      @data_generating_method(DGPVariables.PROPENSITY_SCORE_NAME,
+                              [DGPVariables.COVARIATES_NAME])
       def _generate_true_propensity_scores(self, input_vars):
-          observed_covariate_data = input_vars[DGPComponents.COVARIATES_NAME]
+          observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
 
           return evaluate_expression(
               self.treatment_assignment_function,
               observed_covariate_data)
 
       @data_generating_method(
-          DGPComponents.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
-          [DGPComponents.COVARIATES_NAME])
+          DGPVariables.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+          [DGPVariables.COVARIATES_NAME])
       def _generate_outcomes_without_treatment(self, input_vars):
-          observed_covariate_data = input_vars[DGPComponents.COVARIATES_NAME]
+          observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
 
           return evaluate_expression(
               self.base_outcome_function,
               observed_covariate_data)
 
-      @data_generating_method(DGPComponents.OUTCOME_NOISE_NAME, [])
+      @data_generating_method(DGPVariables.OUTCOME_NOISE_NAME, [])
       def _generate_outcome_noise_samples(self, input_vars):
           return np.random.normal(loc=0, scale=100, size=self.n_observations)
 
       @data_generating_method(
-          DGPComponents.TREATMENT_EFFECT_NAME,
-          [DGPComponents.COVARIATES_NAME])
+          DGPVariables.TREATMENT_EFFECT_NAME,
+          [DGPVariables.COVARIATES_NAME])
       def _generate_treatment_effects(self, input_vars):
           return 2
 
