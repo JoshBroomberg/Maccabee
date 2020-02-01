@@ -1,10 +1,11 @@
 :mod:`maccabee.modeling`
 ============================
 
-This module is comprised of the submodules listed below.
+.. automodule:: maccabee.modeling
 
 .. toctree::
-   :maxdepth: -1
+  :caption: Submodules
+  :maxdepth: -1
 
-   modeling/models.rst
-   modeling/model-metrics.rst
+  modeling/models.rst
+  modeling/performance-metrics.rst

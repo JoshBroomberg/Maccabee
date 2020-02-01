@@ -145,7 +145,6 @@ class Constants:
         HIGH = "HIGH"
         LEVELS = (LOW, MEDIUM, HIGH)
 
-    # Functions
     class AxisMetricFunctions:
         LINEAR_R2 = "Lin r2"
         LOGISTIC_R2 = "Log r2"

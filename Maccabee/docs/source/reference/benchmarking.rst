@@ -1,9 +1,10 @@
 :mod:`maccabee.benchmarking`
 ============================
 
-This module is comprised of one submodule.
+.. automodule:: maccabee.benchmarking
 
 .. toctree::
-   :maxdepth: -1
+  :caption: Submodules
+  :maxdepth: -1
 
-   benchmarking/benchmarking.rst
+  benchmarking/benchmarking.rst

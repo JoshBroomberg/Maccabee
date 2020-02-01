@@ -1,4 +1,17 @@
-"""This module contains the high-levels functions used to run benchmarks."""
+"""This module contains the high-levels functions used to run Monte Carlo trials and collect :term:`performance <performance metric>` and :term:`data <data metric>` metrics.
+
+The module consists of a series of three independent but functionally 'nested' benchmarking functions. Each function can be used on its own but is also used by the functions higher up the nesting hierarchy.
+
+* :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp` is the basic benchmarking function. It takes a single :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess` instance and evaluates a estimator using data sets sampled from the :term:`DGP` represented by the instance. The collected metrics are aggregated at two levels: the metric values for multiple samples are averaged and the resultant average metric values are then averaged across sampling runs. This two-level aggregation allows for the calculation of a standard deviation for the :term:`performance metrics <performance metric>` that are defined over multiple sample estimand values. For example - the absolute bias is found by averaging the signed error in the estimate over many trials. The standard deviation of the bias estimate thus requires multiple sampling runs each producing a single bias measure.
+
+|
+
+* :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp` is the next function up the benchmarking hierarchy. It takes :term:`DGP` sampling parameters in the form of a :class:`maccabee.parameters.parameter_store.ParameterStore` instance and a :class:`maccabee.data_sources.data_sources.DataSource` instance. It then samples DGPs based on the sampling parameters and uses :func:`~maccabee.benchmarking.benchmarkingbenchmark_model_using_concrete_dgp` to collect metrics for each sampled DGP. This introduces a third aggregation level, with metrics (and associated standard deviations) being averaged over a number of sampled DGPs.
+
+|
+
+* :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp_grid` is the next and final function up the benchmarking hierarchy. It takes a grid of sampling parameters corresponding to different levels of one of more data axes and then samples DGPs from each combination of sampling parameters in the grid using :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp`. There is no additional aggregation as the metrics for each parameter combination are reported individually.
+"""
 
 from sklearn.model_selection import ParameterGrid
 from collections import defaultdict
@@ -10,7 +23,7 @@ from ..parameters import build_parameters_from_axis_levels
 from ..data_generation import DataGeneratingProcessSampler, SampledDataGeneratingProcess
 from ..data_analysis import calculate_data_axis_metrics
 from ..utilities.threading import single_threaded_context
-from ..modeling.model_metrics import ATE_ACCURACY_METRICS, ITE_ACCURACY_METRICS
+from ..modeling.performance_metrics import ATE_ACCURACY_METRICS, ITE_ACCURACY_METRICS
 from ..exceptions import UnknownEstimandException
 from ..constants import Constants
 
@@ -69,10 +82,28 @@ def _get_performance_metric_functions(estimand):
 def benchmark_model_using_concrete_dgp(
     dgp,
     model_class, estimand,
-    num_runs, num_samples_from_dgp,
+    num_sampling_runs_per_dgp, num_samples_from_dgp,
     data_analysis_mode=False,
     data_metrics_spec=None,
     n_jobs=1):
+    """Sample datasets from the given DGP instance and calculate performance and (optionally) data metrics.
+
+    Args:
+        dgp (:class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess`): A DGP instance produced by a sampling procedure or through a concrete definition.
+        model_class (:class:`~maccabee.modeling.models.CausalModel`): A model instance defined by subclassing the base :class:`~maccabee.modeling.models.CausalModel` or using one of the included model types.
+        estimand (string): A string describing the estimand. The class :class:`maccabee.constants.Constants.Model` contains constants which can be used to specify the allowed estimands.
+        num_sampling_runs_per_dgp (int): The number of sampling runs to perform. Each run is comprised of `num_samples_from_dgp` data set samples which are passed to the metric functions.
+        num_samples_from_dgp (int): The number of data sets sampled from the DGP per sampling run.
+        data_analysis_mode (bool): If ``True``, data metrics are calculated according to the supplied `data_metrics_spec`. This can be slow and may be unecessary. Defaults to True.
+        data_metrics_spec (type): A dictionary which specifies which :term:`data metrics <data metric>` to calculate. The keys are axis names and the values are lists of string metric names. All axis names and the metrics for each axis are available in the dictionary :obj:`maccabee.data_analysis.data_metrics.AXES_AND_METRIC_NAMES` and the axis names are available as constants in from :class:`maccabee.constants.Constants.AxisNames`. If None, all data metrics are calculated. Defaults to None.
+        n_jobs (int): The number of processes on which to run the benchmark. Defaults to 1.
+
+    Returns:
+        tuple: A tuple with four entries. The first entry is a dictionary of aggregated performance metrics mapping names to numerical results aggregated across runs. The second entry is a dictionary of raw performance metrics mapping metric names to lists of numerical metric values from each run (averaged only across the samples in the run). This is useful for understanding the metric value distribution. The third and fourth entries are analogous dictionaries which contain the data metrics. They are empty dicts if `data_analysis_mode` is ``False``.
+
+    Raises:
+        UnknownEstimandException: If an unknown estimand is supplied.
+    """
 
     # Set DGP data analysis mode
     if dgp.get_data_analysis_mode() != data_analysis_mode:
@@ -91,7 +122,7 @@ def benchmark_model_using_concrete_dgp(
         num_samples_from_dgp, dgp.n_observations, estimand)
     perf_metric_names_and_funcs = _get_performance_metric_functions(estimand)
 
-    for run_index in range(num_runs):
+    for run_index in range(num_sampling_runs_per_dgp):
         estimand_sample_results = np.empty(data_store_shape)
         data_analysis_sample_results = defaultdict(list)
         datasets = np.empty(num_samples_from_dgp, dtype="O")
@@ -149,6 +180,28 @@ def benchmark_model_using_sampled_dgp(
     dgp_class=SampledDataGeneratingProcess,
     dgp_kwargs={},
     n_jobs=1):
+    """Short summary.
+
+    Args:
+        dgp_sampling_params (:class:`~maccabee.parameters.parameter_store.ParameterStore`): A :class:`~maccabee.parameters.parameter_store.ParameterStore` instance which contains the DGP sampling parameters which will be used when sampling DGPs.
+        data_source (:class:`~maccabee.data_sources.data_sources.DataSource`): a :class:`~maccabee.data_sources.data_sources.DataSource` instance which will be used as the source of covariates for sampled DGPs.
+        model_class (:class:`~maccabee.modeling.models.CausalModel`): A model instance defined by subclassing the base :class:`~maccabee.modeling.models.CausalModel` or using one of the included model types.
+        estimand (string): A string describing the estimand. The class :class:`maccabee.constants.Constants.Model` contains constants which can be used to specify the allowed estimands.
+        num_dgp_samples (int): The number of DGPs to sample. Each sampled DGP is benchmarked using :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp`.
+        num_samples_from_dgp (int): See :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp`.
+        num_sampling_runs_per_dgp (int): See :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp`. Defaults to 1.
+        data_analysis_mode (bool): See :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp`. Defaults to False.
+        data_metrics_spec (dict):  See :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp`. Defaults to None.
+        dgp_class (:class:`maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess`): The DGP class to instantiate after function sampling. This must be a subclass of :class:`maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess`. This can be used to tweak aspects of the default sampled DGP. Defaults to SampledDataGeneratingProcess.
+        dgp_kwargs (dict): A dictionary of keyword arguments to pass to the sampled DGPs at instantion time. Defaults to {}.
+        n_jobs (int): See :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp`. Defaults to 1.
+
+    Returns:
+        tuple: A tuple with four entries. See :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp`.
+
+    Raises:
+        UnknownEstimandException: If an unknown estimand is supplied.
+    """
 
     perf_metric_names_and_funcs = _get_performance_metric_functions(estimand)
 
@@ -168,7 +221,7 @@ def benchmark_model_using_sampled_dgp(
         performance_metric_data, _, data_metric_data, _ = \
             benchmark_model_using_concrete_dgp(
                 dgp, model_class, estimand,
-                num_runs=num_sampling_runs_per_dgp,
+                num_sampling_runs_per_dgp=num_sampling_runs_per_dgp,
                 num_samples_from_dgp=num_samples_from_dgp,
                 data_analysis_mode=data_analysis_mode,
                 data_metrics_spec=data_metrics_spec,
@@ -191,12 +244,23 @@ def benchmark_model_using_sampled_dgp(
 def benchmark_model_using_sampled_dgp_grid(
     dgp_param_grid, data_source,
     model_class, estimand,
-    num_dgp_samples, num_samples_from_dgp,
+    num_dgp_samples,
+    num_samples_from_dgp,
+    num_sampling_runs_per_dgp=1,
     data_analysis_mode=False,
     data_metrics_spec=None,
     param_overrides={},
     dgp_class=SampledDataGeneratingProcess,
     dgp_kwargs={}):
+    """This function is a thin wrapper around the :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp` function. It is used to run the sampeld DGP benchmark across many different sampling parameter value combinations. The signature is the same as the wrapped function with `dgp_sampling_params` replaced by `dgp_param_grid` and the new `param_overrides` option. For all other arguments, see :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp`.
+
+    Args:
+        dgp_param_grid (dict): A dictionary mapping data axis names - available as constants in :class:`maccabee.constants.Constants.AxisNames` to a list of data axis levels - available as constants in :class:`maccabee.constants.Constants.AxisLevels`. The :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp` function is called for each combination of axis level values - the cartesian product of the lists in the dictionary.
+        param_overrides (dict): A dictionary mapping parameter names to values of those parameters. The values in this dict override the values in the grid and any default parameter values. For all available parameter names and allowed values, see the :download:`parameter_schema.yml </../../maccabee/parameters/parameter_schema.yml>` file.
+
+    Returns:
+        :class:`~pandas.DataFrame`: A :class:`~pandas.DataFrame` containing one row per axis level combination and a column for each axis and each performance and data metric (as well as their standard deviations).
+    """
 
     metric_param_results = defaultdict(list)
 
@@ -213,7 +277,8 @@ def benchmark_model_using_sampled_dgp_grid(
             benchmark_model_using_sampled_dgp(
                 param_spec, data_source,
                 model_class, estimand,
-                num_dgp_samples, num_samples_from_dgp,
+                num_dgp_samples,
+                num_samples_from_dgp,
                 data_analysis_mode=data_analysis_mode,
                 data_metrics_spec=data_metrics_spec,
                 dgp_class=dgp_class,

@@ -213,6 +213,12 @@ AXES_AND_METRICS = {
     ]
 }
 
+#: A dictionary of all available data axes and the associated metrics
+#: which measure the position of a dataset along each axis.
+AXES_AND_METRIC_NAMES = dict(
+    (axis, [metric["name"] for metric in metrics])
+    for axis, metrics in AXES_AND_METRICS.items())
+
 
 ### Metric functions
 
