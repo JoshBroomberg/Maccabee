@@ -1,4 +1,4 @@
-"""This module contains the :class:`~maccabee.data_generation.DataGeneratingProcessSampler` class which is used to sample :term:`DGPs <DGP>` given sampling parameters which determine where in the :term:`distributional problem space` the :class:`~maccabee.data_generation.DataGeneratingProcessSampler` targets for sampling.
+"""This module contains the :class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcess` class which is used to sample :term:`DGPs <DGP>` given sampling parameters which determine where in the :term:`distributional problem space` the :class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcess` targets for sampling.
 """
 
 from sympy.abc import x
@@ -14,14 +14,16 @@ SamplingConstants = Constants.DGPSampling
 ComponentConstants = Constants.DGPVariables
 
 class DataGeneratingProcessSampler():
-    """The :class:`maccabee.data_generation.DataGeneratingProcessSampler` class takes a set of sampling parameters and a data source (a :class:`~maccabee.data_sources.data_sources.DataSource` instance) that provides the base covariates. It then samples the treatment assignment and outcome functions which, in combination with the observed covariate data from the :class:`~maccabee.data_sources.data_sources.DataSource` completely specify the DGP. The two functions are sampled based on the provided sampling parameters to target a location in the :term:`distributional problem space`.
+    """DataGeneratingProcessSampler(...)
 
-    The :class:`maccabee.data_generation.DataGeneratingProcessSampler` class is designed to work for most users and use cases. However, it is also designed to be customized through inheritance in order to cater to the needs of advanced users. This is achieved by breaking down the DGP sampling process into a series of steps corresponding to class methods which can be overridden individually. Users interested in this should see the linked source code for extensive in-line guiding comments.
+    The :class:`maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcess` class takes a set of sampling parameters and a data source (a :class:`~maccabee.data_sources.data_sources.DataSource` instance) that provides the base covariates. It then samples the treatment assignment and outcome functions which, in combination with the observed covariate data from the :class:`~maccabee.data_sources.data_sources.DataSource` completely specify the DGP. The two functions are sampled based on the provided sampling parameters to target a location in the :term:`distributional problem space`.
+
+    The :class:`maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcess` class is designed to work for most users and use cases. However, it is also designed to be customized through inheritance in order to cater to the needs of advanced users. This is achieved by breaking down the DGP sampling process into a series of steps corresponding to class methods which can be overridden individually. Users interested in this should see the linked source code for extensive in-line guiding comments.
 
     Args:
         parameters (:class:`~maccabee.parameters.parameter_store.ParameterStore`): A :class:`~maccabee.parameters.parameter_store.ParameterStore` instance which contains the parameters that control the sampling process. See the :mod:`maccabee.parameters` module docs for more detail on how to build a :class:`~maccabee.parameters.parameter_store.ParameterStore` instance.
         data_source (:class:`~maccabee.data_sources.data_sources.DataSource`): A :class:`~maccabee.data_sources.data_sources.DataSource` instance which provides observed covariates. See the :mod:`~maccabee.data_sources` module docs for more detail.
-        dgp_class (:class:`~maccabee.data_generation.SampledDataGeneratingProcess`): A class which inherits from :class:`~maccabee.data_generation.SampledDataGeneratingProcess`. Defaults to :class:`~maccabee.data_generation.SampledDataGeneratingProcess`. This is only necessary if you would like to customize some aspect of the sampled DGP which is not controllable through the sampling parameters provided in `parameters`.
+        dgp_class (:class:`~maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess`): A class which inherits from :class:`~maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess`. Defaults to :class:`~maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess`. This is only necessary if you would like to customize some aspect of the sampled DGP which is not controllable through the sampling parameters provided in `parameters`.
         dgp_kwargs (dict): A dictionary of keyword arguments which is passed to the sampled DGP at instantiation. Defaults to {}.
     """
     def __init__(self, parameters, data_source,
@@ -43,7 +45,7 @@ class DataGeneratingProcessSampler():
         * The DGP instance is assembled using the class and kwargs supplied at instantiation time and the components produced by the steps above.
 
         Returns:
-            :class:`~maccabee.data_generation.SampledDataGeneratingProcess`: A :class:`~maccabee.data_generation.SampledDataGeneratingProcess` instance representing a sampled DGP.
+            :class:`~maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess`: A :class:`~maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess` instance representing a sampled DGP.
         """
 
         # NOTE: for most customizing cases, this function can and should

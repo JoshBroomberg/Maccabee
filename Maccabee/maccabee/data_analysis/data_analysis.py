@@ -1,4 +1,4 @@
-"""This submodule contains the functions responsible for calculating the metrics used to quantify the position of a data set on each of the :term:`axes <distributional problem space axis>` of the :term:`distributional problem space`. As described in the sibling :mod:`~maccabee.data_analysis.data_metrics` submodule, each axis may have multiple metrics. The primary function in this module takes a :class:`maccabee.data_generation.GeneratedDataSet` instance and an `observation_spec` which selects which axes and associated metrics to calculate. It then executes the calculation using the dictionary-based metric definitions from :mod:`~maccabee.data_analysis.data_metrics`.
+"""This submodule contains the functions responsible for calculating the metrics used to quantify the position of a data set on each of the :term:`axes <distributional problem space axis>` of the :term:`distributional problem space`. As described in the sibling :mod:`~maccabee.data_analysis.data_metrics` submodule, each axis may have multiple metrics. The primary function in this module takes a :class:`maccabee.data_generation.generated_data_set.GeneratedDataSet` instance and an `observation_spec` which selects which axes and associated metrics to calculate. It then executes the calculation using the dictionary-based metric definitions from :mod:`~maccabee.data_analysis.data_metrics`.
 """
 
 import numpy as np
@@ -8,10 +8,10 @@ from .data_metrics import AXES_AND_METRICS, AXIS_METRIC_FUNCTIONS
 
 
 def calculate_data_axis_metrics(dataset, observation_spec=None, flatten_result=False):
-    """This function takes a :class:`maccabee.data_generation.GeneratedDataSet` instance and calculates the data metrics specified in `observation_spec`. It is primarily during the benchmarking process but can be used as a stand alone method for custom workflows.
+    """This function takes a :class:`maccabee.data_generation.generated_data_set.GeneratedDataSet` instance and calculates the data metrics specified in `observation_spec`. It is primarily during the benchmarking process but can be used as a stand alone method for custom workflows.
 
     Args:
-        dataset (:class:`~maccabee.data_generation.GeneratedDataSet`): A :class:`~maccabee.data_generation.GeneratedDataSet` instance generated from a :class:`~maccabee.data_generation.DataGeneratingProcess`.
+        dataset (:class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet`): A :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` instance generated from a :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess`.
 
         observation_spec (dict): A dictionary which specifies which :term:`data metrics <data metric>` to calculate and record. The keys are axis names and the values are lists of string metric names. All axis names and the metrics for each axis are available in the dictionary :obj:`maccabee.data_analysis.data_metrics.AXES_AND_METRIC_NAMES`. If None, all data metrics are calculated. Defaults to None.
 

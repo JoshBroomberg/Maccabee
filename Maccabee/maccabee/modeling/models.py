@@ -10,10 +10,10 @@ import numpy as np
 
 
 class CausalModel():
-    """The base :class:`maccabee.modeling.models.CausalModel` class presents a minimal interface. This is important because many models, with diverse operation/characteristics, are expected to conform to this interface. It takes a :class:`~maccabee.data_generation.GeneratedDataSet` instance which contains the data to be used for estimation. It has an abstract :meth:`~maccabee.modeling.models.CausalModel.fit` method which, when called on inheriting classes, should prepare the model to produce an estimate. This preparation could mean pre-processing data, training a neural network etc. Finally, it has a concrete :meth:`~maccabee.modeling.models.CausalModel.estimate` method which expects to find a defined method with the ``estimate_*`` where \* is an estimand name. It is up to the inheriting class to define the appropriate estimator methods depending on the estimands which will be evaluated.
+    """The base :class:`maccabee.modeling.models.CausalModel` class presents a minimal interface. This is important because many models, with diverse operation/characteristics, are expected to conform to this interface. It takes a :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` instance which contains the data to be used for estimation. It has an abstract :meth:`~maccabee.modeling.models.CausalModel.fit` method which, when called on inheriting classes, should prepare the model to produce an estimate. This preparation could mean pre-processing data, training a neural network etc. Finally, it has a concrete :meth:`~maccabee.modeling.models.CausalModel.estimate` method which expects to find a defined method with the ``estimate_*`` where \* is an estimand name. It is up to the inheriting class to define the appropriate estimator methods depending on the estimands which will be evaluated.
 
     Args:
-        dataset (:class:`~maccabee.data_generation.GeneratedDataSet`): A :class:`~maccabee.data_generation.GeneratedDataSet` instance produced by a :class:`~maccabee.data_generation.DataGeneratingProcess`.
+        dataset (:class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet`): A :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` instance produced by a :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess`.
 
     Attributes
         dataset: the data set supplied at initialization time.

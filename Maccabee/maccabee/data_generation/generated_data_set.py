@@ -13,9 +13,19 @@ class GeneratedDataSet():
     to easily usable names and a nice API.
     '''
 
+    # TODO: consider override the __get__ method on the class to
+    # dynamically inject the DGP variables as attributes rather
+    # than implementing them concretely or requiring a call to get_dgp_variable.
+
+    # TODO: write tooling to go to and from file to support static
+    # benchmarking runs in future.
+
+    # TODO: write tooling for convenient creation of GeneratedDataSet objects
+    # from standard data frames.
+
     #: This dictionary maps the various dgp variable names from
     #: :class:`maccabee.constants.Constants.DGPVariables` to the
-    #: properties of the :class:`maccabee.data_generation.GeneratedDataSet` #: instance to allow for convenient access via :meth:`maccabee.data_generation.GeneratedDataSet.get_dgp_variable`.
+    #: properties of the :class:`maccabee.data_generation.generated_data_set.GeneratedDataSet` #: instance to allow for convenient access via :meth:`maccabee.data_generation.generated_data_set.GeneratedDataSet.get_dgp_variable`.
     DGP_VARIABLE_ACCESSORS = {
         # Covariate Data
         DGPVariables.COVARIATES_NAME: lambda ds: ds.observed_covariate_data,
@@ -32,12 +42,6 @@ class GeneratedDataSet():
         DGPVariables.PROPENSITY_LOGIT_NAME: lambda ds: ds.oracle_outcome_data[DGPVariables.PROPENSITY_LOGIT_NAME],
         DGPVariables.PROPENSITY_SCORE_NAME: lambda ds: ds.oracle_outcome_data[DGPVariables.PROPENSITY_SCORE_NAME],
     }
-
-    # TODO: write tooling to go to and from file to support static
-    # benchmarking runs in future.
-
-    # TODO: write tooling for convenient creation of GeneratedDataSet objects
-    # from standard data frames.
 
     def __init__(self,
         observed_covariate_data,

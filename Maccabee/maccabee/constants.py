@@ -172,7 +172,7 @@ class Constants:
     ### DGP Component constants ###
 
     class DGPVariables(ConstantGroup):
-        """Constants related to the naming of the variables over which DGPs are defined. These are used when specifying concrete DGPs using the :class:`~maccabee.data_generation.ConcreteDataGeneratingProcess` class and when interacting with the data in the :class:`~maccabee.data_generation.GeneratedDataSet` instances produced when sampling from any :class:`~maccabee.data_generation.DataGeneratingProcess` instance.
+        """Constants related to the naming of the variables over which DGPs are defined. These are used when specifying concrete DGPs using the :class:`~maccabee.data_generation.data_generating_process.ConcreteDataGeneratingProcess` class and when interacting with the data in the :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` instances produced when sampling from any :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess` instance.
         """
 
         #: The collective name for the observed covariates for each individual

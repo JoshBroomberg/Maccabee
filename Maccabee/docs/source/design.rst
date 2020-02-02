@@ -21,6 +21,11 @@ High-Level Object Design
 
 Mind map / Object relations
 
+Theoretical Operations
+======================
+
+Discuss the position in distributional problem space, sampling of functions to hit positions, the idea of transformed covariates as it relates to sample functions(NB).
+
 Glossary
 ========
 
@@ -33,7 +38,9 @@ Glossary
       Data Metrics are real-valued functions which measure some distributional property of a generated data set. Each data metric measures the position of the data set along some well-defined 'axis' of the distributional problem space. Each axis may have more than one corresponding data metric.
 
     DGP
-      A Data Generating Process describes the mathematical process which gives rise to a set of observed data - covariates, treatment assignments, and outcomes - and the corresponding unobserved/oracle data, primarily the treatment effect. In Maccabee, a :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess` combines a covariate :class:`~maccabee.data_sources.data_sources.DataSource` and concrete/sampled treatment and outcome functions. These two components provide all the information required to draw sampled data sets.
+      A Data Generating Process describes the mathematical process which gives rise to a set of observed data - covariates, treatment assignments, and outcomes - and the corresponding unobserved/oracle data, primarily the treatment effect.
+
+      Concretely, a DGP relates the DGP Variables - defined in the constants group :class:`~maccabee.constants.Constants.DGPVariables` - through a series of stochastic/deterministic functions. The nature of these functions defines the location of the resultant data sets in the :term:`distributional problem space`.
 
     distributional problem space axis
       TODO - definition of axis
@@ -43,3 +50,9 @@ Glossary
 
     causal model
       TODO - causal model.
+
+    dsl
+      TODO - domain specific language.
+
+    dgp variable
+      TODO - DGP variable.

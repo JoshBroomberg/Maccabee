@@ -44,6 +44,8 @@ extensions = [
     'nbsphinx' # rendering ipynbs
 ]
 
+add_module_names = False 
+
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', 'https://pandas.pydata.org/pandas-docs/stable/objects.inv'),
