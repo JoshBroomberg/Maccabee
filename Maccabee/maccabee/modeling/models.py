@@ -16,7 +16,7 @@ class CausalModel():
         dataset (:class:`~maccabee.data_generation.GeneratedDataSet`): A :class:`~maccabee.data_generation.GeneratedDataSet` instance produced by a :class:`~maccabee.data_generation.DataGeneratingProcess`.
 
     Attributes
-        dataset: the dataset supplied at initialization time.
+        dataset: the data set supplied at initialization time.
     """
     def __init__(self, dataset):
         self.dataset = dataset

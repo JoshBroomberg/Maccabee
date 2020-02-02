@@ -57,7 +57,7 @@ In the code above, the user has supplied:
 With these choices made, the ``run_sampled_dgp_benchmark`` function can be used
 to:
 
-1. Sample Data Generating Processes, defined over the covariates in the data source, which conform to each of the desired parameter combinations. ``num_dgp_samples`` different DGPs will be sampled and each will be used to generate ``num_data_samples_per_dgp`` different datasets.
+1. Sample Data Generating Processes, defined over the covariates in the data source, which conform to each of the desired parameter combinations. ``num_dgp_samples`` different DGPs will be sampled and each will be used to generate ``num_data_samples_per_dgp`` different data sets.
 2. Fit the model and produce the estimated value of the ATE estimand.
 3. Compare the estimated value to the ground truth and collect performance metrics.
 
@@ -66,7 +66,7 @@ With this destination in mind, we can take a few steps back to understand the va
 Model Specification
 -------------------
 
-Although it is not displayed above, the first step in using Maccabee is to define a ``Model``. Model's represent causal inference methods, they are fit to a dataset and produce an estimate of one or more estimands.
+Although it is not displayed above, the first step in using Maccabee is to define a ``Model``. Model's represent causal inference methods, they are fit to a data set and produce an estimate of one or more estimands.
 
 The definition of the ``LinearRegressionCausalModel`` used above is below. All models take a `GeneratedDataSet` object at construction time and implement ``fit()`` and ``estimate_*()`` functions. Arbitrary code can be run at initialization, fit and estimate time.
 

@@ -1,4 +1,5 @@
-"""This module contains the DGP Sampler class which samples DGP instances given sampling parameters."""
+"""This module contains the :class:`~maccabee.data_generation.DataGeneratingProcessSampler` class which is used to sample :term:`DGPs <DGP>` given sampling parameters which determine where in the :term:`distributional problem space` the :class:`~maccabee.data_generation.DataGeneratingProcessSampler` targets for sampling.
+"""
 
 from sympy.abc import x
 import sympy as sp
@@ -13,6 +14,16 @@ SamplingConstants = Constants.DGPSampling
 ComponentConstants = Constants.DGPVariables
 
 class DataGeneratingProcessSampler():
+    """The :class:`maccabee.data_generation.DataGeneratingProcessSampler` class takes a set of sampling parameters and a data source (a :class:`~maccabee.data_sources.data_sources.DataSource` instance) that provides the base covariates. It then samples the treatment assignment and outcome functions which, in combination with the observed covariate data from the :class:`~maccabee.data_sources.data_sources.DataSource` completely specify the DGP. The two functions are sampled based on the provided sampling parameters to target a location in the :term:`distributional problem space`.
+
+    The :class:`maccabee.data_generation.DataGeneratingProcessSampler` class is designed to work for most users and use cases. However, it is also designed to be customized through inheritance in order to cater to the needs of advanced users. This is achieved by breaking down the DGP sampling process into a series of steps corresponding to class methods which can be overridden individually. Users interested in this should see the linked source code for extensive in-line guiding comments.
+
+    Args:
+        parameters (:class:`~maccabee.parameters.parameter_store.ParameterStore`): A :class:`~maccabee.parameters.parameter_store.ParameterStore` instance which contains the parameters that control the sampling process. See the :mod:`maccabee.parameters` module docs for more detail on how to build a :class:`~maccabee.parameters.parameter_store.ParameterStore` instance.
+        data_source (:class:`~maccabee.data_sources.data_sources.DataSource`): A :class:`~maccabee.data_sources.data_sources.DataSource` instance which provides observed covariates. See the :mod:`~maccabee.data_sources` module docs for more detail.
+        dgp_class (:class:`~maccabee.data_generation.SampledDataGeneratingProcess`): A class which inherits from :class:`~maccabee.data_generation.SampledDataGeneratingProcess`. Defaults to :class:`~maccabee.data_generation.SampledDataGeneratingProcess`. This is only necessary if you would like to customize some aspect of the sampled DGP which is not controllable through the sampling parameters provided in `parameters`.
+        dgp_kwargs (dict): A dictionary of keyword arguments which is passed to the sampled DGP at instantiation. Defaults to {}.
+    """
     def __init__(self, parameters, data_source,
         dgp_class=SampledDataGeneratingProcess, dgp_kwargs={}):
 
@@ -22,6 +33,24 @@ class DataGeneratingProcessSampler():
         self.dgp_kwargs = dgp_kwargs
 
     def sample_dgp(self):
+        """This is the primary external method of this class. It is used to sample a new DGP. Internally, a number of steps are executed:
+
+        * A set of observable covariates is sampled from the :class:`~maccabee.data_sources.data_sources.DataSource` supplied at instantiation.
+        * A subset of the observable covariates is sampled based on the observation likelihood parameterization.
+        * Potential confounders are sampled. These are the covariates which could enter either or both of the treatment and outcome function. Covariates not sampled here are nuisance/non-predictive covariates.
+        * The treatment and outcome subfunctions, the transformations which make up the two main functions, are sampled according to the desired parameters for function form and alignment (the degree of confounding).
+        * The treatment and outcome functions are assembled and normalized to meet parameters for target propensity score and treatment effect heterogeneity.
+        * The DGP instance is assembled using the class and kwargs supplied at instantiation time and the components produced by the steps above.
+
+        Returns:
+            :class:`~maccabee.data_generation.SampledDataGeneratingProcess`: A :class:`~maccabee.data_generation.SampledDataGeneratingProcess` instance representing a sampled DGP.
+        """
+
+        # NOTE: for most customizing cases, this function can and should
+        # remain unchanged as it only defines an execution order and passes
+        # fairly generic parameters. Rather override the various subroutines
+        # below.
+
         source_covariate_data = self.data_source.get_covar_df()
         covariate_symbols = np.array(sp.symbols(self.data_source.get_covar_names()))
 
@@ -40,14 +69,17 @@ class DataGeneratingProcessSampler():
             self.sample_treatment_and_outcome_covariate_transforms(
                 potential_confounder_symbols)
 
+        # Build the treatment assignment function.
         treatment_assignment_logit_func, treatment_assignment_function = \
             self.sample_treatment_assignment_function(
                 treatment_covariate_transforms, observed_covariate_data)
 
+        # Build the outcome and treatment effect functions.
         outcome_function, base_outcome_subfunc, treat_effect_subfunc = \
             self.sample_outcome_function(
                 outcome_covariate_transforms, observed_covariate_data)
 
+        # Construct DGP
         dgp = self.dgp_class(
             params=self.params,
             observed_covariate_data=observed_covariate_data,
@@ -63,22 +95,21 @@ class DataGeneratingProcessSampler():
         return dgp
 
     def sample_observed_covariate_data(self, source_covariate_data):
-        # Sample observations.
-
+        # 1. Sample a subset of the observable covariates.
         # For now, we allow simple uniform sampling. In future, we may
         # support more complex sampling procedures to allow for simulation
         # of observation censorship etc.
 
-        # NOTE: in the ideal world, this would occur on data generation
-        # (as part of the DGP run) rather than here. But normalization of the
-        # DGP to target specific distribution properties requires a static
-        # dataset.
         observed_covariate_data = source_covariate_data.sample(
             frac=self.params.OBSERVATION_PROBABILITY)
 
         return observed_covariate_data
 
     def sample_potential_confounders(self, covariate_symbols):
+        # 2. Sample potential confounders. These are the covariates which could
+        # enter the treatment and/or outcome functions. All covariates not
+        # selected here are non-predictive/nuisance covariates which can
+        # make the causal model process harder.
         potential_confounder_symbols, _ = select_given_probability_distribution(
             full_list=covariate_symbols,
             selection_probabilities=self.params.POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY)
@@ -90,44 +121,55 @@ class DataGeneratingProcessSampler():
 
     def sample_covariate_transforms(self, covariate_symbols,
         transform_probabilities, empty_allowed=False):
-        """
-        Sample a set of transforms which will be applied to the base covariates.
-        The set of transforms is governed by the specified probabilities for
-        each possible transform type. Each transform is parameterized by
-        a set of constants.
+        # 3A. Sample a set of transforms which will be applied to the covariates
+        # supplied in covariate_symbols based on the transform probabilities in
+        # transform_probabilities
 
-        These transforms are used in the finalized functional form of the
-        treat/outcome functions. Each of these functions uses
-        combines a set of random transforms of the covariates (produced by this
-        function). The subfunction form probabilities and combination of the
-        transforms is different for the treat and outcome function.
-        """
-        #TODO NB: Post-process the output of this function to group terms
+        # The set of transforms is governed by the specific probabilities for
+        # each possible transform type. Each transform is parameterized by
+        # a set of constants which are then initialized randomly.
+
+        # These transforms are used in the finalized functional form of the
+        # treat/outcome functions. Each of these functions
+        # combines a set of random transforms of the covariates (produced by this
+        # function). The subfunction form probabilities and the combination form
+        # is different for the treat and outcome function.
+
+        # TODO: Post-process the output of this function to group terms
         # based on the same covariates and produce new multiplicative
-        # combinations of different covariates.
+        # combinations of different covariates as in Dorie et al (2019)
 
         selected_covariate_transforms = []
+
+        # Loop over the transformation forms in SUBFUNCTION_FORMS.
         for transform_name, transform_spec in SamplingConstants.SUBFUNCTION_FORMS.items():
+
+            # Extract the subfunction form information.
             transform_expression = transform_spec[SamplingConstants.EXPRESSION_KEY]
             transform_covariate_symbols = transform_spec[SamplingConstants.COVARIATE_SYMBOLS_KEY]
             transform_discrete_allowed = transform_spec[SamplingConstants.DISCRETE_ALLOWED_KEY]
 
+            # Filter out covariates which are not allowed in this subfunction.
             usable_covariate_symbols = covariate_symbols
             if not transform_discrete_allowed:
                 usable_covariate_symbols = list(filter(
                     lambda sym: str(sym) not in self.data_source.get_discrete_covar_names(),
                     covariate_symbols))
 
-            # All possible combinations of covariates for the given transform.
+            # TODO: this should be memoized.
+            # Generate possible combinations of covariates for the given transform.
+            # This is the set of all possible instantiations of this subfunction.
             covariate_combinations = np.array(
                 list(combinations(
                     usable_covariate_symbols,
                     len(transform_covariate_symbols))))
 
+            # Sample from the set of all possible combinations.
             selected_covar_combinations, _ = select_given_probability_distribution(
                 full_list=covariate_combinations,
                 selection_probabilities=transform_probabilities[transform_name])
 
+            # Instantiate the subfunction with the sampled covariates.
             selected_covariate_transforms.extend([transform_expression.subs(
                                     zip(transform_covariate_symbols, covar_comb))
                                     for covar_comb in selected_covar_combinations
@@ -144,7 +186,8 @@ class DataGeneratingProcessSampler():
         # covariates. Cap the number of covariate transforms at a multiple
         # of the number of base covariates.
         max_transform_count = \
-            SamplingConstants.MAX_MULTIPLE_TRANSFORMED_TO_ORIGINAL_TERMS*len(covariate_symbols)
+            SamplingConstants.MAX_MULTIPLE_TRANSFORMED_TO_ORIGINAL_TERMS*len(
+                covariate_symbols)
 
         if len(selected_covariate_transforms) > max_transform_count:
             # Randomly sample selected transforms with expected number selected
@@ -160,10 +203,11 @@ class DataGeneratingProcessSampler():
         return selected_covariate_transforms
 
     def sample_treatment_and_outcome_covariate_transforms(self, potential_confounder_symbols):
-        """
-        Sample covariate transforms for the treatment and outcome function
-        and then modify the sampled transforms to generate desired alignment.
-        """
+        # 3B. Sample covariate transforms for the treatment and outcome function
+        # and then modify the sampled transforms to generate desired alignment.
+        # IE, adjust so that there is the desired amount of overlap in transformed
+        # covariates which is the actual level of confounding.
+
         outcome_covariate_transforms = self.sample_covariate_transforms(
                 potential_confounder_symbols,
                 self.params.OUTCOME_MECHANISM_COVARIATE_SELECTION_PROBABILITY)
@@ -182,6 +226,7 @@ class DataGeneratingProcessSampler():
                 all_transforms,
                 selection_probabilities=self.params.ACTUAL_CONFOUNDER_ALIGNMENT)
 
+        # Extract treat and outcome exclusive transforms.
         treat_only_transforms = list(set(treatment_covariate_transforms).difference(aligned_transforms))
         outcome_only_transforms = list(set(outcome_covariate_transforms).difference(aligned_transforms))
 
@@ -209,11 +254,10 @@ class DataGeneratingProcessSampler():
 
     def sample_treatment_assignment_function(self,
         treatment_covariate_transforms, observed_covariate_data):
-        """
-        Sample a treatment assignment function by combining the sampled covariate
-        transforms, initializing the constants, and normalizing the function
-        outputs to conform to constraints and targets on the propensity scores.
-        """
+        # 4. Sample a treatment assignment function by combining the sampled covariate
+        # transforms and normalizing the function outputs to conform to
+        # constraints and targets on the propensity scores.
+
         # TODO: consider recursively applying the covariate transformation
         # to produce "deep" functions. Probably overkill.
         # TODO: add non-linear activation function
@@ -279,28 +323,35 @@ class DataGeneratingProcessSampler():
 
     def sample_treatment_effect_subfunction(self,
         outcome_covariate_transforms, observed_covariate_data):
-        """ Create treatment effect subfunction """
+        # 5A. Construct the treatment effect subfunction by sampling
+        # from the set of transformed covariates which make up the
+        # outcome function. The more transformed covariates appear
+        # in the treatment function, the more heterogenous the treatment
+        # effect.
 
+        # Sample a base effect from the distribution in the parameters.
         base_treatment_effect = self.params.sample_treatment_effect()[0]
 
-        # Sample outcome subfunctions to interact with Treatment effect.
+        # Sample outcome subfunctions to interact with base treatment effect.
         selected_interaction_terms, _ = select_given_probability_distribution(
                 full_list=outcome_covariate_transforms,
                 selection_probabilities=self.params.TREATMENT_EFFECT_HETEROGENEITY)
 
+        # Initialize constants.
         initialized_interaction_terms = initialize_expression_constants(
             self.params,
             selected_interaction_terms)
 
-        # Build multiplier
+        # Build the covariate multiplier which will interact with the treat effect.
         treatment_effect_multiplier_expr = np.sum(initialized_interaction_terms)
 
         # Process interaction terms into treatment subfunction.
         if treatment_effect_multiplier_expr != 0:
 
             # Normalize multiplier size.
-            # TODO: vaidate the approach to normalization used here
-            # vs other function construction.
+
+            # TODO: vaidate the approach to normalization used here (mean/std)
+            # vs treatment assignment function approach.
             sampled_data = observed_covariate_data.sample(
                 frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
@@ -326,15 +377,15 @@ class DataGeneratingProcessSampler():
 
     def sample_outcome_function(self,
         outcome_covariate_transforms, observed_covariate_data):
-        """ Create outcome function"""
+        # 5B. construct the outcome function analogously to the way
+        # the treatment assignment function was constructed.
 
         # TODO: consider recursively applying the covariate transformation
         # to produce "deep" functions. Probability overkill.
-
-        # Build base outcome function. Additive combination of the true covariates.
-
         # TODO: add non-linear activation function and ensure proper normalization.
         # using or changing the OUTCOME_MECHANISM_EXPONENTIATION param.
+
+        # Build base outcome function. Additive combination of the true covariates.
         base_outcome_expression = np.sum(outcome_covariate_transforms)
 
         # Sample data to evaluate distribution.

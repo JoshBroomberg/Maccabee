@@ -143,5 +143,5 @@ SCHEMA:
     type: number
     <<: *probability_min_max
     description: |
-      Marginal probability of observing any given row of the dataset.
+      Marginal probability of observing any given row of the data set.
       Used to reduce the overall number of observations if desired.

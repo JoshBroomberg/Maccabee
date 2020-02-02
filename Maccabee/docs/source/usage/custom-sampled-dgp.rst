@@ -31,7 +31,7 @@ However, it may be useful to customize the DGP sampling process. For example, to
   # Sample a DGP.
   dgp = dgp_sampler.sample_dgp()
 
-  # Generate a dataset.
+  # Generate a data set.
   dataset = dgp.generate_dataset()
 
 .. code-block:: python

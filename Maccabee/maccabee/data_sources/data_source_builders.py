@@ -1,4 +1,4 @@
-"""This module contains utility functions of the form ``build_*_datasource`` which provide a convenient way to instantiate :class:`DataSource <maccabee.data_sources.DataSource>` instances corresponding to commonly used/useful datasets."""
+"""This module contains utility functions of the form ``build_*_datasource`` which provide a convenient way to instantiate :class:`DataSource <maccabee.data_sources.DataSource>` instances corresponding to commonly used/useful data sets."""
 
 import numpy as np
 import pandas as pd

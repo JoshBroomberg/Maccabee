@@ -86,7 +86,7 @@ def benchmark_model_using_concrete_dgp(
     data_analysis_mode=False,
     data_metrics_spec=None,
     n_jobs=1):
-    """Sample datasets from the given DGP instance and calculate performance and (optionally) data metrics.
+    """Sample data sets from the given DGP instance and calculate performance and (optionally) data metrics.
 
     Args:
         dgp (:class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess`): A DGP instance produced by a sampling procedure or through a concrete definition.
@@ -112,7 +112,7 @@ def benchmark_model_using_concrete_dgp(
 
     dgp.set_data_analysis_mode(data_analysis_mode)
 
-    # Build a runner function which samples a dataset from the dgp,
+    # Build a runner function which samples a data set from the dgp,
     # builds the model and finds the estimand value.
     run_model_on_dgp = partial(_gen_data_and_apply_model, dgp, model_class, estimand)
 
@@ -163,7 +163,7 @@ def benchmark_model_using_concrete_dgp(
                 for sample_index, effect_estimate_and_truth, dataset in pool.imap_unordered(
                     run_model_on_dgp, sample_indeces):
 
-                    # Store estimand and dataset samples.
+                    # Store estimand and data set samples.
                     estimand_sample_results[sample_index, :] = effect_estimate_and_truth
                     datasets[sample_index] = dataset
 
@@ -172,7 +172,7 @@ def benchmark_model_using_concrete_dgp(
                 if data_analysis_mode:
                     # Loop over generated datasets in order.
                     for data_metric_results in pool.map(collect_dataset_metrics, datasets):
-                        # Record all metrics at the sampled dataset level
+                        # Record all metrics at the sampled data set level
                         # for later aggregation.
                         for axis_metric_name, axis_metric_val in data_metric_results.items():
                             data_metrics_sample_results[axis_metric_name].append(

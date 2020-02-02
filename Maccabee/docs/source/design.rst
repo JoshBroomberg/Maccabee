@@ -30,7 +30,7 @@ Glossary
       Performance Metrics are real-valued functions which measure the quality of a causal estimator by comparing the estimand value to the ground truth. A performance metric may be well defined for a single estimand value but typically, in the context of this package, they are defined over a sample of estimand values with each estimand value corresponding to an estimate of the causal effect/s in a generated data set.
 
     data metric
-      Data Metrics are real-valued functions which measure some distributional property of a generated data set. Each data metric measures the position of the dataset along some well-defined 'axis' of the distributional problem space. Each axis may have more than one corresponding data metric.
+      Data Metrics are real-valued functions which measure some distributional property of a generated data set. Each data metric measures the position of the data set along some well-defined 'axis' of the distributional problem space. Each axis may have more than one corresponding data metric.
 
     DGP
       A Data Generating Process describes the mathematical process which gives rise to a set of observed data - covariates, treatment assignments, and outcomes - and the corresponding unobserved/oracle data, primarily the treatment effect. In Maccabee, a :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess` combines a covariate :class:`~maccabee.data_sources.data_sources.DataSource` and concrete/sampled treatment and outcome functions. These two components provide all the information required to draw sampled data sets.

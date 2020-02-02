@@ -290,7 +290,7 @@ class Constants:
         """[INTERNAL] Constants related to external covariate data. See the :doc:`doc </usage/empirical-datasets>` on the empirical data sets built into Maccabee for more detail.
         """
 
-        # Build the path to a dataset given a dataset name.
+        # Build the path to a data set given a data set name.
         get_dataset_path = lambda file_name: resource_filename(
             'maccabee', f"data/{file_name}.csv")
 
