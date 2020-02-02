@@ -40,3 +40,6 @@ Glossary
 
     distributional problem space
       TODO - definition of space
+
+    causal model
+      TODO - causal model.

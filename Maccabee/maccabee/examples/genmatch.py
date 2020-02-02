@@ -1,4 +1,4 @@
-from ..data_generation import DataGeneratingProcess, data_generating_method
+from ..data_generation import ConcreteDataGeneratingProcess, data_generating_method
 from ..data_sources.data_sources import StochasticDataSource
 
 from ..constants import Constants
@@ -75,7 +75,7 @@ def build_genmatch_datasource(n_observations=1000):
         discrete_covar_names=list(
             GENMATCH_COVAR_NAMES[GENMATCH_BINARY_COVAR_INDECES]) + ["X0"])
 
-class GenmatchDataGeneratingProcess(DataGeneratingProcess):
+class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
     def __init__(self,
                  quadratic_indeces, interactions_list,
                  n_observations, data_analysis_mode):

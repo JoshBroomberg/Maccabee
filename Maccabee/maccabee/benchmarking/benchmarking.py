@@ -1,12 +1,10 @@
-"""This module contains the high-levels functions used to run Monte Carlo trials and collect :term:`performance <performance metric>` and :term:`data <data metric>` metrics.
-
-The module consists of a series of three independent but functionally 'nested' benchmarking functions. Each function can be used on its own but is also used by the functions higher up the nesting hierarchy.
+"""This submodule consists of a series of three independent but functionally 'nested' benchmarking functions. Each function can be used on its own but is also used by the functions higher up the nesting hierarchy.
 
 * :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp` is the basic benchmarking function. It takes a single :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess` instance and evaluates a estimator using data sets sampled from the :term:`DGP` represented by the instance. The collected metrics are aggregated at two levels: the metric values for multiple samples are averaged and the resultant average metric values are then averaged across sampling runs. This two-level aggregation allows for the calculation of a standard deviation for the :term:`performance metrics <performance metric>` that are defined over multiple sample estimand values. For example - the absolute bias is found by averaging the signed error in the estimate over many trials. The standard deviation of the bias estimate thus requires multiple sampling runs each producing a single bias measure.
 
 |
 
-* :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp` is the next function up the benchmarking hierarchy. It takes :term:`DGP` sampling parameters in the form of a :class:`maccabee.parameters.parameter_store.ParameterStore` instance and a :class:`maccabee.data_sources.data_sources.DataSource` instance. It then samples DGPs based on the sampling parameters and uses :func:`~maccabee.benchmarking.benchmarkingbenchmark_model_using_concrete_dgp` to collect metrics for each sampled DGP. This introduces a third aggregation level, with metrics (and associated standard deviations) being averaged over a number of sampled DGPs.
+* :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp` is the next function up the benchmarking hierarchy. It takes :term:`DGP` sampling parameters in the form of a :class:`~maccabee.parameters.parameter_store.ParameterStore` instance and a :class:`~maccabee.data_sources.data_sources.DataSource` instance. It then samples DGPs based on the sampling parameters and uses :func:`~maccabee.benchmarking.benchmarkingbenchmark_model_using_concrete_dgp` to collect metrics for each sampled DGP. This introduces a third aggregation level, with metrics (and associated standard deviations) being averaged over a number of sampled DGPs.
 
 |
 
@@ -23,7 +21,7 @@ from ..parameters import build_parameters_from_axis_levels
 from ..data_generation import DataGeneratingProcessSampler, SampledDataGeneratingProcess
 from ..data_analysis import calculate_data_axis_metrics
 from ..utilities.threading import single_threaded_context
-from ..modeling.performance_metrics import ATE_ACCURACY_METRICS, ITE_ACCURACY_METRICS
+from ..modeling.performance_metrics import AVG_EFFECT_METRICS, INDIVIDUAL_EFFECT_METRICS
 from ..exceptions import UnknownEstimandException
 from ..constants import Constants
 
@@ -60,22 +58,24 @@ def _sample_dgp(dgp_sampler, index):
     return index, dgp_sampler.sample_dgp()
 
 def _get_performance_metric_data_structures(num_samples_from_dgp, n_observations, estimand):
-    if estimand == Constants.Model.ATE_ESTIMAND:
-        data_store_shape = (num_samples_from_dgp, 2)
-    elif estimand == Constants.Model.ITE_ESTIMAND:
+    if estimand not in Constants.Model.ALL_ESTIMANDS:
+        raise UnknownEstimandException()
+
+    if estimand == Constants.Model.ITE_ESTIMAND:
         data_store_shape = (num_samples_from_dgp, 2, n_observations)
     else:
-        raise UnknownEstimandException()
+        data_store_shape = (num_samples_from_dgp, 2)
 
     return data_store_shape
 
 def _get_performance_metric_functions(estimand):
-    if estimand == Constants.Model.ATE_ESTIMAND:
-        perf_metric_names_and_funcs = ATE_ACCURACY_METRICS
-    elif estimand == Constants.Model.ITE_ESTIMAND:
-        perf_metric_names_and_funcs = ITE_ACCURACY_METRICS
-    else:
+    if estimand not in Constants.Model.ALL_ESTIMANDS:
         raise UnknownEstimandException()
+
+    if estimand == Constants.Model.ITE_ESTIMAND:
+        perf_metric_names_and_funcs = INDIVIDUAL_EFFECT_METRICS
+    else:
+        perf_metric_names_and_funcs = AVG_EFFECT_METRICS
 
     return perf_metric_names_and_funcs
 
@@ -95,7 +95,7 @@ def benchmark_model_using_concrete_dgp(
         num_sampling_runs_per_dgp (int): The number of sampling runs to perform. Each run is comprised of `num_samples_from_dgp` data set samples which are passed to the metric functions.
         num_samples_from_dgp (int): The number of data sets sampled from the DGP per sampling run.
         data_analysis_mode (bool): If ``True``, data metrics are calculated according to the supplied `data_metrics_spec`. This can be slow and may be unecessary. Defaults to True.
-        data_metrics_spec (type): A dictionary which specifies which :term:`data metrics <data metric>` to calculate. The keys are axis names and the values are lists of string metric names. All axis names and the metrics for each axis are available in the dictionary :obj:`maccabee.data_analysis.data_metrics.AXES_AND_METRIC_NAMES` and the axis names are available as constants in from :class:`maccabee.constants.Constants.AxisNames`. If None, all data metrics are calculated. Defaults to None.
+        data_metrics_spec (type): A dictionary which specifies which :term:`data metrics <data metric>` to calculate and record. The keys are axis names and the values are lists of string metric names. All axis names and the metrics for each axis are available in the dictionary :obj:`maccabee.data_analysis.data_metrics.AXES_AND_METRIC_NAMES`. If None, all data metrics are calculated. Defaults to None.
         n_jobs (int): The number of processes on which to run the benchmark. Defaults to 1.
 
     Returns:
@@ -112,43 +112,74 @@ def benchmark_model_using_concrete_dgp(
 
     dgp.set_data_analysis_mode(data_analysis_mode)
 
+    # Build a runner function which samples a dataset from the dgp,
+    # builds the model and finds the estimand value.
     run_model_on_dgp = partial(_gen_data_and_apply_model, dgp, model_class, estimand)
+
+    # Build a runner function which calculates the data metrics
+    # for a dataset given the data_metrics_spec
+    collect_dataset_metrics = partial(
+        calculate_data_axis_metrics,
+        observation_spec=data_metrics_spec,
+        flatten_result=True)
+
     sample_indeces = range(num_samples_from_dgp)
 
+    # Results data structures which store the metric values
+    # for each sampling run, aggregated across the samples in the run.
     performance_metric_run_results = defaultdict(list)
     data_metric_run_results = defaultdict(list)
 
-    data_store_shape = _get_performance_metric_data_structures(
+    # The within-run performance metric functions and data structures are different
+    # for each estimand. These helper functions provide the state required
+    # to adjust for each estimand.
+    perf_metric_data_store_shape = _get_performance_metric_data_structures(
         num_samples_from_dgp, dgp.n_observations, estimand)
     perf_metric_names_and_funcs = _get_performance_metric_functions(estimand)
 
+    # Synchronous loop over the sampling runs.
     for run_index in range(num_sampling_runs_per_dgp):
-        estimand_sample_results = np.empty(data_store_shape)
-        data_analysis_sample_results = defaultdict(list)
-        datasets = np.empty(num_samples_from_dgp, dtype="O")
 
+        # Data structures to store the datasets, sampled estimand values and
+        # data metrics for each sample in this sampling run.
+
+        datasets = np.empty(num_samples_from_dgp, dtype="O")
+        estimand_sample_results = np.empty(perf_metric_data_store_shape)
+        data_metrics_sample_results = defaultdict(list) # TODO: numpy
+
+        # Begin sampling.
+
+        # Sampling occurs in a single threaded context so that, when split
+        # across cores, the numpy functions in each process don't use
+        # more than the resources allocated to the process.
         with single_threaded_context():
+
+            # Build a multiprocessing pool based on the allowed parallelism
+            # but only up to the max parralelism from num_samples_from_dgp.
             with Pool(processes=min(n_jobs, num_samples_from_dgp)) as pool:
+
+                # Use the runner function and multiprocessing pool to draw
+                # and process data samples into estimand samples.
                 for sample_index, effect_estimate_and_truth, dataset in pool.imap_unordered(
                     run_model_on_dgp, sample_indeces):
 
+                    # Store estimand and dataset samples.
                     estimand_sample_results[sample_index, :] = effect_estimate_and_truth
                     datasets[sample_index] = dataset
 
+                # If in data analysis mode, use the pool to run data metric
+                # calculation.
                 if data_analysis_mode:
-                    collect_dataset_metrics = partial(
-                        calculate_data_axis_metrics,
-                        observation_spec=data_metrics_spec)
-
-                    # Preserve order to associate results with datasets.
-                    for _, data_metric_results in pool.map(
-                        collect_dataset_metrics, datasets):
-
+                    # Loop over generated datasets in order.
+                    for data_metric_results in pool.map(collect_dataset_metrics, datasets):
+                        # Record all metrics at the sampled dataset level
+                        # for later aggregation.
                         for axis_metric_name, axis_metric_val in data_metric_results.items():
-                            data_analysis_sample_results[axis_metric_name].append(
+                            data_metrics_sample_results[axis_metric_name].append(
                                 axis_metric_val)
 
-        # Process sample results into metric estimates
+        # At the end of the sampling for this sampling run, process sample
+        # estimand results into metric estimates.
         estimate_vals = estimand_sample_results[:, 0]
         true_vals = estimand_sample_results[:, 1]
 
@@ -156,11 +187,15 @@ def benchmark_model_using_concrete_dgp(
             performance_metric_run_results[metric_name].append(metric_func(
                 estimate_vals, true_vals))
 
+        # Aggregate the data metrics by averaging across samples so that
+        # there is a single real value per sampling run as with the perf
+        # metrics.
         if data_analysis_mode:
-            for axis_metric_name, vals in data_analysis_sample_results.items():
+            for axis_metric_name, vals in data_metrics_sample_results.items():
                 data_metric_run_results[axis_metric_name].append(
                     np.mean(vals))
 
+    # Aggregate perf and data metrics across sampling runs.
     performance_metric_aggregated_results = _aggregate_metric_results(performance_metric_run_results)
     data_metric_aggregated_results = _aggregate_metric_results(data_metric_run_results, std=False)
 
@@ -197,7 +232,7 @@ def benchmark_model_using_sampled_dgp(
         n_jobs (int): See :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp`. Defaults to 1.
 
     Returns:
-        tuple: A tuple with four entries. See :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp`.
+        tuple: A tuple with four entries. See :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp` for a description of the entries but note that, in this func, the aggregate metric values are averaged across dgp samples and sampling runs and the raw metric values correspond to averages over sampling runs for each sampled DGP. This means each entry in the raw metrics list corresponds to the aggregated result of the :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp` function.
 
     Raises:
         UnknownEstimandException: If an unknown estimand is supplied.
@@ -212,11 +247,17 @@ def benchmark_model_using_sampled_dgp(
         dgp_kwargs=dgp_kwargs)
 
     dgp_sampler = partial(_sample_dgp, dgp_sampler)
+
+    # Build a multiprocessing pool which exploits the parallelism in the DGP
+    # sampling. Use it to sample all DGPs.
     with Pool(processes=min(n_jobs, num_dgp_samples)) as pool:
         dgps = pool.map(dgp_sampler, range(num_dgp_samples))
 
+    # Data structures for storing the metric results for each sampled DGP.
     performance_metric_dgp_results = defaultdict(list)
     data_metric_dgp_results = defaultdict(list)
+
+    # For each dgp, run a concrete benchmark.
     for _, dgp in dgps:
         performance_metric_data, _, data_metric_data, _ = \
             benchmark_model_using_concrete_dgp(
@@ -227,10 +268,15 @@ def benchmark_model_using_sampled_dgp(
                 data_metrics_spec=data_metrics_spec,
                 n_jobs=n_jobs)
 
+        # Extract and store the aggregated perf metric results (across
+        # all the sampling runs). This loop excludes the standard deviation
+        # from being collected at this stage. It is calculated over the
+        # sampled dgp results.
         for metric_name in perf_metric_names_and_funcs:
             performance_metric_dgp_results[metric_name].append(
                 performance_metric_data[metric_name])
 
+        # As above, but for the data metrics which don't have a standard dev.
         if data_analysis_mode:
             for axis_metric_name, val in data_metric_data.items():
                 data_metric_dgp_results[axis_metric_name].append(val)
@@ -255,7 +301,7 @@ def benchmark_model_using_sampled_dgp_grid(
     """This function is a thin wrapper around the :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp` function. It is used to run the sampeld DGP benchmark across many different sampling parameter value combinations. The signature is the same as the wrapped function with `dgp_sampling_params` replaced by `dgp_param_grid` and the new `param_overrides` option. For all other arguments, see :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp`.
 
     Args:
-        dgp_param_grid (dict): A dictionary mapping data axis names - available as constants in :class:`maccabee.constants.Constants.AxisNames` to a list of data axis levels - available as constants in :class:`maccabee.constants.Constants.AxisLevels`. The :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp` function is called for each combination of axis level values - the cartesian product of the lists in the dictionary.
+        dgp_param_grid (dict): A dictionary mapping :term:`data axis <distributional problem space axis>` names to a list of data axis levels. Axis names are available as constants in :class:`maccabee.constants.Constants.AxisNames` and axis levels available as constants in :class:`maccabee.constants.Constants.AxisLevels`. The :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp` function is called for each combination of axis level values - the cartesian product of the lists in the dictionary.
         param_overrides (dict): A dictionary mapping parameter names to values of those parameters. The values in this dict override the values in the grid and any default parameter values. For all available parameter names and allowed values, see the :download:`parameter_schema.yml </../../maccabee/parameters/parameter_schema.yml>` file.
 
     Returns:
@@ -270,9 +316,11 @@ def benchmark_model_using_sampled_dgp_grid(
         # Construct the DGP sampler for these params.
         dgp_params = build_parameters_from_axis_levels(param_spec)
 
+        # Apply overrides.
         for param_name in param_overrides:
             dgp_params.set_parameter(param_name, param_overrides[param_name])
 
+        # Run sampling benchmark.
         param_performance_metric_data, _, param_data_metric_data, _ = \
             benchmark_model_using_sampled_dgp(
                 param_spec, data_source,

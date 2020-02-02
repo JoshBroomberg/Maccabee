@@ -144,7 +144,7 @@ class DataGeneratingProcessSampler():
         # covariates. Cap the number of covariate transforms at a multiple
         # of the number of base covariates.
         max_transform_count = \
-            SamplingConstants.MAX_RATIO_TRANSFORMED_TO_ORIGINAL_TERMS*len(covariate_symbols)
+            SamplingConstants.MAX_MULTIPLE_TRANSFORMED_TO_ORIGINAL_TERMS*len(covariate_symbols)
 
         if len(selected_covariate_transforms) > max_transform_count:
             # Randomly sample selected transforms with expected number selected
@@ -359,8 +359,8 @@ class DataGeneratingProcessSampler():
 
         base_outcome_subfunction = normalized_outcome_expression
         outcome_function = base_outcome_subfunction + \
-            ComponentConstants.OUTCOME_NOISE_SYMBOL + \
-            (ComponentConstants.TREATMENT_ASSIGNMENT_SYMBOL *
+            ComponentConstants._OUTCOME_NOISE_SYMBOL + \
+            (ComponentConstants._TREATMENT_ASSIGNMENT_SYMBOL *
                 treat_effect_subfunction)
 
         return outcome_function, base_outcome_subfunction, treat_effect_subfunction

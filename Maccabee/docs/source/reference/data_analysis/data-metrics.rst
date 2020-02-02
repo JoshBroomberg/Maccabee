@@ -2,5 +2,12 @@
 =======================================================================
 
 .. automodule:: maccabee.data_analysis.data_metrics
-  :members:
-  :private-members:
+
+.. autodata:: AXES_AND_METRICS
+  :annotation: = {axis_name: [{"name": "...", "function": "...", "args": {...}}]}
+
+.. autodata:: AXES_AND_METRIC_NAMES
+  :annotation: = {axis_name: [metric_name]}
+
+.. autodata:: AXIS_METRIC_FUNCTIONS
+  :annotation: = {metric_function_name: metric_function_callable}

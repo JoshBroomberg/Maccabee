@@ -228,7 +228,7 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodClass):
             oracle_outcome_data=oracle_outcome_data,
             transformed_covariate_data=transformed_covariate_data)
 
-class ManualDataGeneratingProcess(DataGeneratingProcess):
+class ConcreteDataGeneratingProcess(DataGeneratingProcess):
     pass
 
 class SampledDataGeneratingProcess(DataGeneratingProcess):

@@ -24,9 +24,10 @@ functions.
   :caption: Usage
 
   usage.rst
+  advanced.rst
 
 .. toctree::
   :maxdepth: -1
-  :caption: Package/Module Reference
+  :caption: Package Reference
 
   reference.rst

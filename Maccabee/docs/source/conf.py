@@ -7,11 +7,11 @@
 # -- Path setup --------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
+# add these directories to sys.path here.
 import os
 import sys
+
+# Path to the Maccabee package
 sys.path.insert(0, os.path.abspath('../..'))
 
 import sphinx_rtd_theme
@@ -36,11 +36,12 @@ master_doc = 'index'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.intersphinx',
-    'sphinx_rtd_theme',
-    'nbsphinx'
+    'sphinx.ext.mathjax', # :math: support
+    'sphinx.ext.napoleon', # google format docstrings
+    'sphinx.ext.intersphinx', # links to external docs
+    'sphinx.ext.viewcode', # source code links
+    'sphinx_rtd_theme', # RTD them
+    'nbsphinx' # rendering ipynbs
 ]
 
 intersphinx_mapping = {
@@ -48,6 +49,8 @@ intersphinx_mapping = {
     'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', 'https://pandas.pydata.org/pandas-docs/stable/objects.inv'),
     'numpy': ('https://docs.scipy.org/doc/numpy/', 'https://docs.scipy.org/doc/numpy/objects.inv')
 }
+
+intersphinx_cache_limit = 3
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

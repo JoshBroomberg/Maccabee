@@ -1,8 +1,10 @@
-"""This module contains constants which are used throughout the package both in the internal operation code and to simplify and standardize user interaction with the external API.
+"""This module contains constants which are used throughout the package. The constants defined here serve two purposes: First, to simplify and standardize user interaction with the external APIs by providing users a convenient way to refer to common concepts/values. Second, to centralize the configuaration constants which control the internal operation of the package, giving more advanced users the ability to control/modify operation by making changes in one location.
 
-All constants are stored as attributes of the :class:`~maccabee.constants.Constants` class. So, all usage of constants will involve importing this class using the line ``from maccabee.constants import Constants``. For convenience and clarity, constants are nested into ``ConstantGroup`` classes which are the only attributes of the :class:`~maccabee.constants.Constants` class and which store actual parameters as their attributes. So, for example, the axis names for the axes of the distributional setting space can be accessed as the attributes of the class ``Constants.AxisNames``.
+All Maccabee constants are stored as attributes of the :class:`maccabee.constants.Constants` class. Within this class, constants are nested into subclasses of the ``ConstantGroup`` class (IE, the only attributes of the :class:`~maccabee.constants.Constants` class are ``ConstantGroup`` subclasses). These subclasses store actual parameters as their attributes. So, for example, the axis names for the axes of the :term:`distributional problem space` can be accessed as the attributes of the class ``Constants.AxisNames``.
 
-All of the ``ConstantGroup`` classes can be introspected to view the constants stored in the group. This is done by calling the ``.all()`` method. By default this will (pretty) print a dictionary of the constant names and values and return the dictionary. Call the function with ``print=False`` to avoid printing the dictionary
+All of the ``ConstantGroup`` classes can be introspected to view the constants stored in the group. This is done by calling the ``.all()`` method. By default this will (pretty) print a dictionary of the constant names and values and return the dictionary. Call the function with ``print=False`` to avoid printing the dictionary.
+
+So, to access the axis name constants mentioned above, one first imports the constants class and then uses the ``AxisNames`` attribute. Because this attribute is a subclass of the ``ConstantGroup`` class, the ``all()`` method can be used to introspect the values.
 
 >>> from maccabee.constants import Constants
 >>> Constants.AxisNames.all(print=False)
@@ -42,43 +44,53 @@ class ConstantGroup:
 # OPERATIONAL CONSTANTS
 class Constants:
     """
-    This Constants class contains the operational and interaction constants which are used throughout the package. Its attributes are subclasses of the ``ConstantGroup`` class each of which groups together a set of related constants. All of the ``ConstantGroup`` classes are below. Constants which are predominantly for internal use are marked [INTERNAL] and do not have explanations here. See the source code in :download:`constants.py </../../maccabee/constants.py>` for in-line comments.
+    As discussed above, this class contains the constants used throughout the package. All of the ``ConstantGroup`` attribute classes are listed below. Constants which are predominantly for internal use are marked [INTERNAL] and do not have explanations here. Advanced users interested in modifying the value of these constants should see the source code and inline comes in :download:`constants.py </../../maccabee/constants.py>`.
     """
 
     class ParamFilesAndPaths:
         """[INTERNAL] Constants related to the location and parsed content of the YAML parameter specification files which control the parameter schema, default parameter values and metric-level parameter values. See the docs for the :mod:`maccabee.parameters` module for more detail.
         """
 
+        # The path of the parameter schema.
         _SCHEMA_PATH = resource_filename(
             'maccabee', 'parameters/parameter_schema.yml')
 
+        # The in-memory cache of the parameter schema, used to construct
+        # parameter store objects.
         with open(_SCHEMA_PATH, "r") as schema_file:
             SCHEMA = yaml.safe_load(schema_file)["SCHEMA"]
 
+        # The path for the specification of default parameter values.
         DEFAULT_SPEC_PATH = resource_filename(
             'maccabee', 'parameters/default_parameter_specification.yml')
-        METRIC_LEVEL_SPEC_PATH = resource_filename(
+
+        # The path for the specification of the parameter values for each
+        # axis level.
+        AXIS_LEVEL_SPEC_PATH = resource_filename(
             'maccabee', 'parameters/metric_level_parameter_specifications.yml')
 
     class ParamSchemaKeysAndVals(ConstantGroup):
         """[INTERNAL] Constants related to the keys and values of the parameter specification files mentioned under :class:`~maccabee.constants.Constants.ParamFilesAndPaths`."""
 
+        # The constants below define the keys and allowed values
+        # which are used in the specification of the parameter schema.
         DESCRIPTION_KEY = "description"
 
-        TYPE_KEY = "type"
-        TYPE_NUMBER = "number"
-        TYPE_BOOL = "bool"
-        TYPE_DICTIONARY = "dictionary"
-        TYPE_CALCULATED = "calculated"
+        # Type key and values
+        TYPE_KEY = "type" # The key itself
+        TYPE_NUMBER = "number" # val
+        TYPE_BOOL = "bool" # val
+        TYPE_DICTIONARY = "dictionary" # val
+        TYPE_CALCULATED = "calculated" # val
 
-        # Number type keys
+        # Number type keys. The value is a real number.
         MIN_KEY = "min"
         MAX_KEY = "max"
 
-        # Dict type keys
+        # Dict type key. The value is a dict.
         DICT_KEYS_KEY = "required_keys"
 
-        # Calc type keys
+        # Calc type key. The value is a python expression.
         EXPRESSION_KEY = "expr"
 
     ### DGP Sampling constants ###
@@ -86,6 +98,8 @@ class Constants:
         """[INTERNAL] Constants related to the sampling of the subfunctions which make up the sampled DGP treatment and outcome functions.
         """
 
+        # The subfunctions which are sampled to construct the sampled
+        # treatent and outcome functions.
         LINEAR = "LINEAR"
         POLY_QUADRATIC = "POLY_QUAD"
         POLY_CUBIC = "POLY_CUBIC"
@@ -94,14 +108,19 @@ class Constants:
         INTERACTION_TWO_WAY = "INTERACTION_TWO_WAY"
         INTERACTION_THREE_WAY = "INTERACTION_THREE_WAY"
 
+        # Subfunction forms
+        # To perform sampling, it is necessary to know the mathematical expression
+        # of the subfunctions, the symbols and constants in the expression, and the
+        # types of covariates allowed. This information is in the subfunction forms
+        # dictionary below.
+
+        # The keys which are used in the subfunction forms dictionary.
         COVARIATE_SYMBOLS_KEY = "covariates"
         EXPRESSION_KEY = "expr"
         DISCRETE_ALLOWED_KEY = "disc"
-
         SUBFUNCTION_CONSTANT_SYMBOLS = {a, c}
 
-        # The various transforms which can be applied to covariates
-        # and combinations of covariates.
+        # The subfunctions forms dictionary itself.
         SUBFUNCTION_FORMS = {
             LINEAR: {
                     COVARIATE_SYMBOLS_KEY: [x],
@@ -140,34 +159,64 @@ class Constants:
             },
         }
 
-        # All X times the number of original covariates.
-        MAX_RATIO_TRANSFORMED_TO_ORIGINAL_TERMS = 5
+        # The maximum number of selected subfunctions (each producing a
+        # transformed covariate) is defined by a multiplier on the
+        # the number of original covariates.
+        MAX_MULTIPLE_TRANSFORMED_TO_ORIGINAL_TERMS = 5
 
-        # How much of the covariate data to use when normalizing functions.
-        NORMALIZATION_DATA_SAMPLE_FRACTION = 1
+        # How much of the covariate data to use when normalizing
+        # the sampled functions. For large data sets, a smaller proportion
+        # is necessary.
+        NORMALIZATION_DATA_SAMPLE_FRACTION = 0.5
 
     ### DGP Component constants ###
 
     class DGPVariables(ConstantGroup):
-        """Constants related to the naming of the variables over which DGPs are defined. These will be of interest for users when handing the data properties of :class:`~maccabee.data_generation.GeneratedDataSet` instances as the columns of the :class:`~pandas.DataFrame` instances returned by these properties will be named according to these constants.
+        """Constants related to the naming of the variables over which DGPs are defined. These are used when specifying concrete DGPs using the :class:`~maccabee.data_generation.ConcreteDataGeneratingProcess` class and when interacting with the data in the :class:`~maccabee.data_generation.GeneratedDataSet` instances produced when sampling from any :class:`~maccabee.data_generation.DataGeneratingProcess` instance.
         """
 
+        #: The collective name for the observed covariates for each individual
+        #: observation in the data set.
         COVARIATES_NAME = "X"
+
+        #: Transformed covariates are produced by applying all of the sampled
+        #: subfunctions to the original covariates. Because the treatment and outcome
+        #: functions are made up of some combination of these subfunctions, the values
+        #: produced by each subfunction can be thought of as the true covariates
+        #: of the treatment and outcome functions.
         TRANSFORMED_COVARIATES_NAME = "TRANSFORMED_X"
 
+        #: The logit of the true probability of/propensity for treatment.
         PROPENSITY_LOGIT_NAME = "logit(P(T|X))"
+
+        #: The true probability of/propensity for treatment.
         PROPENSITY_SCORE_NAME = "P(T|X)"
+
+        #: The treatment assignment/status
         TREATMENT_ASSIGNMENT_NAME = "T"
 
+        #: The observed outcome.
         OBSERVED_OUTCOME_NAME = "Y"
+
+        #: The potential outcome without treatment, understood in terms of the
+        #: Rubin-Neyman causal model.
         POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME = "Y0"
+
+        #: The potential outcome with treatment, understood in terms of the
+        #: Rubin-Neyman causal model.
         POTENTIAL_OUTCOME_WITH_TREATMENT_NAME = "Y1"
+
+        #: The true treatment effect, the different between the potential
+        #: outcome with and without treatment.
         TREATMENT_EFFECT_NAME = "TE"
 
+        #: The noise in the observation of the units potential outcomes.
         OUTCOME_NOISE_NAME = "NOISE(Y)"
 
-        TREATMENT_ASSIGNMENT_SYMBOL = sp.symbols(TREATMENT_ASSIGNMENT_NAME)
-        OUTCOME_NOISE_SYMBOL = sp.symbols(OUTCOME_NOISE_NAME)
+        # Symbols corresponding to the components above which appear explicitly
+        # in the sampled DGP.
+        _TREATMENT_ASSIGNMENT_SYMBOL = sp.symbols(TREATMENT_ASSIGNMENT_NAME)
+        _OUTCOME_NOISE_SYMBOL = sp.symbols(OUTCOME_NOISE_NAME)
 
     ### Data Metric constants ###
 
@@ -222,6 +271,10 @@ class Constants:
 
     class DataMetricFunctions(ConstantGroup):
         """[INTERNAL] Constants related to the functions used to calculate the metrics which quantify the location of data in the distributional problem space."""
+
+        # The functions below are used in the calculation of one or more
+        # data metrics.
+
         LINEAR_R2 = "Lin r2"
         LOGISTIC_R2 = "Log r2"
         PERCENT = "Percent"
@@ -237,12 +290,15 @@ class Constants:
         """[INTERNAL] Constants related to external covariate data. See the :doc:`doc </usage/empirical-datasets>` on the empirical data sets built into Maccabee for more detail.
         """
 
+        # Build the path to a dataset given a dataset name.
         get_dataset_path = lambda file_name: resource_filename(
             'maccabee', f"data/{file_name}.csv")
 
+        # Constants related to the Lalonde data
         LALONDE_PATH = get_dataset_path("lalonde")
-        LALONDE_DISCRETE_COVARS = ["black","hispanic","married","nodegree"]
+        LALONDE_DISCRETE_COVARS = ["black", "hispanic", "married", "nodegree"]
 
+        # Constants related to the CPP data
         CPP_PATH = get_dataset_path("cpp")
         CPP_DISCRETE_COVARS = ['x_17','x_22','x_38','x_51','x_54','x_2_A','x_2_B',
             'x_2_C','x_2_D','x_2_E','x_2_F','x_21_A','x_21_B','x_21_C','x_21_D',
@@ -254,5 +310,19 @@ class Constants:
 
     class Model(ConstantGroup):
         """Constants related to models and estimands."""
+
+        #: The Individual Treatment Effect estimand.
         ITE_ESTIMAND = "ITE"
+
+        #: The Average Treatment Effect estimand.
         ATE_ESTIMAND = "ATE"
+
+        #: The Average Treatment Effect for the Treated estimand.
+        ATT_ESTIMAND = "ATT"
+
+        #: A list of all estimands supported by the package.
+        ALL_ESTIMANDS = [
+            ITE_ESTIMAND,
+            ATE_ESTIMAND,
+            ATT_ESTIMAND
+        ]

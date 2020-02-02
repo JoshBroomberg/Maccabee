@@ -2,7 +2,7 @@ Customizing the DGP Sampling Procedure
 =======================================
 
 
-The benchmarking tool outlined in :doc:`walkthrough` provides a powerful default mechanism for the abstract sample-based benchmark process: sampling DGPs given parameter levels, sampling data from these DGPs, fitting models and calculating performance metrics for estimates produced.
+The benchmarking tool outlined in :doc:`sampled-dgp` provides a powerful default mechanism for the abstract sample-based benchmark process: sampling DGPs given parameter levels, sampling data from these DGPs, fitting models and calculating performance metrics for estimates produced.
 
 However, it may be useful to customize the DGP sampling process. For example, to gain precise control over the value of the DGP sampling parameters or for the purpose of debugging/diagnosis. The code below demonstrates and end-to-end version of the flow outlined above.
 

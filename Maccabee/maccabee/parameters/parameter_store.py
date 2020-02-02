@@ -134,7 +134,7 @@ def build_parameters_from_axis_levels(metric_levels, save=False):
 
     params = build_default_parameters()
 
-    with open(ParamFileConstants.METRIC_LEVEL_SPEC_PATH, "r") as metric_level_file:
+    with open(ParamFileConstants.AXIS_LEVEL_SPEC_PATH, "r") as metric_level_file:
         metric_level_param_specs = yaml.safe_load(metric_level_file)
 
     # Set the value of each metric to the correct values.

@@ -9,4 +9,3 @@
 
   data_analysis/data-metrics.rst
   data_analysis/data-analysis.rst
-  data_analysis/utils.rst

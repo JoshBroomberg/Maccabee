@@ -1,7 +1,7 @@
 Benchmarking with a Concrete DGP
 ================================
 
-The :doc:`walkthrough` section implicitly relied on sampled DGPs (sampled from a distribution specified by one or more parameterizations). While this approach is central to Maccabee's benchmarking philosophy, it is also possible to run benchmarks using a concretely specified DGP. This may be useful if you want to compare sampled DGP results to previous results from concrete DGPs in the same execution environment or if you want to make use of Maccabee's cluster computing or result management infrastructure.
+The :doc:`sampled-dgp` section implicitly relied on sampled DGPs (sampled from a distribution specified by one or more parameterizations). While this approach is central to Maccabee's benchmarking philosophy, it is also possible to run benchmarks using a concretely specified DGP. This may be useful if you want to compare sampled DGP results to previous results from concrete DGPs in the same execution environment or if you want to make use of Maccabee's cluster computing or result management infrastructure.
 
 The Maccabee DSL for Specifying Concrete DGPs
 ------------------------------------------------
@@ -105,7 +105,7 @@ Running a Benchmark
 
 **Note:** the API here will change following a rationalize of the covariate generation process. Right now, a concrete DGP is responsible for generating its own covariate observations which change with each sample while a sampled DGP has fixed covariates. When these are aligned, it will be possible to use a single benchmarking function with consistent metric calculation procedures (not possible right now).
 
-We're now ready to run a benchmark. The code is only loosely analogous to the sample-based benchmark in the :doc:`walkthrough` section. We still supply a model class, estimand and number of samples to take from the DGP. But the concrete specification of the DGP means we only supply the DGP instance rather than sampling parameters and a data source::
+We're now ready to run a benchmark. The code is only loosely analogous to the sample-based benchmark in the :doc:`sampled-dgp` section. We still supply a model class, estimand and number of samples to take from the DGP. But the concrete specification of the DGP means we only supply the DGP instance rather than sampling parameters and a data source::
 
   from maccabee.modeling.models import LinearRegressionCausalModel
 

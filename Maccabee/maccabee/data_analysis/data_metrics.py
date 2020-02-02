@@ -1,4 +1,19 @@
-"""This module contains the low-level components used to analyze observational datasets to determine the distributional setting that they represent."""
+"""This submodule contains the definitions for the metrics used to quantify the position of a dataset on each of the :term:`axes <distributional problem space axis>` of the :term:`distributional problem space`. Each axis has one or more metrics, each of which operates on (potentially overlapping) components of the dataset to output a single, real metric value that measures the data's position on the associated axis.
+
+The module uses a dictionary-based data structure to define data metrics. IE, rather than concretely defining metrics for each axis as python functions which extract the relevant data from a :class:`~maccabee.data_generation.GeneratedDataSet` instance and perform some calculation, metrics are defined using dictionaries specify which data and functions to (re)use. This allows different concrete metrics to share the same data and calculation functions without code repetition. It also allows package users to inject new metrics at run time by simply modifying the dictionaries outlined below.
+
+The module actually uses, and exposes, three dictionaries which work together to define the data metrics. The main dictionary is the :data:`~maccabee.data_analysis.data_metrics.AXES_AND_METRICS` dictionary. The other two dictionaries support the specification and use of the main dictionary. :data:`~maccabee.data_analysis.data_metrics.AXES_AND_METRIC_NAMES` summarizes the content of :data:`~maccabee.data_analysis.data_metrics.AXES_AND_METRICS` by mapping the axis names to a list of unique metric names. This can be used for convenient selection of the metrics to record when running a benchmark (see the :mod:`~maccabee.benchmarking` module for more). The :data:`~maccabee.data_analysis.data_metrics.AXIS_METRIC_FUNCTIONS` maps function name constants from :class:`maccabee.constants.Constants.DataMetricFunctions` to generic calculation functions/callables defined in this module.
+
+The main :data:`~maccabee.data_analysis.data_metrics.AXES_AND_METRICS` dictionary defines the data metrics by mapping each axis name from :class:`maccabee.constants.Constants.AxisNames` to a list of *metric definition dictionaries*. Each metric definition dictionary has three components:
+
+* The unique name of the metric. This is the name which appears in the :data:`~maccabee.data_analysis.data_metrics.AXES_AND_METRIC_NAMES` dictionary and is used when specifying which metrics to collect during a benchmark.
+
+* The generic metric function used to calculate the metric. This is specified as a function name constant from :class:`maccabee.constants.Constants.DataMetricFunctions`. As mentioned above, the dictionary :data:`~maccabee.data_analysis.data_metrics.AXIS_METRIC_FUNCTIONS` maps these names to callables defined in this module. This structure is used because the functions are typically repeated across many different concrete metrics. So it is efficient to define generic functions once and reuse the same callable repeatedly. For example, there is a linear regression :math:`R^2` function which regresses the vector arg :math:`y` against the matrix arg :math:`X`.
+
+* The arguments to the generic metric function. These concretize what the metric measures by applying the generic function to specific data. For example, by passing the original covariates and observed outcome as the arguments :math:`X` and :math:`y` of the linear regression function, one can construct a metric for the linearity of the outcome. The arguments are specified by a dictionary which maps the generic functions (generic) argument names to DGP data variable names from :class:`maccabee.constants.Constants.DGPVariables`. These constant names are then used to access the corresponding data from :class:`~maccabee.data_generation.GeneratedDataSet` instances.
+
+
+"""
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression, LinearRegression
@@ -8,19 +23,17 @@ import pandas as pd
 from collections import defaultdict
 
 from ..constants import Constants
-from .utils import extract_treat_and_control_data
 from ..parameters import build_parameters_from_axis_levels
 from ..data_generation import DataGeneratingProcessSampler
 
 AxisNames = Constants.AxisNames
-DataMetricFunctions = Constants.DataMetricFunctions
 DGPVariables = Constants.DGPVariables
+DataMetricFunctions = Constants.DataMetricFunctions
 
 
-#: This dict specifies the measured axes and the metrics for each axis.
-#: Each axis has a list of metrics which are defined
-#: by a metric calculation function and the arguments to be supplied to it
-#: as well as a unique name.
+#: The dictionary mapping axis names to a list of metric definition dictionaries.
+#: Each metric definition dictionary has a name, calculation function, and argument
+#: mapping that specifies which DGP variables to supply as each function arg.
 AXES_AND_METRICS = {
     AxisNames.OUTCOME_NONLINEARITY: [
         {
@@ -120,7 +133,9 @@ AXES_AND_METRICS = {
         {
             "function": DataMetricFunctions.PERCENT,
             "args": {
-                "x": DGPVariables.TREATMENT_ASSIGNMENT_NAME,
+                "x": DGPVariables.TREATMENT_ASSIGNMENT_NAME
+            },
+            "constant_args": {
                 "value": 1
             },
             "name": "Percent(T==1)"
@@ -213,8 +228,8 @@ AXES_AND_METRICS = {
     ]
 }
 
-#: A dictionary of all available data axes and the associated metrics
-#: which measure the position of a dataset along each axis.
+#: The dictionary mapping axis names to a list of available
+#: metric names.
 AXES_AND_METRIC_NAMES = dict(
     (axis, [metric["name"] for metric in metrics])
     for axis, metrics in AXES_AND_METRICS.items())
@@ -227,7 +242,15 @@ AXES_AND_METRIC_NAMES = dict(
 # is used in multiple metrics so they are named and
 # parameterized generically.
 
-def linear_regression_r2(X, y):
+def _extract_treat_and_control_data(covariates, treatment_status):
+    # Extract the treated and control observations from a set of
+    # covariates given treatment statuses.
+
+    X_treated = covariates[(treatment_status==1).to_numpy()]
+    X_control = covariates[(treatment_status==0).to_numpy()]
+    return X_treated, X_control
+
+def _linear_regression_r2(X, y):
     if type(X) == pd.Series:
         X = X.to_numpy().reshape((-1, 1))
 
@@ -235,7 +258,7 @@ def linear_regression_r2(X, y):
     lr.fit(X, y)
     return lr.score(X, y)
 
-def logistic_regression_r2(X, y):
+def _logistic_regression_r2(X, y):
     if type(X) == pd.Series:
         X = X.to_numpy().reshape((-1, 1))
 
@@ -243,19 +266,19 @@ def logistic_regression_r2(X, y):
     lr.fit(X, y)
     return lr.score(X, y)
 
-def percent(x, value):
+def _percent(x, value):
     '''
     Percent of values in x which have the value in value.
     '''
     x = np.array(x)
     return 100*np.sum((x == value).astype(int))/len(x)
 
-def l2_distance_between_means(covariates, treatment_status):
+def _l2_distance_between_means(covariates, treatment_status):
     '''
     L2 norm of the distance between the means of the covariates
     in the treat and control groups.
     '''
-    X_treated, X_control = extract_treat_and_control_data(
+    X_treated, X_control = _extract_treat_and_control_data(
         covariates, treatment_status)
 
     X_treated_mean = np.mean(X_treated, axis=0)
@@ -263,13 +286,13 @@ def l2_distance_between_means(covariates, treatment_status):
 
     return np.linalg.norm(X_treated_mean - X_control_mean)
 
-def mean_mahalanobis_between_nearest_counterfactual(covariates, treatment_status):
+def _mean_mahalanobis_between_nearest_counterfactual(covariates, treatment_status):
     '''
     Mahalanobis distance between the nearest neighbor of each treated unit
     which is in the control group.
     '''
 
-    X_treated, X_control = extract_treat_and_control_data(
+    X_treated, X_control = _extract_treat_and_control_data(
         covariates, treatment_status)
 
     # TODO: fix singular matrix issue.
@@ -280,18 +303,18 @@ def mean_mahalanobis_between_nearest_counterfactual(covariates, treatment_status
     except:
         return np.NaN
 
-def standard_deviation_ratio(x1, x2):
+def _standard_deviation_ratio(x1, x2):
     '''
     Ratio of the std of x1 and x2
     '''
     return np.std(x1)/np.std(x2)
 
-def wasserstein(covariates, treatment_status):
+def _wasserstein(covariates, treatment_status):
     '''
     Wasserstein distance between the covariates in the treat and control groups.
     '''
 
-    X_treated, X_control = extract_treat_and_control_data(
+    X_treated, X_control = _extract_treat_and_control_data(
         covariates, treatment_status)
 
     num_treated, num_control = len(X_treated), len(X_control)
@@ -310,52 +333,31 @@ def wasserstein(covariates, treatment_status):
 
     wass_dist = ot.sinkhorn2(a, b, M, lambd, maxiter=3000)[0]
     if wass_dist < 1e-3 and \
-        l2_distance_between_means(covariates, treatment_status) > 1e-4:
+        _l2_distance_between_means(covariates, treatment_status) > 1e-4:
         print(f"Detected failure with W={wass_dist}...")
         return None
     else:
         return wass_dist
 
-def naive_TE_estimate_error(TE, observed_outcome, treatment_status):
+def _naive_TE_estimate_error(TE, observed_outcome, treatment_status):
     '''
     Absolute difference between the true treatment effect and the
     naive estimate based on mean outcome in each group.
     '''
-    Y_t, Y_c = extract_treat_and_control_data(observed_outcome, treatment_status)
+    Y_t, Y_c = _extract_treat_and_control_data(observed_outcome, treatment_status)
     ATE_true = np.mean(TE)
     ATE_est = np.mean(Y_t) - np.mean(Y_c)
     return np.abs(ATE_true - ATE_est)
 
-# Map function names to function callables.
+#: The dictionary mapping constant metric function names to
+#: function callables from this module.
 AXIS_METRIC_FUNCTIONS = {
-    DataMetricFunctions.LINEAR_R2: linear_regression_r2,
-    DataMetricFunctions.LOGISTIC_R2: logistic_regression_r2,
-    DataMetricFunctions.PERCENT: percent,
-    DataMetricFunctions.L2_MEAN_DIST: l2_distance_between_means,
-    DataMetricFunctions.NN_CF_MAHALA_DIST: mean_mahalanobis_between_nearest_counterfactual,
-    DataMetricFunctions.STD_RATIO: standard_deviation_ratio,
-    DataMetricFunctions.WASS_DIST: wasserstein,
-    DataMetricFunctions.NAIVE_TE: naive_TE_estimate_error
-}
-
-# METRIC INPUT ACCESSORS
-
-# The dictionary below defines accessor functions which extract each
-# metric input from the GeneratedDataSet object.
-
-AXIS_METRIC_FUNC_INPUT_ACCESSORS = {
-    # Covariate Data
-    DGPVariables.COVARIATES_NAME: lambda ds: ds.observed_covariate_data,
-    DGPVariables.TRANSFORMED_COVARIATES_NAME: lambda ds: ds.transformed_covariate_data,
-
-    # Observed Variables
-    DGPVariables.OBSERVED_OUTCOME_NAME: lambda ds: ds.Y,
-    DGPVariables.TREATMENT_ASSIGNMENT_NAME: lambda ds: ds.T,
-
-    # Oracle
-    DGPVariables.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME: lambda ds: ds.Y0,
-    DGPVariables.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME: lambda ds: ds.Y1,
-    DGPVariables.TREATMENT_EFFECT_NAME: lambda ds: ds.TE,
-    DGPVariables.PROPENSITY_LOGIT_NAME: lambda ds: ds.oracle_outcome_data[DGPVariables.PROPENSITY_LOGIT_NAME],
-    DGPVariables.PROPENSITY_SCORE_NAME: lambda ds: ds.oracle_outcome_data[DGPVariables.PROPENSITY_SCORE_NAME],
+    DataMetricFunctions.LINEAR_R2: _linear_regression_r2,
+    DataMetricFunctions.LOGISTIC_R2: _logistic_regression_r2,
+    DataMetricFunctions.PERCENT: _percent,
+    DataMetricFunctions.L2_MEAN_DIST: _l2_distance_between_means,
+    DataMetricFunctions.NN_CF_MAHALA_DIST: _mean_mahalanobis_between_nearest_counterfactual,
+    DataMetricFunctions.STD_RATIO: _standard_deviation_ratio,
+    DataMetricFunctions.WASS_DIST: _wasserstein,
+    DataMetricFunctions.NAIVE_TE: _naive_TE_estimate_error
 }
