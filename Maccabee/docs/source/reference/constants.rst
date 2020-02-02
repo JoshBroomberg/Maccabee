@@ -4,3 +4,4 @@
 .. automodule:: maccabee.constants
   :members:
   :private-members:
+  :show-inheritance:

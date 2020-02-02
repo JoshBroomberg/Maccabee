@@ -4,3 +4,4 @@
 .. automodule:: maccabee.modeling.models
   :members:
   :private-members:
+  :show-inheritance:

@@ -13,6 +13,7 @@ from .utils import evaluate_expression
 import pandas as pd
 import numpy as np
 from functools import partial, update_wrapper
+import types
 
 
 GENERATED_DATA_DICT_NAME = "_generated_data"
@@ -49,55 +50,62 @@ class DataGeneratingMethodWrapper():
         self.cache_result = cache_result
         self.func = func
 
-    def __call__(self, *args, **kwargs):
+        self.wrapped_call = partial(DataGeneratingMethodWrapper.call, self)
+        update_wrapper(self.wrapped_call, self.func)
+
+    @staticmethod
+    def call(wrapper, dgp, *args, **kwargs):
         # This is the code which is run when a data generating method
         # is executed.
-
-        dgp = args[0]
 
         # Get the central storage data structure.
         data_dict = getattr(dgp, GENERATED_DATA_DICT_NAME)
 
         # Check if there is a valid cache hit and return it.
-        if self.cache_result and (self.generated_var in data_dict):
-            return data_dict[self.generated_var]
+        if wrapper.cache_result and (wrapper.generated_var in data_dict):
+            return data_dict[wrapper.generated_var]
 
         # Verify that all required variables have been generated.
         required_var_vals = {
             k:data_dict[k]
-            for k in self.required_vars
+            for k in wrapper.required_vars
             if k in data_dict
         }
 
         # Only run if all requirements generated.
-        if len(required_var_vals) == len(self.required_vars):
+        if len(required_var_vals) == len(wrapper.required_vars):
 
             # Only run data_analysis_mode_only methods if dgp in analysis mode.
-            if dgp.data_analysis_mode or not self.data_analysis_mode_only:
+            if dgp.data_analysis_mode or not wrapper.data_analysis_mode_only:
                 # TODO: consider refactoring the func call to splat
                 # in the args directly rather than via a dict.
 
                 # Run the stored function.
-                val = self.func(args[0], required_var_vals, *args[1:], **kwargs)
+                val = wrapper.func(dgp, required_var_vals, *args, **kwargs)
 
                 # Store the value in the data dict.
-                data_dict[self.generated_var] = val
+                data_dict[wrapper.generated_var] = val
 
                 return val
 
         # Do not have all required inputs.
-        elif not self.optional:
-            raise DGPVariableMissingException(self.func)
+        elif not wrapper.optional:
+            raise DGPVariableMissingException(wrapper.func)
 
     def __get__(self, instance, owner):
-        # This method is called at DGP instantiation time.
+        # This is the descriptor method which returns the bound/unbound function
+        # at the correct times to emulate a DGP instance method.
 
-        # Bind the DGP instance to the call method to give it
-        # access to the instance at execution time.
-        wrapped_call = partial(self.__call__, instance)
-        update_wrapper(wrapped_call, self.func)
+        # Access at the class level, return the unbound func
+        # for documentation etc.
+        if instance is None:
+            return self.func
 
-        return wrapped_call
+        # Access at instance level, return a bound instance of the method.
+        else:
+            # Bind the DGP instance to the call method to give it
+            # access to the instance at execution time.
+            return types.MethodType(self.wrapped_call, instance)
 
 def data_generating_method(
     generated_var, required_vars,
@@ -292,7 +300,8 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodContainerClass):
 
     @data_generating_method(
         DGPVariables.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
-        [DGPVariables.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME, DGPVariables.TREATMENT_EFFECT_NAME])
+        [DGPVariables.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+        DGPVariables.TREATMENT_EFFECT_NAME])
     def _generate_outcomes_with_treatment(self, input_vars):
         """_generate_outcomes_with_treatment(...)
 
@@ -310,6 +319,7 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodContainerClass):
         [
             DGPVariables.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
             DGPVariables.TREATMENT_ASSIGNMENT_NAME,
+            DGPVariables.OUTCOME_NOISE_NAME,
             DGPVariables.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
         ])
     def _generate_observed_outcomes(self, input_vars):

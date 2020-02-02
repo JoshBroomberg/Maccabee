@@ -4,3 +4,4 @@
 .. automodule:: maccabee.data_sources.data_sources
   :members:
   :private-members:
+  :show-inheritance:
