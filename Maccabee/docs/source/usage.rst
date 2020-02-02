@@ -2,7 +2,7 @@ Core Workflows
 ===============
 
 .. toctree::
-   :maxdepth: -1
+   :maxdepth: 1
 
    usage/sampled-dgp
    usage/concrete-dgp

@@ -1,5 +1,5 @@
 Benchmarking with Sampled DGPs
-==============================
+******************************
 
 This walkthrough previews Maccabee's core functionality - benchmarking causal inference estimators using sampled, synthetic treatment and outcome functions combined with empirical covariate data. It provides an overview of how the various components of this package fit together into a benchmarking procedure. You'll find detail on each of the methods and objects mentioned below in the :doc:`/reference` section.
 

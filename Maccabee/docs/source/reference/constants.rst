@@ -1,5 +1,5 @@
 :mod:`maccabee.constants`
-============================
+****************************
 
 .. automodule:: maccabee.constants
   :members:

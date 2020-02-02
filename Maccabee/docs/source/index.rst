@@ -1,3 +1,4 @@
+========
 Maccabee
 ========
 
@@ -8,26 +9,26 @@ functions.
 -----------
 
 .. toctree::
-  :maxdepth: -1
+  :maxdepth: 2
   :caption: Installation
 
   installation.rst
 
 .. toctree::
-  :maxdepth: -1
+  :maxdepth: 2
   :caption: Design
 
   design.rst
 
 .. toctree::
-  :maxdepth: -1
+  :maxdepth: 2
   :caption: Usage
 
   usage.rst
   advanced.rst
 
 .. toctree::
-  :maxdepth: -1
+  :maxdepth: 2
   :caption: Package Reference
 
   reference.rst

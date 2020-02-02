@@ -1,5 +1,5 @@
 Benchmarking with a Concrete DGP
-================================
+********************************
 
 The :doc:`sampled-dgp` section implicitly relied on sampled DGPs (sampled from a distribution specified by one or more parameterizations). While this approach is central to Maccabee's benchmarking philosophy, it is also possible to run benchmarks using a concretely specified DGP. This may be useful if you want to compare sampled DGP results to previous results from concrete DGPs in the same execution environment or if you want to make use of Maccabee's cluster computing or result management infrastructure.
 

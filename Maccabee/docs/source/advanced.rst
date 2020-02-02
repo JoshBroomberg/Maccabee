@@ -2,7 +2,7 @@ Advanced Functionality
 ======================
 
 .. toctree::
-   :maxdepth: -1
+   :maxdepth: 1
 
    advanced/parallel-and-cluster
    advanced/custom-metrics
