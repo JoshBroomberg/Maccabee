@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from itertools import combinations
 from ..constants import Constants
-from .utils import select_given_probability_distribution, evaluate_expression, initialize_expression_constants
+from .utils import select_objects_given_probability, evaluate_expression, initialize_expression_constants
 from .data_generating_process import SampledDataGeneratingProcess
 
 SamplingConstants = Constants.DGPSampling
@@ -112,9 +112,9 @@ class DataGeneratingProcessSampler():
         # enter the treatment and/or outcome functions. All covariates not
         # selected here are non-predictive/nuisance covariates which can
         # make the causal model process harder.
-        potential_confounder_symbols, _ = select_given_probability_distribution(
-            full_list=covariate_symbols,
-            selection_probabilities=self.params.POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY)
+        potential_confounder_symbols, _ = select_objects_given_probability(
+            objects_to_sample=covariate_symbols,
+            selection_probability=self.params.POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY)
 
         if len(potential_confounder_symbols) == 0:
             potential_confounder_symbols = [np.random.choice(covariate_symbols)]
@@ -167,9 +167,9 @@ class DataGeneratingProcessSampler():
                     len(transform_covariate_symbols))))
 
             # Sample from the set of all possible combinations.
-            selected_covar_combinations, _ = select_given_probability_distribution(
-                full_list=covariate_combinations,
-                selection_probabilities=transform_probabilities[transform_name])
+            selected_covar_combinations, _ = select_objects_given_probability(
+                objects_to_sample=covariate_combinations,
+                selection_probability=transform_probabilities[transform_name])
 
             # Instantiate the subfunction with the sampled covariates.
             selected_covariate_transforms.extend([transform_expression.subs(
@@ -196,9 +196,9 @@ class DataGeneratingProcessSampler():
             # equal to the max.
             selection_p = max_transform_count/len(selected_covariate_transforms)
 
-            selected_covariate_transforms, _ = select_given_probability_distribution(
-                full_list=selected_covariate_transforms,
-                selection_probabilities=selection_p)
+            selected_covariate_transforms, _ = select_objects_given_probability(
+                objects_to_sample=selected_covariate_transforms,
+                selection_probability=selection_p)
 
             selected_covariate_transforms = list(selected_covariate_transforms)
 
@@ -224,9 +224,9 @@ class DataGeneratingProcessSampler():
 
         # Select overlapping covariates transforms (effective confounder space)
         # based on the alignment parameter.
-        aligned_transforms, _ = select_given_probability_distribution(
+        aligned_transforms, _ = select_objects_given_probability(
                 all_transforms,
-                selection_probabilities=self.params.ACTUAL_CONFOUNDER_ALIGNMENT)
+                selection_probability=self.params.ACTUAL_CONFOUNDER_ALIGNMENT)
 
         # Extract treat and outcome exclusive transforms.
         treat_only_transforms = list(set(treatment_covariate_transforms).difference(aligned_transforms))
@@ -234,15 +234,15 @@ class DataGeneratingProcessSampler():
 
         # Initialize the constants in all the transforms.
         aligned_transforms = initialize_expression_constants(
-            self.params,
+            self.params.sample_subfunction_constants,
             aligned_transforms)
 
         treat_only_transforms = initialize_expression_constants(
-            self.params,
+            self.params.sample_subfunction_constants,
             treat_only_transforms)
 
         outcome_only_transforms = initialize_expression_constants(
-            self.params,
+            self.params.sample_subfunction_constants,
             outcome_only_transforms)
 
         # Union the true confounders into the original covariate selections.
@@ -335,13 +335,13 @@ class DataGeneratingProcessSampler():
         base_treatment_effect = self.params.sample_treatment_effect()[0]
 
         # Sample outcome subfunctions to interact with base treatment effect.
-        selected_interaction_terms, _ = select_given_probability_distribution(
-                full_list=outcome_covariate_transforms,
-                selection_probabilities=self.params.TREATMENT_EFFECT_HETEROGENEITY)
+        selected_interaction_terms, _ = select_objects_given_probability(
+                objects_to_sample=outcome_covariate_transforms,
+                selection_probability=self.params.TREATMENT_EFFECT_HETEROGENEITY)
 
         # Initialize constants.
         initialized_interaction_terms = initialize_expression_constants(
-            self.params,
+            self.params.sample_subfunction_constants,
             selected_interaction_terms)
 
         # Build the covariate multiplier which will interact with the treat effect.

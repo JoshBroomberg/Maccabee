@@ -24,7 +24,7 @@ Mind map / Object relations
 Theoretical Operations
 ======================
 
-Discuss the position in distributional problem space, sampling of functions to hit positions, the idea of transformed covariates as it relates to sample functions(NB).
+Discuss the position in distributional problem space, sampling of functions to hit positions, the idea of transformed covariates as it relates to sample functions(NB), the idea of observable vs oracle information.
 
 Glossary
 ========
@@ -56,3 +56,12 @@ Glossary
 
     dgp variable
       TODO - DGP variable.
+
+    observable dgp variable
+      TODO - observable DGP variable.
+
+    oracle dgp variable
+      TODO DGP variables which are not available for causal inference but which can be thought of as 'existing' during the data generation process. This includes potential outcomes, treatment effect, outcome noise etc.
+
+    transformed covariate
+      TODO - transformed covariate

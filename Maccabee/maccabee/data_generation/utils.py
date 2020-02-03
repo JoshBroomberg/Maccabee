@@ -1,3 +1,6 @@
+"""
+This submodule contains utility functions that are used during both DGP sampling and the sampling of data from DGPs. The functions in this module may be useful for users writing their own concrete DGPs.
+"""
 import numpy as np
 import sympy as sp
 import pandas as pd
@@ -5,20 +8,46 @@ from functools import partial
 
 from ..constants import Constants
 
-def select_given_probability_distribution(full_list, selection_probabilities):
-    full_list = np.array(full_list)
+def select_objects_given_probability(objects_to_sample, selection_probability):
+    """Samples objects from `objects_to_sample` based on `selection_probability`.
 
-    flat = len(full_list.shape) == 1
+    Args:
+        objects_to_sample (list): List of objects to sample.
+        selection_probability (list or float): The probability with which to sample objects from `objects_to_sample`. If list, this should be the same length as the list in `objects_to_sample` and will be the per-object selection probability. If float, then this is the uniform selection probability for all objects. The value/s should be between 0 and 1.
+
+    Returns:
+        tuple: The first entry is a :class:`numpy.ndarray` of the selected objects. The second entry is a :class:`numpy.ndarray` the same length as `objects_to_sample` with a ``1`` in the place of selected items and a ``0`` in the place of non-selected items.
+
+    Examples
+        >>> select_objects_given_probability(["a", "b", "c"], [0.5, 0.1, 0.001])
+        (["a"], [1, 0, 0])
+    """
+    objects_to_sample = np.array(objects_to_sample)
+
+    flat = len(objects_to_sample.shape) == 1
     if flat:
-        full_list = full_list.reshape((-1, 1))
+        objects_to_sample = objects_to_sample.reshape((-1, 1))
 
-    selections = np.random.uniform(size=full_list.shape[0]) < selection_probabilities
-    selected = full_list[selections, :]
+    selections = np.random.uniform(size=objects_to_sample.shape[0]) < selection_probability
+    selected = objects_to_sample[selections, :]
     if flat:
         selected = selected.flatten()
     return selected, selections
 
 def evaluate_expression(expression, data):
+    """Evaluates the Sympy expression in `expression` using the :class:`pandas.DataFrame` in `data` to fill in the value of all the variables in the expression. The expression is evaluated once for each row of the DataFrame.
+
+    Args:
+        expression (Sympy Expression): A Sympy expression with variables that are a subset of the variables in columns data.
+        data (:class:`~pandas.DataFrame`): A DataFrame containing observations of the variables in the expression. The names of the columns must match the names of the symbols in the expression.
+
+    Returns:
+        :class:`~numpy.ndarray`: An array of expression values corresponding to the rows of the `data`.
+
+    Raises:
+        ValueError: If the expression has no free symbols to initialize.
+
+    """
     try:
         free_symbols = list(expression.free_symbols)
 
@@ -38,21 +67,44 @@ def evaluate_expression(expression, data):
         res = expr_func(*column_data)
 
         return res
-    except AttributeError:
+    except ValueError:
         # No free symbols, return expression itself.
         return expression
 
-def initialize_expression_constants(parameters, expressions):
+def initialize_expression_constants(
+    constants_sampling_distro, expressions,
+    constant_symbols=Constants.DGPSampling.SUBFUNCTION_CONSTANT_SYMBOLS):
+    """Initialize the constants in the expressions in `expressions` by sampling from `constants_sampling_distro`.
+
+    Args:
+        constants_sampling_distro (function): A function which produces `n` samples from some distribution over real values when called like ``constants_sampling_distro(size=n)``.
+        expressions (list): A list of Sympy expressions in which the constant symbols from `constant_symbols` appears. These are initialized to the values sampled from `constants_sampling_distro`.
+        constant_symbols (list): A list of Sympy symbols which are constants to be initialized. Defaults to ``{sympy.abc.a, sympy.abc.c}``.
+
+    Returns:
+        list: A list of the sympy expressions from `expressions` with the constant symbols from `constant_symbols` randomly intialized.
+
+    Examples
+        >>> from sympy.abc import a, x
+        >>> import numpy as np
+        >>> initialize_expression_constants(np.random.normal, [a*x], [a])
+        0.1*x
+        >>> initialize_expression_constants(np.random.normal, [a*x], [a])
+        -0.3*x
+    """
+
     initialized_expressions = []
 
     for expression in expressions:
         constants_to_initialize = \
-            Constants.DGPSampling.SUBFUNCTION_CONSTANT_SYMBOLS.intersection(
-                expression.free_symbols)
+            constant_symbols.intersection(expression.free_symbols)
 
-        initialized_expressions.append(expression.subs(
-            zip(constants_to_initialize,
-                parameters.sample_subfunction_constants(
-                    size=len(constants_to_initialize)))))
+        initialized_expressions.append(
+            expression.subs(
+                zip(constants_to_initialize,
+                    constants_sampling_distro(size=len(constants_to_initialize))
+                    )
+                )
+            )
 
     return initialized_expressions

@@ -2,12 +2,12 @@
 
 All Maccabee constants are stored as attributes of the :class:`maccabee.constants.Constants` class. Within this class, constants are nested into subclasses of the ``ConstantGroup`` class (IE, the only attributes of the :class:`~maccabee.constants.Constants` class are ``ConstantGroup`` subclasses). These subclasses store actual parameters as their attributes. So, for example, the axis names for the axes of the :term:`distributional problem space` can be accessed as the attributes of the class ``Constants.AxisNames``.
 
-All of the ``ConstantGroup`` classes can be introspected to view the constants stored in the group. This is done by calling the ``.all()`` method. By default this will (pretty) print a dictionary of the constant names and values and return the dictionary. Call the function with ``print=False`` to avoid printing the dictionary.
+All of the ``ConstantGroup`` classes can be introspected to view the constant names/values stored in the group. This is done by calling the ``.all()`` method which will return a name/value dictionary. If the ``print=True`` option is supplied this will (pretty) print the dictionary.
 
 So, to access the axis name constants mentioned above, one first imports the constants class and then uses the ``AxisNames`` attribute. Because this attribute is a subclass of the ``ConstantGroup`` class, the ``all()`` method can be used to introspect the values.
 
 >>> from maccabee.constants import Constants
->>> Constants.AxisNames.all(print=False)
+>>> Constants.AxisNames.all()
     { 'ALIGNMENT': 'ALIGNMENT',
       'BALANCE': 'BALANCE',
       'OUTCOME_NONLINEARITY': 'OUTCOME_NONLINEARITY',
@@ -27,7 +27,7 @@ class ConstantGroup:
     pp = pprint.PrettyPrinter(indent=2, width=40)
 
     @classmethod
-    def all(cls, print=True):
+    def all(cls, print=False):
         constants = {
             k: v
             for k, v in cls.__dict__.items()
@@ -184,13 +184,13 @@ class Constants:
         #: functions are made up of some combination of these subfunctions, the values
         #: produced by each subfunction can be thought of as the true covariates
         #: of the treatment and outcome functions.
-        TRANSFORMED_COVARIATES_NAME = "TRANSFORMED_X"
+        TRANSFORMED_COVARIATES_NAME = "X_transformed"
 
         #: The logit of the true probability of/propensity for treatment.
-        PROPENSITY_LOGIT_NAME = "logit(P(T|X))"
+        PROPENSITY_LOGIT_NAME = "logit_p_score"
 
         #: The true probability of/propensity for treatment.
-        PROPENSITY_SCORE_NAME = "P(T|X)"
+        PROPENSITY_SCORE_NAME = "p_score"
 
         #: The treatment assignment/status
         TREATMENT_ASSIGNMENT_NAME = "T"
@@ -208,15 +208,34 @@ class Constants:
 
         #: The true treatment effect, the different between the potential
         #: outcome with and without treatment.
-        TREATMENT_EFFECT_NAME = "TE"
+        TREATMENT_EFFECT_NAME = "treatment_effect"
 
         #: The noise in the observation of the units potential outcomes.
-        OUTCOME_NOISE_NAME = "NOISE(Y)"
+        OUTCOME_NOISE_NAME = "Y_noise"
 
         # Symbols corresponding to the components above which appear explicitly
         # in the sampled DGP.
         _TREATMENT_ASSIGNMENT_SYMBOL = sp.symbols(TREATMENT_ASSIGNMENT_NAME)
         _OUTCOME_NOISE_SYMBOL = sp.symbols(OUTCOME_NOISE_NAME)
+
+        # Variable groups used for internal data structures
+        # DGP_VARIABLE_DF_GROUPS = {
+        #     "OBSERVABLE_COVARIATES": COVARIATES_NAME,
+        #     "ORACLE_COVARIATES": TRANSFORMED_COVARIATES_NAME,
+        #     "OBSERVABLE_OUTCOME_DATA": [
+        #         TREATMENT_ASSIGNMENT_NAME,
+        #         OBSERVED_OUTCOME_NAME
+        #     ],
+        #     "ORACLE_OUTCOME_DATA": [
+        #         PROPENSITY_SCORE_NAME,
+        #         PROPENSITY_LOGIT_NAME,
+        #         OUTCOME_NOISE_NAME,
+        #         POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+        #         POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
+        #         TREATMENT_EFFECT_NAME,
+        #     ]
+        # }
+
 
     ### Data Metric constants ###
 

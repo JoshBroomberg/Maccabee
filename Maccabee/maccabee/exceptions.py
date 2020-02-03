@@ -7,5 +7,5 @@ class UnknownDGPVariableException(Exception):
         super().__init__("Unknown DGP Variable provided")
 
 class DGPVariableMissingException(Exception):
-    def __init__(self, func):
-        super().__init__(f"Missing required value in non-optional method: {func}")
+    def __init__(self, msg):
+        super().__init__(msg)

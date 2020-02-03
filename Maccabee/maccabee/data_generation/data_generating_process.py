@@ -90,7 +90,8 @@ class DataGeneratingMethodWrapper():
 
         # Do not have all required inputs.
         elif not wrapper.optional:
-            raise DGPVariableMissingException(wrapper.func)
+            msg = f"Missing required value in non-optional method: {func}"
+            raise DGPVariableMissingException(msg)
 
     def __get__(self, instance, owner):
         # This is the descriptor method which returns the bound/unbound function
@@ -168,8 +169,8 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodContainerClass):
         Raises:
             DGPVariableMissingException: If the execution order of the data generating methods is in conflict with their specified requirements such that a method's dependencies haven't been generated when it is executed.
         """
-        # TODO: consider specifying order via a list of method names
-        # and then replace _generate validation to just use this list of names.
+        # TODO: consider specifying order via a list of method names or dgp ordering values
+        # (then replace _generate validation to just use this list of names instead of _generate_*
 
         # Covars
         self._generate_observed_covars()
@@ -187,7 +188,8 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodContainerClass):
         self._generate_outcomes_with_treatment()
         self._generate_observed_outcomes()
 
-        return self._build_dataset()
+        generated_data_dict = getattr(self, GENERATED_DATA_DICT_NAME)
+        return GeneratedDataSet(generated_data_dict)
 
     # DGP DEFINITION
     @data_generating_method(DGPVariables.COVARIATES_NAME, [])
@@ -344,57 +346,6 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodContainerClass):
 
         # T*Y1 + (1-T)*Y0 + Noise
         return (treatment_assignment*outcome_with_treatment) + ((1-treatment_assignment)*outcome_without_treatment) + outcome_noise_samples
-
-    # HELPER FUNCTIONS
-
-    def _get_generated_data(self, name):
-        # Retrieve the value for a generated DGP variable
-        # from the instances GENERATED_DATA_DICT storage.
-        data_dict = getattr(self, GENERATED_DATA_DICT_NAME)
-        return data_dict.get(name, None)
-
-    def _build_dataframe_for_vars(self, var_names):
-        # Build a dataframe for the DGP variables listed in
-        # var_names.
-        df = pd.DataFrame()
-        for name in var_names:
-            val = self._get_generated_data(name)
-            df[name] = val
-
-        return df
-
-    def _build_dataset(self):
-        # Helper method which builds a GeneratedDataSet object using
-        # the DGP variables generated and stored in the GENERATED_DATA_DICT
-        # storage.
-
-        # 1. Observed data
-        observed_covariate_data = self._get_generated_data(
-            DGPVariables.COVARIATES_NAME)
-
-        observed_outcome_data = self._build_dataframe_for_vars([
-            DGPVariables.TREATMENT_ASSIGNMENT_NAME,
-            DGPVariables.OBSERVED_OUTCOME_NAME
-        ])
-
-        # 2. Unobserved data
-        transformed_covariate_data = self._get_generated_data(
-            DGPVariables.TRANSFORMED_COVARIATES_NAME)
-
-        oracle_outcome_data = self._build_dataframe_for_vars([
-            DGPVariables.PROPENSITY_SCORE_NAME,
-            DGPVariables.PROPENSITY_LOGIT_NAME,
-            DGPVariables.OUTCOME_NOISE_NAME,
-            DGPVariables.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
-            DGPVariables.POTENTIAL_OUTCOME_WITH_TREATMENT_NAME,
-            DGPVariables.TREATMENT_EFFECT_NAME,
-        ])
-
-        return GeneratedDataSet(
-            observed_covariate_data=observed_covariate_data,
-            observed_outcome_data=observed_outcome_data,
-            oracle_outcome_data=oracle_outcome_data,
-            transformed_covariate_data=transformed_covariate_data)
 
 class ConcreteDataGeneratingProcess(DataGeneratingProcess):
     """

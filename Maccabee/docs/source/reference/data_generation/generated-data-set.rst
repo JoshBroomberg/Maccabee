@@ -4,3 +4,4 @@
 .. automodule:: maccabee.data_generation.generated_data_set
   :members:
   :private-members:
+  :member-order: groupwise
