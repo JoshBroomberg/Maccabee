@@ -23,6 +23,7 @@ setuptools.setup(
           'pandas',
           'scipy',
           'sympy',
+          'sklearn',
           'POT',
           'pyyaml',
           'threadpoolctl'
