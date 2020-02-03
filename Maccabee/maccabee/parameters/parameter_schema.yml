@@ -22,6 +22,9 @@ FUNCTION_SURFACE_REQUIRED_KEYS: &function_surface_required_keys
     - INTERACTION_TWO_WAY
     - INTERACTION_THREE_WAY
 
+# The DGP sampling parameters are defined below. The name of the parameter is
+# the main key and nested under this is the type, validity conditions and role
+# description.
 SCHEMA:
   POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY:
     type: number

@@ -8,3 +8,4 @@
   :maxdepth: 1
 
   parameters/parameter-store.rst
+  parameters/parameter-store-builders.rst

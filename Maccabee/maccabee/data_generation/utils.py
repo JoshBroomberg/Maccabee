@@ -77,7 +77,7 @@ def initialize_expression_constants(
     """Initialize the constants in the expressions in `expressions` by sampling from `constants_sampling_distro`.
 
     Args:
-        constants_sampling_distro (function): A function which produces `n` samples from some distribution over real values when called like ``constants_sampling_distro(size=n)``.
+        constants_sampling_distro (function): A function which produces `n` samples from some distribution over real values when called using a size keyword argument as in ``constants_sampling_distro(size=n)``.
         expressions (list): A list of Sympy expressions in which the constant symbols from `constant_symbols` appears. These are initialized to the values sampled from `constants_sampling_distro`.
         constant_symbols (list): A list of Sympy symbols which are constants to be initialized. Defaults to ``{sympy.abc.a, sympy.abc.c}``.
 
@@ -96,11 +96,14 @@ def initialize_expression_constants(
     initialized_expressions = []
 
     for expression in expressions:
+        # Find the free symbols which are in the constant symbols arg.
         constants_to_initialize = \
             constant_symbols.intersection(expression.free_symbols)
 
         initialized_expressions.append(
+            # Init expression
             expression.subs(
+                # enumerable of (symbol, val) tuples
                 zip(constants_to_initialize,
                     constants_sampling_distro(size=len(constants_to_initialize))
                     )

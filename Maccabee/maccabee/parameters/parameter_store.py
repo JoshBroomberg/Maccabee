@@ -1,22 +1,54 @@
-"""This module contains the ParameterStore Class which stores sampling parameters."""
+"""This submodule defines the :class:`~maccabee.parameters.parameter_store.ParameterStore` class. If you haven't already read the overview of sampling parameterization provided in the docs for the :mod:`maccabee.parameters` module you should read those docs before proceeding to read the content below.
+"""
 
 import numpy as np
 import sympy as sp
 from sympy.abc import x
 import yaml
 from ..constants import Constants
-
+from ..exceptions import ParameterMissingFromSpecException, ParameterInvalidValueException, CalculatedParameterException
 ParamFileConstants = Constants.ParamFilesAndPaths
 SchemaConstants = Constants.ParamSchemaKeysAndVals
 
+
 # TODO: refactor the way calculated params and distributions are handled.
 class ParameterStore():
-    '''
-    This class stores all the parameters which are used to control the sampling
-    of the Data Generating Process. It ensures that supplied parameters meet
-    the fixed schema and is responsible for managing
-    calculated and sampling parameters (which are not concretely specified).
-    '''
+    """
+    **The Design of the ParameterStore**
+
+    In order to understand the :class:`~maccabee.parameters.parameter_store.ParameterStore` class, it is important to understand the motivation behind its design. The goal of the class is to provide a simple interface to specificy and access a complex set of parameters. As mentioned in the parent module docs, the DGP sampling parameters can be of very different types with different validity conditions and access workflows (simple data retrieval, once-off calculation, dynamic calculation). This means standard data structure based storage, for example in a dictionary, would be very difficult and require tight coupling between the consumption of the parameters (in the :class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcessSampler`) and their specification format. It would also make the task of specifying the parameters laborious as large dictionaries are hard to organize and parse by visual inspection.
+
+    In theory, using a vanilla parameter class would allow for all of this complexity to be encapsulated behind a simple interface. Verification of parameters, execution of arbitrary code etc are easy to implement using standard class design principles/mechanisms. Unfortunately, users are likely to experiment with many different parameterizations as they explore the :term:`distributional problem space` and using a vanilla class for parameter storage is not good for experimentation. In order to experiment with many different sets of parameter values using classes requires either:
+
+    1. The maintenance of many separate classes with different methods/values. This strategy introduces a lot of boilerplate code to define and manage different classes. Even if inheritance is used, defining many new classes is cumbersome and produces parameter specifications which are hard to grok by visual inspection.
+
+    2. Using a single class and changing the methods/attributes by manual run-time parameterization. This strategy makes it hard to switch between different parameterizations and risks loss of reproducibility if specific parameterizations are lost/forgotten.
+
+    Further, it is possible and likely that the  parameters will be added by users of this package. This should, ideally, be facillitated without requiring code changes to the package itself. Vanilla classes would necessitate such changes.
+
+    With the above context in mind, the :class:`~maccabee.parameters.parameter_store.ParameterStore` class pursues a hybrid approach. Parameter values are specified using structured :term:`YML` files referred to as :term:`parameter specification files <parameter specification file>`. These files are easy to read and allow for low-overhead, reliable storage, duplication, and editing. The :term:`parameter specification file` is read by the :class:`~maccabee.parameters.parameter_store.ParameterStore` class at instantiation time. Its content is interpretted based on a package-level :term:`parameter schema file` that specifies the set of expected parameters and their format/handling mechanism and validity conditions. This allows a single set of parameter handling code in the :class:`~maccabee.parameters.parameter_store.ParameterStore` class to be (re)used in storing and accessing an arbitrary set of parameters which are defined in the schema (arbitrary up to the pre-defined set of handling mechanisms which require code changes to modify).
+
+    After instantiation, the parameters are available as **attributes** of the :class:`~maccabee.parameters.parameter_store.ParameterStore` instance as if they had been coded directly into the class definition (despite being stored in a specification file which stores their values for reproducibility and inspection).
+
+    **Building ParameterStore Instances**
+
+    While it is possible to build a :class:`~maccabee.parameters.parameter_store.ParameterStore` instance using the constructor, this is not recommended. There are three supported ways to build instances. The first two are useful if direct control of parameter values is useful/required. The third is designed to build instances using higher-level specification of the desired parameterization (as outlined in the documentation of the parent module).
+
+    * The helper function :func:`~maccabee.parameters.parameter_store_builders.build_parameters_from_specification` can used to easily construct a :class:`~maccabee.parameters.parameter_store.ParameterStore` instance from a parameter specification file.
+
+    * The helper function :func:`~maccabee.parameters.parameter_store_builders.build_default_parameters` builds an instance using the :download:`default_parameter_specification.yml </../../maccabee/parameters/default_parameter_specification.yml>` file
+
+    * Finally, the helper function :func:`~maccabee.parameters.parameter_store_builders.build_parameters_from_axis_levels` builds an instance using a specification of location in the :term:`distributional problem space`. See its documentation for detail.
+
+    **Using ParameterStore Instances**
+
+    As mentioned above, after instantiation, the sampling parameters are available as attributes of the instance. They can therefore be *accessed* as standard attributes of an instance. However, when *setting* the value on an attribute, it is important to use the :meth:`~maccabee.parameters.parameter_store.ParameterStore.set_parameter`/:meth:`~maccabee.parameters.parameter_store.ParameterStore.set_parameters` methods so that calculated parameters are updated appropriately.
+
+    **Instance Method Documentation**
+
+    Args:
+        parameter_spec_path (string): The path to a :term:`parameter specification file`.
+    """
 
     def __init__(self, parameter_spec_path):
         with open(parameter_spec_path, "r") as params_file:
@@ -32,39 +64,97 @@ class ParameterStore():
             # If param should be calculated
             if param_type == SchemaConstants.TYPE_CALCULATED:
                 if param_name in raw_parameter_dict:
-                    raise Exception(
-                        "{} is calculated. It can't be supplied.".format(
-                            param_name))
+                    raise CalculatedParameterException(param_name)
 
-                param_value = self.get_calculated_param_value(param_info)
+                param_value = self._find_calculated_param_value(param_info)
                 self.calculated_parameters[param_name] = param_info
 
             # If the parameter is in the specification file
             elif param_name in raw_parameter_dict:
                 param_value = raw_parameter_dict[param_name]
-                if not self.validate_param_value(param_info, param_value):
-                    raise Exception("Invalid value for {}: {}".format(
-                        param_name, param_value))
+                if not self._validate_param_value(param_info, param_value):
+                    raise ParameterInvalidValueException(
+                        param_name, param_value)
 
             # Parameter is missing.
             else:
-                raise Exception("Param spec is missing: {}".format(param_name))
+                raise ParameterMissingFromSpecException(param_name)
 
             self.set_parameter(
                 param_name, param_value,
                 recalculate_calculated_params=False)
 
-    def get_calculated_param_value(self, param_info):
+    def set_parameter(self,
+        param_name, param_value,
+        recalculate_calculated_params=True):
+        """Set the value of the param with the name `param_name` to the value `param_value.`
+
+        Args:
+            param_name (string): The name of the parameter to set.
+            param_value (type): The value to set the parameter to.
+            recalculate_calculated_params (bool): Indicates whether calculated params should be recalculated. Defaults to True.
+
+        Examples
+            >>> from maccabee.parameters import build_default_parameters
+            >>> params = build_default_parameters()
+            >>> params.set_parameter("TREATMENT_EFFECT_TAIL_THICKNESS", 42)
+            >>> params.TREATMENT_EFFECT_TAIL_THICKNESS
+            42
+        """
+
+        # Make the parameter value available on the ParamStore object
+        # as an attribute and store the value in a dict for
+        # later write out or use in finding determining calculated params.
+        setattr(self, param_name, param_value)
+        self.parsed_parameter_dict[param_name] = param_value
+        if recalculate_calculated_params:
+            self._recalculate_calculated_params()
+
+    def set_parameters(self, param_dict, recalculate_calculated_params=True):
+        """Set the value of the params with the names of the keys in the `param_dict` dictionary to the corresponding value in the dictionary.
+
+        Args:
+            param_dict (dict): A dictionary mapping parameter names to parameter values.
+            recalculate_calculated_params (bool): Indicates whether calculated params should be recalculated. Defaults to True.
+
+        Examples
+            >>> from maccabee.parameters import build_default_parameters
+            >>> params = build_default_parameters()
+            >>> params.set_parameters({"TREATMENT_EFFECT_TAIL_THICKNESS": 42})
+            >>> params.TREATMENT_EFFECT_TAIL_THICKNESS
+            42
+        """
+
+        for param_name in param_dict:
+            self.set_parameter(
+                param_name, param_dict[param_name],
+                recalculate_calculated_params=recalculate_calculated_params)
+
+    def write(self):
+        # TODO: dump parsed params to valid yaml spec
+        # with open('data.yml', 'w') as outfile:
+        #     yaml.dump(data, outfile, default_flow_style=False)
+        pass
+
+    ### PRIVATE HELPER FUNCTIONS ###
+    def _find_calculated_param_value(self, param_info):
+        # Evaluate the expression for the calculated param
+        # supplied in param_info using the existing parameter
+        # values in the parsed_parameter_dict attribute.
         expr = param_info[SchemaConstants.EXPRESSION_KEY]
         return eval(expr, globals(), self.parsed_parameter_dict)
 
-    def recalculate_calculated_params(self):
+    def _recalculate_calculated_params(self):
+        # Recalculate all calculated param values
+        # This is used following a change in param value.
         for param_name, param_info in self.calculated_parameters.items():
-            param_value = self.get_calculated_param_value(param_info)
+            param_value = self._find_calculated_param_value(param_info)
             self.set_parameter(param_name, param_value,
                 recalculate_calculated_params=False)
 
-    def validate_param_value(self, param_info, param_value):
+    def _validate_param_value(self, param_info, param_value):
+        # Validate the param value given in param_value
+        # based on the validity conditions in param_info
         param_type = param_info[SchemaConstants.TYPE_KEY]
         if param_type == SchemaConstants.TYPE_NUMBER:
             return param_info[SchemaConstants.MIN_KEY] <= param_value <= param_info[SchemaConstants.MAX_KEY]
@@ -81,28 +171,14 @@ class ParameterStore():
             # Unknown param type, cannot validate. Fail at medium volume.
             return False
 
-    # Makes a parameter value available on the ParamStore object
-    # and stores the value in a dict for later write out.
-    def set_parameter(self, param_name, param_value, recalculate_calculated_params=True):
-        setattr(self, param_name, param_value)
-        self.parsed_parameter_dict[param_name] = param_value
-        if recalculate_calculated_params:
-            self.recalculate_calculated_params()
+    ### TEMPORARY HARD CODED SOLUTION FOR DYNAMIC PARAMS ###
 
-    def set_parameters(self, param_dict, recalculate_calculated_params=True):
-        for param_name in param_dict:
-            self.set_parameter(
-                param_name, param_dict[param_name],
-                recalculate_calculated_params=recalculate_calculated_params)
+    # TODO: provide a way to specify sampling functions in param spec file.
+    # to avoid this hard coding.
 
-    def write(self):
-        # TODO: dump parsed params to valid yaml spec
-        # with open('data.yml', 'w') as outfile:
-        #     yaml.dump(data, outfile, default_flow_style=False)
-        pass
-
-    # TODO: provide a wat to specify sampling functions
-    # to avoid hard coding.
+    # NOTE: the transforms which appear in the distributions below are
+    # arbitrary and could easily be changed/different. They're just
+    # designed to represent non-trivial distributions to sample from.
     def sample_subfunction_constants(self, size=1):
         std = 5*np.sqrt(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS/(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS-2))
         return np.round(np.random.standard_t(
@@ -116,43 +192,3 @@ class ParameterStore():
     def sample_treatment_effect(self, size=1):
         return np.round(np.random.standard_t(
                             self.TREATMENT_EFFECT_TAIL_THICKNESS, size=size), 3)
-
-def build_default_parameters():
-    return ParameterStore(parameter_spec_path=ParamFileConstants.DEFAULT_SPEC_PATH)
-
-def build_parameters_from_specification(parameter_spec_path):
-    '''
-    Build a parameter store from a give specification file.
-    '''
-    return ParameterStore(parameter_spec_path=parameter_spec_path)
-
-def build_parameters_from_axis_levels(metric_levels, save=False):
-    '''
-    Build a parameter store from a set of metric levels. These
-    are applied onto the default parameter spec.
-    '''
-
-    params = build_default_parameters()
-
-    with open(ParamFileConstants.AXIS_LEVEL_SPEC_PATH, "r") as metric_level_file:
-        metric_level_param_specs = yaml.safe_load(metric_level_file)
-
-    # Set the value of each metric to the correct values.
-    for metric_name, metric_level in metric_levels.items():
-
-        if metric_name in metric_level_param_specs:
-            metric_level_specs = metric_level_param_specs[metric_name]
-
-            if metric_level in metric_level_specs:
-                for param_name, param_value in metric_level_specs[metric_level].items():
-                    params.set_parameter(
-                        param_name, param_value, recalculate_calculated_params=False)
-            else:
-                raise Exception(f"{metric_level} is not a valid level for {metric_name}")
-        else:
-            raise Exception(f"{metric_name} is not a valid metric")
-
-
-    params.recalculate_calculated_params()
-
-    return params

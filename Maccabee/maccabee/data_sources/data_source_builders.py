@@ -11,23 +11,14 @@ from .utils import random_covar_matrix, load_covars_from_csv_path, build_covar_d
 
 
 def build_csv_datasource(csv_path, discrete_covar_names):
-    """Short summary.
+    """Builds a datasource using the CSV of covariates at `csv_path`. This method expects a CSV with covariate names in the first row.
 
     Args:
-        csv_path (type): Description of parameter `csv_path`.
-        discrete_covar_names (type): Description of parameter `discrete_covar_names`.
+        csv_path (string): The path to a CSV.
+        discrete_covar_names (list): A list of string covariate names corresponding to the discrete covariates.
 
     Returns:
-        type: Description of returned object.
-
-    Raises:
-        ExceptionName: Why the exception is raised.
-
-    Examples
-        Examples should be written in doctest format, and
-        should illustrate how to use the function/class.
-        >>>
-
+        :class:`DataSource <maccabee.data_sources.DataSource>`: A :class:`DataSource <maccabee.data_sources.DataSource>` instance which will generate the covariates from the CSV when sampled.
     """
     covar_data, covar_names = load_covars_from_csv_path(csv_path)
 
@@ -37,37 +28,19 @@ def build_csv_datasource(csv_path, discrete_covar_names):
         discrete_covar_names=discrete_covar_names)
 
 def build_cpp_datasource():
-    """Short summary.
+    """Builds a datasource using the CPP data set of empirical covariates. See the theory paper for more on this data set.
 
     Returns:
-        type: Description of returned object.
-
-    Raises:
-        ExceptionName: Why the exception is raised.
-
-    Examples
-        Examples should be written in doctest format, and
-        should illustrate how to use the function/class.
-        >>>
-
+        :class:`DataSource <maccabee.data_sources.DataSource>`: A :class:`DataSource <maccabee.data_sources.DataSource>` instance which will generate the covariates from the CPP data set when sampled.
     """
     return build_csv_datasource(
         Constants.ExternalCovariateData.CPP_PATH, Constants.ExternalCovariateData.CPP_DISCRETE_COVARS)
 
 def build_lalonde_datasource():
-    """Short summary.
+    """Builds a datasource using the Lalonde data set of empirical covariates. See the theory paper for more on this data set.
 
     Returns:
-        type: Description of returned object.
-
-    Raises:
-        ExceptionName: Why the exception is raised.
-
-    Examples
-        Examples should be written in doctest format, and
-        should illustrate how to use the function/class.
-        >>>
-
+        :class:`DataSource <maccabee.data_sources.DataSource>`: A :class:`DataSource <maccabee.data_sources.DataSource>` instance which will generate the covariates from the Lalonde data set when sampled.
     """
     return build_csv_datasource(
         Constants.ExternalCovariateData.LALONDE_PATH, Constants.ExternalCovariateData.LALONDE_DISCRETE_COVARS)
@@ -75,24 +48,18 @@ def build_lalonde_datasource():
 def build_random_normal_datasource(
     n_covars = 20, n_observations = 1000,
     partial_correlation_degree=0.0):
-    """Generate random normal covariate data-frame based on the supplied parameters.
+    """Builds a datasource using random normal covariates.
 
     Args:
-        n_covars (type): Description of parameter `n_covars`. Defaults to 20.
-        n_observations (type): Description of parameter `n_observations`. Defaults to 1000.
-        partial_correlation_degree (type): Description of parameter `partial_correlation_degree`. Defaults to 0.0.
+        n_covars (int): The number of random normal covariates. Defaults to 20.
+        n_observations (int): The number of observations in the data set. Defaults to 1000.
+        partial_correlation_degree (float): The degree of partial correlation between the covariates. Full independance at ``0.0`` and perfect correlation at ``1.0``. A random covariance matrix is generated based on this parameter by approximating the random
+        vine method. Defaults to 0.0.
 
     Returns:
-        type: Description of returned object.
+        :class:`DataSource <maccabee.data_sources.DataSource>`: A :class:`DataSource <maccabee.data_sources.DataSource>` instance which will generate random normal covariates when sampled.
 
-    Raises:
-        ExceptionName: Why the exception is raised.
-
-    Examples
-        Examples should be written in doctest format, and
-        should illustrate how to use the function/class.
-        >>>
-
+    .. _SO: https://stats.stackexchange.com/questions/2746/how-to-efficiently-generate-random-positive-semidefinite-correlation-matrices/
     """
 
 
@@ -109,6 +76,7 @@ def build_random_normal_datasource(
 
 def _gen_random_normal_data(n_covars, n_observations,
     correlation_deg):
+    # Helper method which generates random normal data for the random normal data source builder.
 
     covar = random_covar_matrix(
         dimension=n_covars,

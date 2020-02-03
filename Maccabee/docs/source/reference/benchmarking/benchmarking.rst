@@ -4,3 +4,4 @@
 .. automodule:: maccabee.benchmarking.benchmarking
   :members:
   :private-members:
+  :member-order: bysource
