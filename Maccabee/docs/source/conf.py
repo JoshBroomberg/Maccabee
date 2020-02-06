@@ -24,7 +24,7 @@ copyright = '2020, Josh Broomberg'
 author = 'Josh Broomberg'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.12'
+release = '0.1.2'
 
 master_doc = 'index'
 
@@ -44,7 +44,7 @@ extensions = [
     'nbsphinx' # rendering ipynbs
 ]
 
-add_module_names = False 
+add_module_names = False
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),

@@ -43,13 +43,10 @@ def evaluate_expression(expression, data):
 
     Returns:
         :class:`~numpy.ndarray`: An array of expression values corresponding to the rows of the `data`.
-
-    Raises:
-        ValueError: If the expression has no free symbols to initialize.
-
     """
-    try:
-        free_symbols = list(expression.free_symbols)
+    free_symbols = getattr(expression, "free_symbols", None)
+    if free_symbols is not None:
+        free_symbols = list(free_symbols)
 
         expr_func = sp.lambdify(
                 free_symbols,
@@ -67,7 +64,7 @@ def evaluate_expression(expression, data):
         res = expr_func(*column_data)
 
         return res
-    except ValueError:
+    else:
         # No free symbols, return expression itself.
         return expression
 

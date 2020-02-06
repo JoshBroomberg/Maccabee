@@ -41,7 +41,7 @@ class DataSource():
         raise NotImplementedError
 
     def _normalize_covariate_data(self, covar_df):
-        """This method normalizes the covariate data returned by :meth:`_generate_covar_df` in preparation for DGP sampling. If the :class:`DataSource` is to be used with sampled DGPs then all continuous covariates should be 0 mean and have an approximate standard deviation of 1. Symmetry in the covariate distributions is not required but will improve the ability of the sampling process to achieve the desired distributional setting. See the docs for the :class:`maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcess` for more detail).
+        """This method normalizes the covariate data returned by :meth:`_generate_covar_df` in preparation for DGP sampling. If the :class:`DataSource` is to be used with sampled DGPs then all continuous covariates should be 0 mean and have an approximate standard deviation of 1. Symmetry in the covariate distributions is not required but will improve the ability of the sampling process to achieve the desired distributional setting. See the docs for the :class:`maccabee.data_generation.data_generating_process.DataGeneratingProcess` for more detail).
 
         Args:
             covar_df (:class:`DataFrame <pandas.DataFrame>`): The :class:`DataFrame <pandas.DataFrame>` which contains the unnormalized covariate observations.
