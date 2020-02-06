@@ -53,6 +53,9 @@ class DataGeneratingProcessSampler():
         # fairly generic parameters. Rather override the various subroutines
         # below.
 
+        # TODO: Remove
+        # np.random.seed()
+
         source_covariate_data = self.data_source.get_covar_df()
         covariate_symbols = np.array(sp.symbols(self.data_source.get_covar_names()))
 
@@ -92,6 +95,7 @@ class DataGeneratingProcessSampler():
             treatment_effect_subfunction=treat_effect_subfunc,
             base_outcome_subfunction=base_outcome_subfunc,
             outcome_function=outcome_function,
+            data_source=self.data_source,
             **self.dgp_kwargs)
 
         return dgp
@@ -317,8 +321,8 @@ class DataGeneratingProcessSampler():
         treatment_assignment_logit_function = \
             max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
 
-        exponentiated_logit = sp.functions.exp(treatment_assignment_logit_function)
-        treatment_assignment_function = exponentiated_logit/(1 + exponentiated_logit)
+        exponentiated_neg_logit = sp.functions.exp(-1*treatment_assignment_logit_function)
+        treatment_assignment_function = 1/(1 + exponentiated_neg_logit)
 
         return (treatment_assignment_logit_function,
             treatment_assignment_function)

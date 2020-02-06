@@ -56,6 +56,8 @@ GENMATCH_BINARY_COVAR_INDECES = [1, 3, 5, 6, 8, 9]
 GENMATCH_COVAR_NAMES = np.array([f"X{i}" for i in range(GENMATCH_N_COVARS)])
 
 def _generate_genmatch_data(n_observations):
+    # TODO: remove
+    # np.random.seed()
     covar_data = np.random.normal(loc=0.0, scale=1.0, size=(
             n_observations, GENMATCH_N_COVARS-1))
 
@@ -161,6 +163,10 @@ class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
 
         return 1/(1 + np.exp(-1*logits))
 
+    @data_generating_method(Constants.DGPVariables.OUTCOME_NOISE_NAME, [])
+    def _generate_outcome_noise_samples(self, input_vars):
+        return 0
+
     @data_generating_method(
         DGPVariables.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
         [DGPVariables.COVARIATES_NAME])
@@ -171,11 +177,8 @@ class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
             self.base_outcome_expression,
             observed_covariate_data)
 
-    @data_generating_method(
-        DGPVariables.TREATMENT_EFFECT_NAME,
-        [DGPVariables.COVARIATES_NAME])
+    @data_generating_method(DGPVariables.TREATMENT_EFFECT_NAME, [])
     def _generate_treatment_effects(self, input_vars):
-        observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
         return self.true_treat_effect
 
 class LogisticPropensityMatchingCausalModel(CausalModel):
@@ -202,6 +205,9 @@ class LogisticPropensityMatchingCausalModel(CausalModel):
     def estimate_ITE(self):
         ate = self.estimate_ATE()
         return np.full(len(self.dataset.X), ate)
+
+    def estimate_ATT(self):
+        return np.array(self.match_out.rx2("est").rx(1,1))[0]
 
     def estimate_ATE(self):
         return np.array(self.match_out.rx2("est").rx(1,1))[0]

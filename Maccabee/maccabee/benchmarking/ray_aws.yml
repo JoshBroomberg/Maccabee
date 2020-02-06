@@ -72,7 +72,7 @@ auth:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 head_node:
     InstanceType: t2.large
-    ImageId: ami-062f7200baf2fa504 # AWS Ubuntu 2
+    ImageId: ami-04590e7389a6e577c # AWS Ubuntu 2
 
     # You can provision additional disk space with a conf as follows
     BlockDeviceMappings:
@@ -88,7 +88,7 @@ head_node:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 worker_nodes:
     InstanceType: m5.large
-    ImageId: ami-062f7200baf2fa504 # AWS Ubuntu 2
+    ImageId: ami-04590e7389a6e577c # AWS Ubuntu 2
 
     # Run workers on spot by default. Comment this out to use on-demand.
     InstanceMarketOptions:

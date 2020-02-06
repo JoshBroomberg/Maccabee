@@ -253,13 +253,16 @@ def benchmark_model_using_sampled_dgp(
     with Pool(processes=min(n_jobs, num_dgp_samples)) as pool:
         dgps = pool.map(dgp_sampler, range(num_dgp_samples))
 
+    for _, dgp in dgps:
+        print(dgp.treatment_assignment_logit_function)
     # Data structures for storing the metric results for each sampled DGP.
     performance_metric_dgp_results = defaultdict(list)
+    performance_metric_raw_run_results = defaultdict(list)
     data_metric_dgp_results = defaultdict(list)
 
     # For each dgp, run a concrete benchmark.
     for _, dgp in dgps:
-        performance_metric_data, _, data_metric_data, _ = \
+        performance_metric_data, performance_raw_data, data_metric_data, _ = \
             benchmark_model_using_concrete_dgp(
                 dgp, model_class, estimand,
                 num_sampling_runs_per_dgp=num_sampling_runs_per_dgp,
@@ -275,6 +278,8 @@ def benchmark_model_using_sampled_dgp(
         for metric_name in perf_metric_names_and_funcs:
             performance_metric_dgp_results[metric_name].append(
                 performance_metric_data[metric_name])
+            performance_metric_raw_run_results[metric_name].append(
+                performance_raw_data[metric_name])
 
         # As above, but for the data metrics which don't have a standard dev.
         if data_analysis_mode:
@@ -282,7 +287,7 @@ def benchmark_model_using_sampled_dgp(
                 data_metric_dgp_results[axis_metric_name].append(val)
 
     return (_aggregate_metric_results(performance_metric_dgp_results),
-        performance_metric_dgp_results,
+        performance_metric_dgp_results, performance_metric_raw_run_results,
         _aggregate_metric_results(data_metric_dgp_results, std=False),
         data_metric_dgp_results)
 

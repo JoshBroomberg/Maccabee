@@ -5,8 +5,8 @@ PROBABILITY_MIN_MAX: &probability_min_max
   max: 1
 
 PROPENSITY_MIN_MAX: &propensity_min_max
-  min: 0.00001
-  max: 0.99999
+  min: 0.000000000000001
+  max: 0.999999999999999
 
 DOF_MIN_MAX: &dof_min_max
   min: 3

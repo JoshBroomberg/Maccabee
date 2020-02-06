@@ -367,6 +367,7 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         base_outcome_subfunction,
         treatment_assignment_logit_func=None,
         outcome_function=None,
+        data_source=None,
         data_analysis_mode=True):
 
         # STANDARD CONFIG
@@ -392,9 +393,12 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         # DATA
         self.observed_covariate_data = observed_covariate_data
 
+        self.data_source = data_source
+
     @data_generating_method(DGPVariables.COVARIATES_NAME, [], cache_result=True)
     def _generate_observed_covars(self, input_vars):
-        return self.observed_covariate_data
+        # return self.observed_covariate_data
+        return self.data_source.get_covar_df()
 
     @data_generating_method(
         DGPVariables.TRANSFORMED_COVARIATES_NAME,

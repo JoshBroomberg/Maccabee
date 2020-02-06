@@ -123,7 +123,7 @@ class GeneratedDataSet(metaclass=DGPVariableAccessor):
     @property
     def ATT(self):
         """**[ESTIMAND]**\n\n This property accesses the ATT estimand"""
-        return np.mean(self.ITE[self.T == "1"])
+        return np.mean(self.ITE.to_numpy()[self.T.to_numpy() == 1])
 
     def ground_truth(self, estimand):
         """Returns the ground truth for the estimand given in `estimand`.
