@@ -20,7 +20,7 @@ from functools import partial
 from ..parameters import build_parameters_from_axis_levels
 from ..data_generation import DataGeneratingProcessSampler, SampledDataGeneratingProcess
 from ..data_analysis import calculate_data_axis_metrics
-from ..utilities.threading import single_threaded_context
+from ..utilities.threading import get_threading_context
 from ..modeling.performance_metrics import AVG_EFFECT_METRICS, INDIVIDUAL_EFFECT_METRICS
 from ..exceptions import UnknownEstimandException
 from ..constants import Constants
@@ -85,7 +85,8 @@ def benchmark_model_using_concrete_dgp(
     num_sampling_runs_per_dgp, num_samples_from_dgp,
     data_analysis_mode=False,
     data_metrics_spec=None,
-    n_jobs=1):
+    n_jobs=1,
+    n_threads=1):
     """Sample data sets from the given DGP instance and calculate performance and (optionally) data metrics.
 
     Args:
@@ -137,26 +138,26 @@ def benchmark_model_using_concrete_dgp(
         num_samples_from_dgp, dgp.n_observations, estimand)
     perf_metric_names_and_funcs = _get_performance_metric_functions(estimand)
 
-    # Synchronous loop over the sampling runs.
-    for run_index in range(num_sampling_runs_per_dgp):
+    # Sampling occurs in a single threaded context so that, when split
+    # across cores, the numpy functions in each process don't use
+    # more than the resources allocated to the process.
+    thread_context = get_threading_context(n_threads)
+    with thread_context():
 
-        # Data structures to store the datasets, sampled estimand values and
-        # data metrics for each sample in this sampling run.
+        # Build a multiprocessing pool based on the allowed parallelism
+        # but only up to the max parralelism from num_samples_from_dgp.
+        with Pool(processes=min(n_jobs, num_samples_from_dgp)) as pool:
 
-        datasets = np.empty(num_samples_from_dgp, dtype="O")
-        estimand_sample_results = np.empty(perf_metric_data_store_shape)
-        data_metrics_sample_results = defaultdict(list) # TODO: numpy
+            # Synchronous loop over the sampling runs.
+            for run_index in range(num_sampling_runs_per_dgp):
+                # Data structures to store the datasets, sampled estimand values and
+                # data metrics for each sample in this sampling run.
 
-        # Begin sampling.
+                datasets = np.empty(num_samples_from_dgp, dtype="O")
+                estimand_sample_results = np.empty(perf_metric_data_store_shape)
+                data_metrics_sample_results = defaultdict(list) # TODO: numpy
 
-        # Sampling occurs in a single threaded context so that, when split
-        # across cores, the numpy functions in each process don't use
-        # more than the resources allocated to the process.
-        with single_threaded_context():
-
-            # Build a multiprocessing pool based on the allowed parallelism
-            # but only up to the max parralelism from num_samples_from_dgp.
-            with Pool(processes=min(n_jobs, num_samples_from_dgp)) as pool:
+                # Begin sampling.
 
                 # Use the runner function and multiprocessing pool to draw
                 # and process data samples into estimand samples.
@@ -178,22 +179,22 @@ def benchmark_model_using_concrete_dgp(
                             data_metrics_sample_results[axis_metric_name].append(
                                 axis_metric_val)
 
-        # At the end of the sampling for this sampling run, process sample
-        # estimand results into metric estimates.
-        estimate_vals = estimand_sample_results[:, 0]
-        true_vals = estimand_sample_results[:, 1]
+                # At the end of the sampling for this sampling run, process sample
+                # estimand results into metric estimates.
+                estimate_vals = estimand_sample_results[:, 0]
+                true_vals = estimand_sample_results[:, 1]
 
-        for metric_name, metric_func in perf_metric_names_and_funcs.items():
-            performance_metric_run_results[metric_name].append(metric_func(
-                estimate_vals, true_vals))
+                for metric_name, metric_func in perf_metric_names_and_funcs.items():
+                    performance_metric_run_results[metric_name].append(metric_func(
+                        estimate_vals, true_vals))
 
-        # Aggregate the data metrics by averaging across samples so that
-        # there is a single real value per sampling run as with the perf
-        # metrics.
-        if data_analysis_mode:
-            for axis_metric_name, vals in data_metrics_sample_results.items():
-                data_metric_run_results[axis_metric_name].append(
-                    np.mean(vals))
+                # Aggregate the data metrics by averaging across samples so that
+                # there is a single real value per sampling run as with the perf
+                # metrics.
+                if data_analysis_mode:
+                    for axis_metric_name, vals in data_metrics_sample_results.items():
+                        data_metric_run_results[axis_metric_name].append(
+                            np.mean(vals))
 
     # Aggregate perf and data metrics across sampling runs.
     performance_metric_aggregated_results = _aggregate_metric_results(performance_metric_run_results)
@@ -214,7 +215,8 @@ def benchmark_model_using_sampled_dgp(
     data_metrics_spec=None,
     dgp_class=SampledDataGeneratingProcess,
     dgp_kwargs={},
-    n_jobs=1):
+    n_jobs=1,
+    n_threads=1):
     """Short summary.
 
     Args:

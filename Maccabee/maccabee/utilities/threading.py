@@ -8,5 +8,8 @@ except:
     NP_USER_API = "blas"
 
 
-single_threaded_context = partial(
-    threadpool_limits, limits=1, user_api=NP_USER_API)
+def get_threading_context(n_threads):
+    thread_context = partial(
+        threadpool_limits, limits=n_threads, user_api=NP_USER_API)
+
+    return thread_context
