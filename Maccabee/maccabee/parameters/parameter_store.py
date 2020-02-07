@@ -184,7 +184,7 @@ class ParameterStore():
         # return np.round(np.random.standard_t(
         #                      self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS, size=size)/std, 3)
 
-        return np.random.uniform(low=-0.5, high=0.5, size=size)
+        return np.random.uniform(low=-0.75, high=0.75, size=size)
 
     def sample_outcome_noise(self, size=1):
         std = 3*np.sqrt(self.OUTCOME_NOISE_TAIL_THICKNESS/(self.OUTCOME_NOISE_TAIL_THICKNESS-2))

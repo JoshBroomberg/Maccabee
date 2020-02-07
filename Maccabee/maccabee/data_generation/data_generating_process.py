@@ -397,8 +397,8 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
 
     @data_generating_method(DGPVariables.COVARIATES_NAME, [], cache_result=True)
     def _generate_observed_covars(self, input_vars):
-        # return self.observed_covariate_data
-        return self.data_source.get_covar_df()
+        return self.observed_covariate_data
+        # return self.data_source.get_covar_df()
 
     @data_generating_method(
         DGPVariables.TRANSFORMED_COVARIATES_NAME,

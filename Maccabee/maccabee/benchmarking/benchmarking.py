@@ -253,8 +253,6 @@ def benchmark_model_using_sampled_dgp(
     with Pool(processes=min(n_jobs, num_dgp_samples)) as pool:
         dgps = pool.map(dgp_sampler, range(num_dgp_samples))
 
-    for _, dgp in dgps:
-        print(dgp.treatment_assignment_logit_function)
     # Data structures for storing the metric results for each sampled DGP.
     performance_metric_dgp_results = defaultdict(list)
     performance_metric_raw_run_results = defaultdict(list)
