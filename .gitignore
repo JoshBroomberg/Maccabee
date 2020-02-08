@@ -2,7 +2,8 @@
 
 Data/
 results/
-
+Notebooks/_maccabee/
+ø
 # Mac
 .DS_Store
 built_docs

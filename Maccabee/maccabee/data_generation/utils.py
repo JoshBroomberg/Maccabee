@@ -89,11 +89,15 @@ class CompiledExpression():
                 pathlib.Path(C_PATH).mkdir(parents=True, exist_ok=True)
                 CodeWrapper.module_name = self.compiled_module_name
 
+                print("Compiling")
+                print(self.expression)
                 # Compile
-                compiled_func = ufuncify(
+                ufuncify(
                     expr_func_ordered_symbols,
                     self.expression,
+                    backend="cython",
                     tempdir=mod_path)
+                print("Done compiling")
             except:
                 raise Exception("Failure in compilation of compiled expression.")
         else:
@@ -106,20 +110,35 @@ class CompiledExpression():
 
         try:
             if self.expression_func is None:
-                mod_path = C_PATH + self.compiled_module_name
-                sys.path.append(mod_path)
-                mod = importlib.import_module(self.compiled_module_name)
-                func_name = next(filter(lambda x: x.startswith("wrapped_"), dir(mod)))
+                if self.compiled_module_name not in sys.modules:
+                    mod_path = C_PATH + self.compiled_module_name
+
+                    if mod_path not in sys.path:
+                        sys.path.append(mod_path)
+
+                    print("Importing compiled module.")
+                    mod = importlib.import_module(self.compiled_module_name)
+                else:
+                    print("Loading existing compiled module.")
+                    mod = sys.modules[self.compiled_module_name]
+
+                # func_name = next(filter(lambda x: x.startswith("wrapped_"), dir(mod)))
+                func_name = next(filter(lambda x: x.startswith("autofunc"), dir(mod)))
                 self.expression_func = getattr(mod, func_name)
 
             column_data = [
-                data[arg].to_numpy()
+                data[arg].to_numpy().astype(np.float64)
                 for arg in self.compiled_ordered_args
             ]
 
-            res = pd.Series(self.expression_func(*column_data))
+            print("Executing compiled code")
+            expr_result = self.expression_func(*column_data)
+            print("Done executing compiled code")
+            res = pd.Series(expr_result)
+
             return res
-        except:
+        except Exception as e:
+            print(e)
             print("failure")
             raise Exception("Failure in compiled expression eval")
 

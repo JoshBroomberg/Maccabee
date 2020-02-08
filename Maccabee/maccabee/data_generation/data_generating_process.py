@@ -440,6 +440,7 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
     def _generate_treatment_assignments(self, input_vars):
         propensity_scores = input_vars[DGPVariables.PROPENSITY_SCORE_NAME]
 
+        print(self.n_observations, len(propensity_scores))
         # Sample treatment assignment given pre-calculated propensity_scores
         T = (np.random.uniform(
             size=self.n_observations) < propensity_scores).astype(int)
