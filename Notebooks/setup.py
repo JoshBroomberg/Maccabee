@@ -9,7 +9,7 @@ cy_opts = {}
 import numpy as np
 
 ext_mods = [Extension(
-    'mod_4694703022551149035_5', ['mod_4694703022551149035_5.pyx', 'wrapped_code_5.c'],
+    'mod_3420684666828491325_66443780', ['mod_3420684666828491325_66443780.pyx', 'wrapped_code_2.c'],
     include_dirs=[np.get_include()],
     library_dirs=[],
     libraries=[],

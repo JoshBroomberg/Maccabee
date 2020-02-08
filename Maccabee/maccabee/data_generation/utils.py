@@ -89,15 +89,14 @@ class CompiledExpression():
                 pathlib.Path(C_PATH).mkdir(parents=True, exist_ok=True)
                 CodeWrapper.module_name = self.compiled_module_name
 
-                print("Compiling")
-                print(self.expression)
+                # print("Compiling")
                 # Compile
                 ufuncify(
                     expr_func_ordered_symbols,
                     self.expression,
                     backend="cython",
                     tempdir=mod_path)
-                print("Done compiling")
+                # print("Done compiling")
             except:
                 raise Exception("Failure in compilation of compiled expression.")
         else:
@@ -116,10 +115,10 @@ class CompiledExpression():
                     if mod_path not in sys.path:
                         sys.path.append(mod_path)
 
-                    print("Importing compiled module.")
+                    # print("Importing compiled module.")
                     mod = importlib.import_module(self.compiled_module_name)
                 else:
-                    print("Loading existing compiled module.")
+                    # print("Loading existing compiled module.")
                     mod = sys.modules[self.compiled_module_name]
 
                 # func_name = next(filter(lambda x: x.startswith("wrapped_"), dir(mod)))
@@ -131,15 +130,15 @@ class CompiledExpression():
                 for arg in self.compiled_ordered_args
             ]
 
-            print("Executing compiled code")
+            # print("Executing compiled code")
             expr_result = self.expression_func(*column_data)
-            print("Done executing compiled code")
+            # print("Done executing compiled code")
             res = pd.Series(expr_result)
 
             return res
         except Exception as e:
-            print(e)
-            print("failure")
+            # print(e)
+            # print("failure")
             raise Exception("Failure in compiled expression eval")
 
 def evaluate_expression(expression, data):

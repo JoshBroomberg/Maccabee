@@ -2,7 +2,7 @@ from ..data_generation import ConcreteDataGeneratingProcess, data_generating_met
 from ..data_sources.data_sources import StochasticDataSource
 
 from ..constants import Constants
-from ..data_generation.utils import evaluate_expression
+from ..data_generation.utils import evaluate_expression, CompiledExpression
 from ..modeling.models import CausalModel
 
 DGPVariables = Constants.DGPVariables

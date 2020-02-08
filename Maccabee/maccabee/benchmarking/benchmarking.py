@@ -15,6 +15,7 @@ from sklearn.model_selection import ParameterGrid
 from collections import defaultdict
 import numpy as np
 from multiprocessing import Pool
+from multiprocessing.dummy import Pool as DummyPool
 from functools import partial
 
 from ..parameters import build_parameters_from_axis_levels
@@ -41,15 +42,15 @@ def _aggregate_metric_results(metric_results, std=True):
 
 def _gen_data_and_apply_model(dgp, model_class, estimand, index):
     np.random.seed()
-    print("Generating data")
+    # print("Generating data")
     dataset = dgp.generate_dataset()
 
-    print("Fitting model to data")
+    # print("Fitting model to data")
     # Fit model
     model = model_class(dataset)
     model.fit()
 
-    print("Collecting estimand from model")
+    # print("Collecting estimand from model")
     # Collect estimand result
     estimate_val = model.estimate(estimand=estimand)
     true_val = dataset.ground_truth(estimand=estimand)
@@ -59,7 +60,7 @@ def _gen_data_and_apply_model(dgp, model_class, estimand, index):
 def _sample_dgp(dgp_sampler, index):
     np.random.seed()
     sampled_dgp = dgp_sampler.sample_dgp()
-    print(f"Done sampling DGP {index+1}")
+    # print(f"Done sampling DGP {index+1}")
     return index, sampled_dgp
 
 def _get_performance_metric_data_structures(num_samples_from_dgp, n_observations, estimand):
@@ -151,12 +152,12 @@ def benchmark_model_using_concrete_dgp(
 
         # Build a multiprocessing pool based on the allowed parallelism
         # but only up to the max parralelism from num_samples_from_dgp.
-        print("Building pool")
+        # print("Building pool")
         with Pool(processes=min(n_jobs, num_samples_from_dgp), maxtasksperchild=1) as pool:
 
             # Synchronous loop over the sampling runs.
             for run_index in range(num_sampling_runs_per_dgp):
-                print("Starting run:", run_index)
+                # print("Starting run:", run_index)
                 # Data structures to store the datasets, sampled estimand values and
                 # data metrics for each sample in this sampling run.
 
@@ -168,11 +169,11 @@ def benchmark_model_using_concrete_dgp(
 
                 # Use the runner function and multiprocessing pool to draw
                 #    and process data samples into estimand samples.
-                print("Starting sampling for run.")
+                # print("Starting sampling for run.")
                 for sample_index, effect_estimate_and_truth, dataset in pool.imap_unordered(
                     run_model_on_dgp, sample_indeces):
 
-                    print("Sample:", sample_index)
+                    # print("Sample:", sample_index)
                     # Store estimand and data set samples.
                     estimand_sample_results[sample_index, :] = effect_estimate_and_truth
                     datasets[sample_index] = dataset
@@ -180,7 +181,7 @@ def benchmark_model_using_concrete_dgp(
                 # If in data analysis mode, use the pool to run data metric
                 # calculation.
                 if data_analysis_mode:
-                    print("Starting data analysis")
+                    # print("Starting data analysis")
                     # Loop over generated datasets in order.
                     for data_metric_results in pool.map(collect_dataset_metrics, datasets):
                         # Record all metrics at the sampled data set level
@@ -265,8 +266,10 @@ def benchmark_model_using_sampled_dgp(
 
     # Build a multiprocessing pool which exploits the parallelism in the DGP
     # sampling. Use it to sample all DGPs.
-    n_dgp_jobs = max(int(min(n_jobs, num_dgp_samples)/2), 1)
-    with Pool(processes=n_dgp_jobs, maxtasksperchild=1) as pool:
+
+    # Compilation must occur in the background but cannot be done
+    # in multiple processes at the same time.
+    with Pool(processes=1, maxtasksperchild=1) as pool:
         dgps = pool.map(dgp_sampler, range(num_dgp_samples))
         pool.close()
         pool.join()
@@ -280,8 +283,8 @@ def benchmark_model_using_sampled_dgp(
 
     # For each dgp, run a concrete benchmark.
     for dgp_index, dgp in dgps:
-        print(f"Starting DGP {dgp_index+1}/{num_dgp_samples}")
-        print(dgp.treatment_assignment_logit_function)
+        print(f"Starting sampling for DGP {dgp_index+1}/{num_dgp_samples}")
+        # print(dgp.treatment_assignment_logit_function)
         performance_metric_data, performance_raw_data, data_metric_data, _ = \
             benchmark_model_using_concrete_dgp(
                 dgp, model_class, estimand,
