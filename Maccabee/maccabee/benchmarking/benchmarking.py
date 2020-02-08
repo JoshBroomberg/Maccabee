@@ -146,7 +146,7 @@ def benchmark_model_using_concrete_dgp(
 
         # Build a multiprocessing pool based on the allowed parallelism
         # but only up to the max parralelism from num_samples_from_dgp.
-        with Pool(processes=min(n_jobs, num_samples_from_dgp)) as pool:
+        with Pool(processes=min(n_jobs, num_samples_from_dgp), maxtasksperchild=1) as pool:
 
             # Synchronous loop over the sampling runs.
             for run_index in range(num_sampling_runs_per_dgp):
@@ -160,7 +160,7 @@ def benchmark_model_using_concrete_dgp(
                 # Begin sampling.
 
                 # Use the runner function and multiprocessing pool to draw
-                # and process data samples into estimand samples.
+                #    and process data samples into estimand samples.
                 for sample_index, effect_estimate_and_truth, dataset in pool.imap_unordered(
                     run_model_on_dgp, sample_indeces):
 
@@ -195,6 +195,9 @@ def benchmark_model_using_concrete_dgp(
                     for axis_metric_name, vals in data_metrics_sample_results.items():
                         data_metric_run_results[axis_metric_name].append(
                             np.mean(vals))
+
+            pool.close()
+            pool.join()
 
     # Aggregate perf and data metrics across sampling runs.
     performance_metric_aggregated_results = _aggregate_metric_results(performance_metric_run_results)
@@ -252,8 +255,13 @@ def benchmark_model_using_sampled_dgp(
 
     # Build a multiprocessing pool which exploits the parallelism in the DGP
     # sampling. Use it to sample all DGPs.
-    with Pool(processes=min(n_jobs, num_dgp_samples)) as pool:
+    n_dgp_jobs = int(min(n_jobs, num_dgp_samples)/2)
+    with Pool(processes=n_dgp_jobs, maxtasksperchild=1) as pool:
         dgps = pool.map(dgp_sampler, range(num_dgp_samples))
+        pool.close()
+        pool.join()
+
+    # dgps = [dgp_sampler(i) for i in range(num_dgp_samples)]
 
     # Data structures for storing the metric results for each sampled DGP.
     performance_metric_dgp_results = defaultdict(list)
@@ -261,7 +269,9 @@ def benchmark_model_using_sampled_dgp(
     data_metric_dgp_results = defaultdict(list)
 
     # For each dgp, run a concrete benchmark.
-    for _, dgp in dgps:
+    for dgp_index, dgp in dgps:
+        print(f"Starting DGP {dgp_index+1}/{num_dgp_samples}")
+        print(dgp.treatment_assignment_logit_function)
         performance_metric_data, performance_raw_data, data_metric_data, _ = \
             benchmark_model_using_concrete_dgp(
                 dgp, model_class, estimand,

@@ -398,13 +398,13 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
     @data_generating_method(DGPVariables.COVARIATES_NAME, [], cache_result=True)
     def _generate_observed_covars(self, input_vars):
         return self.observed_covariate_data
-        # return self.data_source.get_covar_df()
+        # return self.data_source.get_covar_df() NB: disable cache.
 
     @data_generating_method(
         DGPVariables.TRANSFORMED_COVARIATES_NAME,
         [DGPVariables.COVARIATES_NAME],
         data_analysis_mode_only=True,
-        cache_result=True)
+        cache_result=False)
     def _generate_transformed_covars(self, input_vars):
         # Generate the values of all the transformed covariates by running the
         # original covariate data through the transforms used in the outcome and
@@ -426,7 +426,7 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
     @data_generating_method(
         DGPVariables.PROPENSITY_SCORE_NAME,
         [DGPVariables.COVARIATES_NAME],
-        cache_result=True)
+        cache_result=False)
     def _generate_true_propensity_scores(self, input_vars):
         observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
 
@@ -443,6 +443,8 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         # Sample treatment assignment given pre-calculated propensity_scores
         T = (np.random.uniform(
             size=self.n_observations) < propensity_scores).astype(int)
+
+        # TODO: fix error handling here.
 
         # Only perform balance adjustment if there is some heterogeneity
         # in the propensity scores.

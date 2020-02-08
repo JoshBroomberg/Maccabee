@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from itertools import combinations
 from ..constants import Constants
-from .utils import select_objects_given_probability, evaluate_expression, initialize_expression_constants
+from .utils import select_objects_given_probability, evaluate_expression, initialize_expression_constants, CompiledExpression
 from .data_generating_process import SampledDataGeneratingProcess
 
 SamplingConstants = Constants.DGPSampling
@@ -91,12 +91,26 @@ class DataGeneratingProcessSampler():
             outcome_covariate_transforms=outcome_covariate_transforms,
             treatment_covariate_transforms=treatment_covariate_transforms,
             treatment_assignment_logit_func=treatment_assignment_logit_func,
-            treatment_assignment_function=treatment_assignment_function,
-            treatment_effect_subfunction=treat_effect_subfunc,
-            base_outcome_subfunction=base_outcome_subfunc,
+            treatment_assignment_function=CompiledExpression(treatment_assignment_function),
+            treatment_effect_subfunction=CompiledExpression(treat_effect_subfunc),
+            base_outcome_subfunction=CompiledExpression(base_outcome_subfunc),
             outcome_function=outcome_function,
             data_source=self.data_source,
             **self.dgp_kwargs)
+
+        # Construct DGP
+        # dgp = self.dgp_class(
+        #     params=self.params,
+        #     observed_covariate_data=observed_covariate_data,
+        #     outcome_covariate_transforms=outcome_covariate_transforms,
+        #     treatment_covariate_transforms=treatment_covariate_transforms,
+        #     treatment_assignment_logit_func=treatment_assignment_logit_func,
+        #     treatment_assignment_function=treatment_assignment_function,
+        #     treatment_effect_subfunction=treat_effect_subfunc,
+        #     base_outcome_subfunction=base_outcome_subfunc,
+        #     outcome_function=outcome_function,
+        #     data_source=self.data_source,
+        #     **self.dgp_kwargs)
 
         return dgp
 
@@ -291,6 +305,7 @@ class DataGeneratingProcessSampler():
         if np.min(diff) > 0:
             normalized_logit_expr = (x - min_logit)/diff
         else:
+            print("Using DGP with equal propensity for all units.")
             prop_score_logit = self.params.TARGET_MEAN_LOGIT
             treatment_assignment_logit_function = prop_score_logit
             treatment_assignment_function = \
@@ -318,9 +333,10 @@ class DataGeneratingProcessSampler():
                 self.params.TARGET_MIN_LOGIT)
 
         # Finally, construct the full function expression.
-        treatment_assignment_logit_function = \
-            max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
+        # treatment_assignment_logit_function = \
+        #     max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
 
+        treatment_assignment_logit_function = base_treatment_logit_expression
         exponentiated_neg_logit = sp.functions.exp(-1*treatment_assignment_logit_function)
         treatment_assignment_function = 1/(1 + exponentiated_neg_logit)
 

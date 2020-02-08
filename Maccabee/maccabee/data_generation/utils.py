@@ -5,6 +5,8 @@ import numpy as np
 import sympy as sp
 import pandas as pd
 from functools import partial
+from sympy.utilities.autowrap import ufuncify, CodeWrapper
+import importlib
 
 from ..constants import Constants
 
@@ -34,6 +36,93 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
         selected = selected.flatten()
     return selected, selections
 
+import pathlib
+import sys
+C_PATH = "./_maccabee/compiled/"
+
+class CompiledExpression():
+
+    def __init__(self, expression):
+        self.expression = expression
+        self.constant_expression = False
+
+        self.compiled_module_name = None
+        self.compiled_ordered_args = None
+        self._compile()
+
+        self.expression_func = None
+
+    def __getstate__(self):
+        return (
+            self.expression,
+            self.constant_expression,
+            self.compiled_module_name,
+            self.compiled_ordered_args
+        )
+
+    def __setstate__(self, state):
+        (
+            self.expression,
+            self.constant_expression,
+            self.compiled_module_name,
+            self.compiled_ordered_args
+        ) = state
+
+        self.expression_func = None
+
+    def _compile(self):
+        free_symbols = getattr(self.expression, "free_symbols", None)
+        if free_symbols is not None:
+            # Args
+            expr_func_ordered_symbols = list(free_symbols)
+            self.compiled_ordered_args = [
+                str(symbol)
+                for symbol in expr_func_ordered_symbols
+            ]
+
+            try:
+                # Module
+                self.compiled_module_name = \
+                    f"mod_{abs(hash(self.expression))}_{np.random.randint(1e8)}"
+                mod_path = C_PATH+self.compiled_module_name
+
+                pathlib.Path(C_PATH).mkdir(parents=True, exist_ok=True)
+                CodeWrapper.module_name = self.compiled_module_name
+
+                # Compile
+                compiled_func = ufuncify(
+                    expr_func_ordered_symbols,
+                    self.expression,
+                    tempdir=mod_path)
+            except:
+                raise Exception("Failure in compilation of compiled expression.")
+        else:
+            # No free symbols, expression is constant.
+            self.constant_expression = True
+
+    def eval_expr(self, data):
+        if self.constant_expression:
+            return self.expression
+
+        try:
+            if self.expression_func is None:
+                mod_path = C_PATH + self.compiled_module_name
+                sys.path.append(mod_path)
+                mod = importlib.import_module(self.compiled_module_name)
+                func_name = next(filter(lambda x: x.startswith("wrapped_"), dir(mod)))
+                self.expression_func = getattr(mod, func_name)
+
+            column_data = [
+                data[arg].to_numpy()
+                for arg in self.compiled_ordered_args
+            ]
+
+            res = pd.Series(self.expression_func(*column_data))
+            return res
+        except:
+            print("failure")
+            raise Exception("Failure in compiled expression eval")
+
 def evaluate_expression(expression, data):
     """Evaluates the Sympy expression in `expression` using the :class:`pandas.DataFrame` in `data` to fill in the value of all the variables in the expression. The expression is evaluated once for each row of the DataFrame.
 
@@ -44,29 +133,30 @@ def evaluate_expression(expression, data):
     Returns:
         :class:`~numpy.ndarray`: An array of expression values corresponding to the rows of the `data`.
     """
-    free_symbols = getattr(expression, "free_symbols", None)
-    if free_symbols is not None:
-        free_symbols = list(free_symbols)
-
-        expr_func = sp.lambdify(
-                free_symbols,
-                expression,
-                modules=[
-                    {
-                        "amax": lambda x: np.maximum(*x),
-                        "amin": lambda x: np.minimum(*x)
-                    },
-                    "numpy"
-                ],
-                dummify=True)
-
-        column_data = [data[str(sym)] for sym in free_symbols]
-        res = expr_func(*column_data)
-
-        return res
+    if isinstance(expression, CompiledExpression):
+        return expression.eval_expr(data)
     else:
-        # No free symbols, return expression itself.
-        return expression
+        free_symbols = getattr(expression, "free_symbols", None)
+        if free_symbols is not None:
+            free_symbols = list(free_symbols)
+
+            expr_func = sp.lambdify(
+                    free_symbols,
+                    expression,
+                    modules=[
+                        {
+                            "amax": lambda x: np.maximum(*x),
+                            "amin": lambda x: np.minimum(*x)
+                        },
+                        "numpy"
+                    ],
+                    dummify=True)
+
+            column_data = [data[str(sym)] for sym in free_symbols]
+            return expr_func(*column_data)
+        else:
+            # No free symbols, return expression itself.
+            return expression
 
 def initialize_expression_constants(
     constants_sampling_distro, expressions,
