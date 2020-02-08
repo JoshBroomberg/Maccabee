@@ -14,8 +14,7 @@
 from sklearn.model_selection import ParameterGrid
 from collections import defaultdict
 import numpy as np
-from multiprocessing import Pool
-from multiprocessing.dummy import Pool as DummyPool
+from multiprocessing import Pool, Process, Manager
 from functools import partial
 
 from ..parameters import build_parameters_from_axis_levels
@@ -57,10 +56,12 @@ def _gen_data_and_apply_model(dgp, model_class, estimand, index):
 
     return index, (estimate_val, true_val), dataset
 
-def _sample_dgp(dgp_sampler, index):
+def _sample_dgp(dgp_sampler, index, dgps, semaphore):
+    semaphore.acquire()
     np.random.seed()
     sampled_dgp = dgp_sampler.sample_dgp()
-    # print(f"Done sampling DGP {index+1}")
+    dgps[index] = (index, sampled_dgp)
+    semaphore.release()
     return index, sampled_dgp
 
 def _get_performance_metric_data_structures(num_samples_from_dgp, n_observations, estimand):
@@ -267,14 +268,55 @@ def benchmark_model_using_sampled_dgp(
     # Build a multiprocessing pool which exploits the parallelism in the DGP
     # sampling. Use it to sample all DGPs.
 
+    # 1.
+    # dgps = [dgp_sampler(i) for i in range(num_dgp_samples)]
+
+    # 2.
     # Compilation must occur in the background but cannot be done
     # in multiple processes at the same time.
-    with Pool(processes=1, maxtasksperchild=1) as pool:
-        dgps = pool.map(dgp_sampler, range(num_dgp_samples))
-        pool.close()
-        pool.join()
+    # with Pool(processes=1, maxtasksperchild=1) as pool:
+    #     dgps = pool.map(dgp_sampler, range(num_dgp_samples))
+    #     pool.close()
+    #     pool.join()
 
-    # dgps = [dgp_sampler(i) for i in range(num_dgp_samples)]
+    # 3.
+    # for i in range(num_dgp_samples):
+    #     p = Process(target=dgp_sampler, args=(i,dgps))
+    #     p.start()
+    #     processes.append(p)
+    #
+    #     if len(processes) == n_jobs:
+    #         for process in processes:
+    #             process.join()
+    #             process.terminate()
+    #
+    #         processes = []
+
+    manager = Manager()
+    dgps = manager.list([(None, None)]*num_dgp_samples)
+    semaphore = manager.Semaphore(n_jobs)
+    processes = []
+    for i in range(num_dgp_samples):
+        p = Process(target=dgp_sampler, args=(i,dgps,semaphore))
+        p.start()
+        processes.append(p)
+
+    for process in processes:
+        process.join()
+        process.terminate()
+
+    new_dgps = []
+    for i, (dgp_index, dgp) in enumerate(dgps):
+        if dgp is None:
+            print("recovering from failed compilation")
+            new_dgps.append((dgp_index, dgp_sampler(i,dgps, semaphore)))
+
+    for (dgp_index, dgp) in new_dgps:
+        dgps[dgp_index] = (dgp_index, dgp)
+
+
+    print(dgps)
+
 
     # Data structures for storing the metric results for each sampled DGP.
     performance_metric_dgp_results = defaultdict(list)
@@ -283,6 +325,7 @@ def benchmark_model_using_sampled_dgp(
 
     # For each dgp, run a concrete benchmark.
     for dgp_index, dgp in dgps:
+
         print(f"Starting sampling for DGP {dgp_index+1}/{num_dgp_samples}")
         # print(dgp.treatment_assignment_logit_function)
         performance_metric_data, performance_raw_data, data_metric_data, _ = \

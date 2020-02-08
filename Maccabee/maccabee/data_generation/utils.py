@@ -7,6 +7,7 @@ import pandas as pd
 from functools import partial
 from sympy.utilities.autowrap import ufuncify, CodeWrapper
 import importlib
+from multiprocessing import Process
 
 from ..constants import Constants
 
@@ -38,7 +39,7 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
 
 import pathlib
 import sys
-C_PATH = "./_maccabee/compiled/"
+C_PATH = "./_maccabee_compiled_code/"
 
 class CompiledExpression():
 
