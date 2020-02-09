@@ -292,6 +292,8 @@ def benchmark_model_using_sampled_dgp(
     #
     #         processes = []
 
+    # TODO: refactor this multiprocessing approach.
+    # Attempt to move to the compile expression itself
     manager = Manager()
     dgps = manager.list([(None, None)]*num_dgp_samples)
     semaphore = manager.Semaphore(n_jobs)
@@ -305,18 +307,15 @@ def benchmark_model_using_sampled_dgp(
         process.join()
         process.terminate()
 
+    # TODO: refactor this recovery mechanism. Process queue with callbacks?
     new_dgps = []
     for i, (dgp_index, dgp) in enumerate(dgps):
         if dgp is None:
             print("recovering from failed compilation")
-            new_dgps.append((dgp_index, dgp_sampler(i,dgps, semaphore)))
+            new_dgps.append(dgp_sampler(i,dgps, semaphore))
 
     for (dgp_index, dgp) in new_dgps:
         dgps[dgp_index] = (dgp_index, dgp)
-
-
-    print(dgps)
-
 
     # Data structures for storing the metric results for each sampled DGP.
     performance_metric_dgp_results = defaultdict(list)

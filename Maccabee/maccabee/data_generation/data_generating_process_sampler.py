@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from itertools import combinations
 from ..constants import Constants
-from .utils import select_objects_given_probability, evaluate_expression, initialize_expression_constants, CompiledExpression
+from .utils import select_objects_given_probability, evaluate_expression, initialize_expression_constants
 from .data_generating_process import SampledDataGeneratingProcess
 
 SamplingConstants = Constants.DGPSampling
@@ -80,7 +80,7 @@ class DataGeneratingProcessSampler():
                 treatment_covariate_transforms, observed_covariate_data)
 
         # Build the outcome and treatment effect functions.
-        outcome_function, base_outcome_subfunc, treat_effect_subfunc = \
+        outcome_function, untreated_outcome_subfunc, treat_effect_subfunc = \
             self.sample_outcome_function(
                 outcome_covariate_transforms, observed_covariate_data)
 
@@ -91,26 +91,12 @@ class DataGeneratingProcessSampler():
             outcome_covariate_transforms=outcome_covariate_transforms,
             treatment_covariate_transforms=treatment_covariate_transforms,
             treatment_assignment_logit_func=treatment_assignment_logit_func,
-            treatment_assignment_function=CompiledExpression(treatment_assignment_function),
-            treatment_effect_subfunction=CompiledExpression(treat_effect_subfunc),
-            untreated_outcome_subfunction=CompiledExpression(base_outcome_subfunc),
+            treatment_assignment_function=treatment_assignment_function,
+            treatment_effect_subfunction=treat_effect_subfunc,
+            untreated_outcome_subfunction=untreated_outcome_subfunc,
             outcome_function=outcome_function,
             data_source=self.data_source,
             **self.dgp_kwargs)
-
-        # Construct DGP
-        # dgp = self.dgp_class(
-        #     params=self.params,
-        #     observed_covariate_data=observed_covariate_data,
-        #     outcome_covariate_transforms=outcome_covariate_transforms,
-        #     treatment_covariate_transforms=treatment_covariate_transforms,
-        #     treatment_assignment_logit_func=treatment_assignment_logit_func,
-        #     treatment_assignment_function=treatment_assignment_function,
-        #     treatment_effect_subfunction=treat_effect_subfunc,
-        #     untreated_outcome_subfunction=base_outcome_subfunc,
-        #     outcome_function=outcome_function,
-        #     data_source=self.data_source,
-        #     **self.dgp_kwargs)
 
         return dgp
 
@@ -241,19 +227,46 @@ class DataGeneratingProcessSampler():
                 potential_confounder_symbols,
                 self.params.TREAT_MECHANISM_COVARIATE_SELECTION_PROBABILITY)
 
-        # Unique set of all covariate transforms
-        all_transforms = list(set(
-            treatment_covariate_transforms + outcome_covariate_transforms))
+        set_outcome_covariate_transforms = set(outcome_covariate_transforms)
+        set_treatment_covariate_transforms = set(treatment_covariate_transforms)
 
-        # Select overlapping covariates transforms (effective confounder space)
-        # based on the alignment parameter.
-        aligned_transforms = select_objects_given_probability(
-                all_transforms,
-                selection_probability=self.params.ACTUAL_CONFOUNDER_ALIGNMENT)
+        # Unique set of all covariate transforms
+        all_transforms = set_outcome_covariate_transforms.union(
+            set_treatment_covariate_transforms)
+
+        already_aligned_transforms = set_outcome_covariate_transforms.intersection(
+            set_treatment_covariate_transforms)
+
+        # TODO: comment this code.
+
+        current_alignment_proportion = len(already_aligned_transforms)/len(all_transforms)
+        alignment_diff = current_alignment_proportion - self.params.ACTUAL_CONFOUNDER_ALIGNMENT
+        if alignment_diff > 0:
+            print("Reducing alignment")
+            transforms_to_unalign = select_objects_given_probability(
+                    list(already_aligned_transforms),
+                    selection_probability=alignment_diff)
+            for transform in transforms_to_unalign:
+                already_aligned_transforms.remove(transform)
+                if np.random.random() < 0.5:
+                    set_outcome_covariate_transforms.remove(transform)
+                else:
+                    set_treatment_covariate_transforms.remove(transform)
+
+            aligned_transforms = already_aligned_transforms
+        else:
+            print("Increasing alignment")
+            # Select overlapping covariates transforms (effective confounder space)
+            # based on the alignment parameter.
+            aligned_transforms = select_objects_given_probability(
+                    list(all_transforms - already_aligned_transforms),
+                    selection_probability=abs(alignment_diff))
 
         # Extract treat and outcome exclusive transforms.
-        treat_only_transforms = list(set(treatment_covariate_transforms).difference(aligned_transforms))
-        outcome_only_transforms = list(set(outcome_covariate_transforms).difference(aligned_transforms))
+        treat_only_transforms = list(set_treatment_covariate_transforms.difference(
+            aligned_transforms))
+        outcome_only_transforms = list(set_outcome_covariate_transforms.difference(
+            aligned_transforms))
 
         # Initialize the constants in all the transforms.
         aligned_transforms = initialize_expression_constants(
@@ -322,7 +335,7 @@ class DataGeneratingProcessSampler():
                 targeted_treatment_logit_expression = \
                     normalized_treatment_logit_expression + self.params.TARGET_MEAN_LOGIT
 
-                treatment_assignment_logit_function = normalized_treatment_logit_expression
+                treatment_assignment_logit_function = targeted_treatment_logit_expression
 
                 # TODO: remove
                 # DEPRECATED NORMALIZATION SCHEME.
@@ -428,7 +441,7 @@ class DataGeneratingProcessSampler():
         # using or changing the OUTCOME_MECHANISM_EXPONENTIATION param.
 
         # Build base outcome function. Additive combination of the true covariates.
-        base_outcome_expression = np.sum(outcome_covariate_transforms)
+        base_untreated_outcome_expression = np.sum(outcome_covariate_transforms)
 
         # Normalize if config set to do so.
         if SamplingConstants.NORMALIZE_SAMPLED_OUTCOME_FUNCTION:
@@ -439,18 +452,18 @@ class DataGeneratingProcessSampler():
             # Normalized outcome values to have approximate mean=0 and std=1.
             # This prevents situations where large outcome values drown out
             # the treatment effect or the treatment effect dominates small average outcomes.
-            outcome_values = evaluate_expression(base_outcome_expression, sampled_data)
+            outcome_values = evaluate_expression(base_untreated_outcome_expression, sampled_data)
             outcome_mean = np.mean(outcome_values)
             outcome_std = np.std(outcome_values)
 
             # This is only an approximate normalization. It will shift the mean to zero
             # but the exact effect on std will depend on the distribution.
             normalized_outcome_expression = \
-                (base_outcome_expression - outcome_mean)/outcome_std
+                (base_untreated_outcome_expression - outcome_mean)/outcome_std
 
             untreated_outcome_subfunction = normalized_outcome_expression
         else:
-            untreated_outcome_subfunction = base_outcome_expression
+            untreated_outcome_subfunction = base_untreated_outcome_expression
 
         # Create the treatment effect subfunction.
         treat_effect_subfunction = self.sample_treatment_effect_subfunction(

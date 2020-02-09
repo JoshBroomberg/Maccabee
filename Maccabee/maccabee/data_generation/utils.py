@@ -15,8 +15,8 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
     """Samples objects from `objects_to_sample` based on `selection_probability`.
 
     Args:
-        objects_to_sample (list): List of objects to sample.
-        selection_probability (list or float): The probability with which to sample objects from `objects_to_sample`. The value or values supplied should be between 0 and 1. If a list is supplied, it should be the same length as the list in `objects_to_sample` and will be the per-object selection probability. If float, then this is the selection probability for all objects. ``int(len(objects_to_sample)*selection_probability)`` objects will be sampled if this value is greater than 0. Otherwise the probability will be the selection probability for each item.
+        objects_to_sample (list or :class:`numpy.ndarray`): List of objects to sample. If dimensionality is greater than 1, selection is along the primary (row) axis.
+        selection_probability (list or float): The probability with which to sample objects from `objects_to_sample`. The value or values supplied should be between 0 and 1. If a list of probabilities is supplied, it should be the same length as the primary axis of the list in `objects_to_sample` and will be the per-object/row selection probability. If float, then this is the selection probability for all objects. In this case, ``int(len(objects_to_sample)*selection_probability)`` objects will be sampled if this value is greater than 0. Otherwise the single probability will be the selection probability for each object.
 
     Returns:
         :class:`numpy.ndarray`: An array of the selected objects.
@@ -30,14 +30,12 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
     """
 
     objects_to_sample = np.array(objects_to_sample)
-    shape = objects_to_sample.shape
-    assert(len(shape) == 1 or shape[1] == 1)
-
-    objects_to_sample = objects_to_sample.flatten()
     n_objects = len(objects_to_sample)
+    object_indeces = np.arange(n_objects)
 
     if hasattr(selection_probability, "__len__"):
-        selections = np.random.uniform(size=n_objects) < selection_probability
+        selection_status = np.random.uniform(size=n_objects) < selection_probability
+        selected_indeces = object_indeces[selection_status]
     else:
         expected_num_to_select = int(n_objects*selection_probability)
 
@@ -48,15 +46,13 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
                 np.full(n_objects, selection_probability))
 
         # else, proceed to select expected number.
-        selections = np.random.choice(np.arange(len(objects_to_sample)),
+        selected_indeces = np.random.choice(object_indeces,
             size=expected_num_to_select, replace=False)
 
-    selected = objects_to_sample[selections]
-
-    if len(shape) != 1:
-        selected = selected.reshape((-1, 1))
-
-    return selected
+    if len(objects_to_sample.shape) == 1:
+        return objects_to_sample[selected_indeces]
+    else:
+        return objects_to_sample[selected_indeces, :]
 
 import pathlib
 import sys
@@ -162,7 +158,8 @@ class CompiledExpression():
         except Exception as e:
             # print(e)
             # print("failure")
-            raise Exception("Failure in compiled expression eval")
+            print("failure in compiled expression eval")
+            return evaluate_expression(self.expression, data)
 
 def evaluate_expression(expression, data):
     """Evaluates the Sympy expression in `expression` using the :class:`pandas.DataFrame` in `data` to fill in the value of all the variables in the expression. The expression is evaluated once for each row of the DataFrame.

@@ -78,11 +78,11 @@ def build_genmatch_datasource(n_observations=1000):
             GENMATCH_COVAR_NAMES[GENMATCH_BINARY_COVAR_INDECES]) + ["X0"])
 
 class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
-    def __init__(self,
-                 quadratic_indeces, interactions_list,
-                 n_observations, data_analysis_mode):
+    def __init__(self, dgp_label, n_observations, data_analysis_mode):
 
         super().__init__(n_observations, data_analysis_mode)
+
+        quadratic_indeces, interactions_list = GENMATCH_SPECS[dgp_label]
 
         self.data_source = build_genmatch_datasource(n_observations)
         self.covar_symbols = np.array(sp.symbols(list(GENMATCH_COVAR_NAMES)))
@@ -124,16 +124,16 @@ class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
                        interact_weights))
 
         self.treatment_logit_expression = np.sum(self.treatment_logit_terms)
-        self.treatment_logit_expression = CompiledExpression(
-            self.treatment_logit_expression)
+        # self.treatment_logit_expression = CompiledExpression(
+            # self.treatment_logit_expression)
 
 
-        self.base_outcome_terms = self.outcome_weights * self.covar_symbols
-        self.base_outcome_expression = np.sum(self.base_outcome_terms)
-        self.base_outcome_expression = CompiledExpression(
-            self.base_outcome_expression)
+        self.untreated_outcome_terms = self.outcome_weights * self.covar_symbols
+        self.untreated_outcome_expression = np.sum(self.untreated_outcome_terms)
+        # self.untreated_outcome_expression = CompiledExpression(
+        #     self.untreated_outcome_expression)
 
-    @data_generating_method(DGPVariables.COVARIATES_NAME, [])
+    @data_generating_method(DGPVariables.COVARIATES_NAME, [], cache_result=False)
     def _generate_observed_covars(self, input_vars):
         return self.data_source.get_covar_df()
 
@@ -148,7 +148,7 @@ class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
 
         observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
 
-        all_transforms = list(set(self.base_outcome_terms).union(
+        all_transforms = list(set(self.untreated_outcome_terms).union(
             self.treatment_logit_terms))
 
         data = {}
@@ -179,7 +179,7 @@ class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
         observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
 
         return evaluate_expression(
-            self.base_outcome_expression,
+            self.untreated_outcome_expression,
             observed_covariate_data)
 
     @data_generating_method(DGPVariables.TREATMENT_EFFECT_NAME, [])

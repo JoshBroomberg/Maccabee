@@ -9,7 +9,7 @@ The documentation below explains the :func:`~maccabee.data_generation.data_gener
 from ..constants import Constants
 from ..exceptions import DGPVariableMissingException
 from .generated_data_set import GeneratedDataSet
-from .utils import evaluate_expression
+from .utils import evaluate_expression, CompiledExpression
 import pandas as pd
 import numpy as np
 from functools import partial, update_wrapper
@@ -368,11 +368,21 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         treatment_assignment_logit_func=None,
         outcome_function=None,
         data_source=None,
-        data_analysis_mode=True):
+        data_analysis_mode=True,
+        compile_functions=False):
 
         # STANDARD CONFIG
         n_observations = observed_covariate_data.shape[0]
         super().__init__(n_observations, data_analysis_mode)
+
+        if compile_functions:
+            treatment_effect_subfunction = \
+                CompiledExpression(treatment_effect_subfunction)
+            untreated_outcome_subfunction = \
+                CompiledExpression(untreated_outcome_subfunction)
+            treatment_assignment_function = \
+                CompiledExpression(treatment_assignment_function)
+
 
         # SAMPLED SGP CONFIG
         self.params = params
@@ -398,7 +408,6 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
     @data_generating_method(DGPVariables.COVARIATES_NAME, [], cache_result=True)
     def _generate_observed_covars(self, input_vars):
         return self.observed_covariate_data
-        # return self.data_source.get_covar_df() NB: disable cache.
 
     @data_generating_method(
         DGPVariables.TRANSFORMED_COVARIATES_NAME,
