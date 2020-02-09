@@ -124,9 +124,14 @@ class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
                        interact_weights))
 
         self.treatment_logit_expression = np.sum(self.treatment_logit_terms)
+        self.treatment_logit_expression = CompiledExpression(
+            self.treatment_logit_expression)
+
 
         self.base_outcome_terms = self.outcome_weights * self.covar_symbols
         self.base_outcome_expression = np.sum(self.base_outcome_terms)
+        self.base_outcome_expression = CompiledExpression(
+            self.base_outcome_expression)
 
     @data_generating_method(DGPVariables.COVARIATES_NAME, [])
     def _generate_observed_covars(self, input_vars):

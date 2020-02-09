@@ -336,6 +336,7 @@ class DataGeneratingProcessSampler():
         # treatment_assignment_logit_function = \
         #     max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
 
+        # Shortcircuiting all normalization.
         treatment_assignment_logit_function = base_treatment_logit_expression
         exponentiated_neg_logit = sp.functions.exp(-1*treatment_assignment_logit_function)
         treatment_assignment_function = 1/(1 + exponentiated_neg_logit)

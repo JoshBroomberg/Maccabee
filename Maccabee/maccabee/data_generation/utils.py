@@ -122,8 +122,9 @@ class CompiledExpression():
                     # print("Loading existing compiled module.")
                     mod = sys.modules[self.compiled_module_name]
 
-                # func_name = next(filter(lambda x: x.startswith("wrapped_"), dir(mod)))
-                func_name = next(filter(lambda x: x.startswith("autofunc"), dir(mod)))
+                # compiled_func_prefix = "wrapped_"
+                compiled_func_prefix = "autofunc"
+                func_name = next(filter(lambda x: x.startswith(compiled_func_prefix), dir(mod)))
                 self.expression_func = getattr(mod, func_name)
 
             column_data = [
