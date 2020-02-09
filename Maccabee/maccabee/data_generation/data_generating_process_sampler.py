@@ -93,7 +93,7 @@ class DataGeneratingProcessSampler():
             treatment_assignment_logit_func=treatment_assignment_logit_func,
             treatment_assignment_function=CompiledExpression(treatment_assignment_function),
             treatment_effect_subfunction=CompiledExpression(treat_effect_subfunc),
-            base_outcome_subfunction=CompiledExpression(base_outcome_subfunc),
+            untreated_outcome_subfunction=CompiledExpression(base_outcome_subfunc),
             outcome_function=outcome_function,
             data_source=self.data_source,
             **self.dgp_kwargs)
@@ -107,7 +107,7 @@ class DataGeneratingProcessSampler():
         #     treatment_assignment_logit_func=treatment_assignment_logit_func,
         #     treatment_assignment_function=treatment_assignment_function,
         #     treatment_effect_subfunction=treat_effect_subfunc,
-        #     base_outcome_subfunction=base_outcome_subfunc,
+        #     untreated_outcome_subfunction=base_outcome_subfunc,
         #     outcome_function=outcome_function,
         #     data_source=self.data_source,
         #     **self.dgp_kwargs)
@@ -130,7 +130,7 @@ class DataGeneratingProcessSampler():
         # enter the treatment and/or outcome functions. All covariates not
         # selected here are non-predictive/nuisance covariates which can
         # make the causal model process harder.
-        potential_confounder_symbols, _ = select_objects_given_probability(
+        potential_confounder_symbols = select_objects_given_probability(
             objects_to_sample=covariate_symbols,
             selection_probability=self.params.POTENTIAL_CONFOUNDER_SELECTION_PROBABILITY)
 
@@ -185,7 +185,7 @@ class DataGeneratingProcessSampler():
                     len(transform_covariate_symbols))))
 
             # Sample from the set of all possible combinations.
-            selected_covar_combinations, _ = select_objects_given_probability(
+            selected_covar_combinations = select_objects_given_probability(
                 objects_to_sample=covariate_combinations,
                 selection_probability=transform_probabilities[transform_name])
 
@@ -202,6 +202,10 @@ class DataGeneratingProcessSampler():
             selected_covariate_transforms.append(
                 list(SamplingConstants.SUBFUNCTION_CONSTANT_SYMBOLS)[0])
 
+        # TODO: refactor this into a max term count
+        # which is then applied after the two sampled functions
+        # are fully contructed.
+
         # The number of combinations grows factorially with the number of
         # covariates. Cap the number of covariate transforms at a multiple
         # of the number of base covariates.
@@ -210,11 +214,12 @@ class DataGeneratingProcessSampler():
                 covariate_symbols)
 
         if len(selected_covariate_transforms) > max_transform_count:
+            print("Running term limiter")
             # Randomly sample selected transforms with expected number selected
             # equal to the max.
             selection_p = max_transform_count/len(selected_covariate_transforms)
 
-            selected_covariate_transforms, _ = select_objects_given_probability(
+            selected_covariate_transforms = select_objects_given_probability(
                 objects_to_sample=selected_covariate_transforms,
                 selection_probability=selection_p)
 
@@ -242,7 +247,7 @@ class DataGeneratingProcessSampler():
 
         # Select overlapping covariates transforms (effective confounder space)
         # based on the alignment parameter.
-        aligned_transforms, _ = select_objects_given_probability(
+        aligned_transforms = select_objects_given_probability(
                 all_transforms,
                 selection_probability=self.params.ACTUAL_CONFOUNDER_ALIGNMENT)
 
@@ -287,58 +292,72 @@ class DataGeneratingProcessSampler():
         base_treatment_logit_expression = np.sum(
             treatment_covariate_transforms)
 
-        # Sample data to evaluate distribution.
-        sampled_data = observed_covariate_data.sample(
-            frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
+        # Normalize if config specifies.
+        if SamplingConstants.NORMALIZE_SAMPLED_TREATMENT_FUNCTION:
 
-        # Adjust logit
-        logit_values = evaluate_expression(
-            base_treatment_logit_expression, sampled_data)
+            # Sample data to evaluate distribution.
+            sampled_data = observed_covariate_data.sample(
+                frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
-        max_logit = np.max(logit_values)
-        min_logit = np.min(logit_values)
-        mean_logit = np.mean(logit_values)
+            # Adjust logit
+            logit_values = evaluate_expression(
+                base_treatment_logit_expression, sampled_data)
 
-        # Rescale to meet min/max constraints and target propensity.
-        # First, construct function to rescale between 0 and 1
-        diff = (max_logit - min_logit)
-        if np.min(diff) > 0:
-            normalized_logit_expr = (x - min_logit)/diff
+            max_logit = np.max(logit_values)
+            min_logit = np.min(logit_values)
+            mean_logit = np.mean(logit_values)
+            std_logit = np.std(logit_values)
+
+            # Check if logit function is effectively constant. If constant
+            # then return the target logit. If not normalize to meet target.
+            if np.isclose(max_logit, min_logit):
+                # print("Using DGP with equal propensity for all units.")
+                treatment_assignment_logit_function = self.params.TARGET_MEAN_LOGIT
+            else:
+                # This is only an approximate normalization. It will shift the mean to zero
+                # but the exact effect on std will depend on the distribution.
+                normalized_treatment_logit_expression = \
+                    (base_treatment_logit_expression - mean_logit)/std_logit
+
+                targeted_treatment_logit_expression = \
+                    normalized_treatment_logit_expression + self.params.TARGET_MEAN_LOGIT
+
+                treatment_assignment_logit_function = normalized_treatment_logit_expression
+
+                # TODO: remove
+                # DEPRECATED NORMALIZATION SCHEME.
+                # # Rescale to meet min/max constraints and target propensity.
+                # # First, construct function to rescale between 0 and 1
+                # normalized_logit_expr = (x - min_logit)/range
+                #
+                # # Second, construct function to rescale to target interval
+                # constrained_logit_expr = self.params.TARGET_MIN_LOGIT + \
+                #     (x*(self.params.TARGET_MAX_LOGIT - self.params.TARGET_MIN_LOGIT))
+                #
+                # rescaling_expr = constrained_logit_expr.subs(x, normalized_logit_expr)
+                # rescaled_logit_mean = rescaling_expr.evalf(
+                #     subs={x: mean_logit})
+                #
+                # # Third, construct function to apply offset for targeted propensity.
+                # # This requires the rescaled mean found above.
+                # target_propensity_adjustment = self.params.TARGET_MEAN_LOGIT - rescaled_logit_mean
+                # targeted_logit_expr = rescaling_expr + target_propensity_adjustment
+                #
+                # # Apply max/min truncation to account for adjustment shift.
+                # max_min_capped_targeted_logit = sp.functions.Max(
+                #         sp.functions.Min(targeted_logit_expr, self.params.TARGET_MAX_LOGIT),
+                #         self.params.TARGET_MIN_LOGIT)
+                #
+                # # Finally, construct the full function expression.
+                # treatment_assignment_logit_function = \
+                #     max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
         else:
-            print("Using DGP with equal propensity for all units.")
-            prop_score_logit = self.params.TARGET_MEAN_LOGIT
-            treatment_assignment_logit_function = prop_score_logit
-            treatment_assignment_function = \
-                np.exp(prop_score_logit)/(1+np.exp(prop_score_logit))
+            # Shortcircuiting all normalization.
+            treatment_assignment_logit_function = base_treatment_logit_expression
 
-            return (treatment_assignment_logit_function,
-                treatment_assignment_function)
-
-        # Second, construct function to rescale to target interval
-        constrained_logit_expr = self.params.TARGET_MIN_LOGIT + \
-            (x*(self.params.TARGET_MAX_LOGIT - self.params.TARGET_MIN_LOGIT))
-
-        rescaling_expr = constrained_logit_expr.subs(x, normalized_logit_expr)
-        rescaled_logit_mean = rescaling_expr.evalf(subs={x: mean_logit})
-
-
-        # Third, construct function to apply offset for targeted propensity.
-        # This requires the rescaled mean found above.
-        target_propensity_adjustment = self.params.TARGET_MEAN_LOGIT - rescaled_logit_mean
-        targeted_logit_expr = rescaling_expr + target_propensity_adjustment
-
-        # Apply max/min truncation to account for adjustment shift.
-        max_min_capped_targeted_logit = sp.functions.Max(
-                sp.functions.Min(targeted_logit_expr, self.params.TARGET_MAX_LOGIT),
-                self.params.TARGET_MIN_LOGIT)
-
-        # Finally, construct the full function expression.
-        # treatment_assignment_logit_function = \
-        #     max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
-
-        # Shortcircuiting all normalization.
-        treatment_assignment_logit_function = base_treatment_logit_expression
+        # Build the logistic propensity function.
         exponentiated_neg_logit = sp.functions.exp(-1*treatment_assignment_logit_function)
+
         treatment_assignment_function = 1/(1 + exponentiated_neg_logit)
 
         return (treatment_assignment_logit_function,
@@ -356,7 +375,7 @@ class DataGeneratingProcessSampler():
         base_treatment_effect = self.params.sample_treatment_effect()[0]
 
         # Sample outcome subfunctions to interact with base treatment effect.
-        selected_interaction_terms, _ = select_objects_given_probability(
+        selected_interaction_terms = select_objects_given_probability(
                 objects_to_sample=outcome_covariate_transforms,
                 selection_probability=self.params.TREATMENT_EFFECT_HETEROGENEITY)
 
@@ -411,30 +430,35 @@ class DataGeneratingProcessSampler():
         # Build base outcome function. Additive combination of the true covariates.
         base_outcome_expression = np.sum(outcome_covariate_transforms)
 
-        # Sample data to evaluate distribution.
-        sampled_data = observed_covariate_data.sample(
-            frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
+        # Normalize if config set to do so.
+        if SamplingConstants.NORMALIZE_SAMPLED_OUTCOME_FUNCTION:
+            # Sample data to evaluate distribution.
+            sampled_data = observed_covariate_data.sample(
+                frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
-        # Normalized outcome values to have approximate mean=0 and std=1.
-        # This prevents situations where large outcome values drown out
-        # the treatment effect or the treatment effect dominates small average outcomes.
-        outcome_values = evaluate_expression(base_outcome_expression, sampled_data)
-        outcome_mean = np.mean(outcome_values)
-        outcome_std = np.std(outcome_values)
+            # Normalized outcome values to have approximate mean=0 and std=1.
+            # This prevents situations where large outcome values drown out
+            # the treatment effect or the treatment effect dominates small average outcomes.
+            outcome_values = evaluate_expression(base_outcome_expression, sampled_data)
+            outcome_mean = np.mean(outcome_values)
+            outcome_std = np.std(outcome_values)
 
-        # This is only an approximate normalization. It will shift the mean to zero
-        # but the exact effect on std will depend on the distribution.
-        normalized_outcome_expression = \
-            (base_outcome_expression - outcome_mean)/outcome_std
+            # This is only an approximate normalization. It will shift the mean to zero
+            # but the exact effect on std will depend on the distribution.
+            normalized_outcome_expression = \
+                (base_outcome_expression - outcome_mean)/outcome_std
+
+            untreated_outcome_subfunction = normalized_outcome_expression
+        else:
+            untreated_outcome_subfunction = base_outcome_expression
 
         # Create the treatment effect subfunction.
         treat_effect_subfunction = self.sample_treatment_effect_subfunction(
             outcome_covariate_transforms, observed_covariate_data)
 
-        base_outcome_subfunction = normalized_outcome_expression
-        outcome_function = base_outcome_subfunction + \
+        outcome_function = untreated_outcome_subfunction + \
             ComponentConstants._OUTCOME_NOISE_SYMBOL + \
             (ComponentConstants._TREATMENT_ASSIGNMENT_SYMBOL *
                 treat_effect_subfunction)
 
-        return outcome_function, base_outcome_subfunction, treat_effect_subfunction
+        return outcome_function, untreated_outcome_subfunction, treat_effect_subfunction

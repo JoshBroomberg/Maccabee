@@ -107,12 +107,16 @@ SCHEMA:
     description: |
       Minimum logit value for treatment mechanism
 
+  # TODO: remove
+  # Deprecated.
   TARGET_MAX_LOGIT:
     type: calculated
     expr: np.log(MAX_PROPENSITY_SCORE/(1-MAX_PROPENSITY_SCORE))
     description: |
       Max logit value for treatment mechanism
 
+  # TODO: remove
+  # Deprecated.
   TARGET_MEAN_LOGIT:
     type: calculated
     expr: np.log(TARGET_PROPENSITY_SCORE/(1-TARGET_PROPENSITY_SCORE))

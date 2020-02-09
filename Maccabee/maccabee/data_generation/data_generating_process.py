@@ -364,7 +364,7 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         treatment_covariate_transforms,
         treatment_assignment_function,
         treatment_effect_subfunction,
-        base_outcome_subfunction,
+        untreated_outcome_subfunction,
         treatment_assignment_logit_func=None,
         outcome_function=None,
         data_source=None,
@@ -387,7 +387,7 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
 
         # Outcome function and subfunctions
         self.treatment_effect_subfunction = treatment_effect_subfunction
-        self.base_outcome_subfunction = base_outcome_subfunction
+        self.untreated_outcome_subfunction = untreated_outcome_subfunction
         self.outcome_function = outcome_function
 
         # DATA
@@ -479,7 +479,7 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
     def _generate_outcomes_without_treatment(self, input_vars):
         observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
         return evaluate_expression(
-            self.base_outcome_subfunction,
+            self.untreated_outcome_subfunction,
             observed_covariate_data)
 
     @data_generating_method(

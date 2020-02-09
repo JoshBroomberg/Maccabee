@@ -98,6 +98,17 @@ class Constants:
         """[INTERNAL] Constants related to the sampling of the subfunctions which make up the sampled DGP treatment and outcome functions.
         """
 
+        # Whether to apply approximate normalization schemes to the sampled
+        # treatment and outcome functions such that the outcome and propensity
+        # values have zero mean with an approx std of 1.
+        NORMALIZE_SAMPLED_TREATMENT_FUNCTION = False
+        NORMALIZE_SAMPLED_OUTCOME_FUNCTION = False
+
+        # How much of the covariate data to use when normalizing
+        # the sampled functions. For large data sets, a smaller proportion
+        # is necessary.
+        NORMALIZATION_DATA_SAMPLE_FRACTION = 0.5
+
         # The subfunctions which are sampled to construct the sampled
         # treatent and outcome functions.
         LINEAR = "LINEAR"
@@ -163,11 +174,6 @@ class Constants:
         # transformed covariate) is defined by a multiplier on the
         # the number of original covariates.
         MAX_MULTIPLE_TRANSFORMED_TO_ORIGINAL_TERMS = 5
-
-        # How much of the covariate data to use when normalizing
-        # the sampled functions. For large data sets, a smaller proportion
-        # is necessary.
-        NORMALIZATION_DATA_SAMPLE_FRACTION = 0.5
 
     ### DGP Component constants ###
 

@@ -16,26 +16,47 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
 
     Args:
         objects_to_sample (list): List of objects to sample.
-        selection_probability (list or float): The probability with which to sample objects from `objects_to_sample`. If list, this should be the same length as the list in `objects_to_sample` and will be the per-object selection probability. If float, then this is the uniform selection probability for all objects. The value/s should be between 0 and 1.
+        selection_probability (list or float): The probability with which to sample objects from `objects_to_sample`. The value or values supplied should be between 0 and 1. If a list is supplied, it should be the same length as the list in `objects_to_sample` and will be the per-object selection probability. If float, then this is the selection probability for all objects. ``int(len(objects_to_sample)*selection_probability)`` objects will be sampled if this value is greater than 0. Otherwise the probability will be the selection probability for each item.
 
     Returns:
-        tuple: The first entry is a :class:`numpy.ndarray` of the selected objects. The second entry is a :class:`numpy.ndarray` the same length as `objects_to_sample` with a ``1`` in the place of selected items and a ``0`` in the place of non-selected items.
+        :class:`numpy.ndarray`: An array of the selected objects.
 
     Examples
         >>> select_objects_given_probability(["a", "b", "c"], [0.5, 0.1, 0.001])
-        (["a"], [1, 0, 0])
+        ["a"]
+
+        >>> select_objects_given_probability(["a", "b", "c"], 0.1)
+        ["a"]
     """
+
     objects_to_sample = np.array(objects_to_sample)
+    shape = objects_to_sample.shape
+    assert(len(shape) == 1 or shape[1] == 1)
 
-    flat = len(objects_to_sample.shape) == 1
-    if flat:
-        objects_to_sample = objects_to_sample.reshape((-1, 1))
+    objects_to_sample = objects_to_sample.flatten()
+    n_objects = len(objects_to_sample)
 
-    selections = np.random.uniform(size=objects_to_sample.shape[0]) < selection_probability
-    selected = objects_to_sample[selections, :]
-    if flat:
-        selected = selected.flatten()
-    return selected, selections
+    if hasattr(selection_probability, "__len__"):
+        selections = np.random.uniform(size=n_objects) < selection_probability
+    else:
+        expected_num_to_select = int(n_objects*selection_probability)
+
+        # If expected number is less than 1, fall back to per object sampling.
+        if expected_num_to_select == 0:
+            return select_objects_given_probability(
+                objects_to_sample,
+                np.full(n_objects, selection_probability))
+
+        # else, proceed to select expected number.
+        selections = np.random.choice(np.arange(len(objects_to_sample)),
+            size=expected_num_to_select, replace=False)
+
+    selected = objects_to_sample[selections]
+
+    if len(shape) != 1:
+        selected = selected.reshape((-1, 1))
+
+    return selected
 
 import pathlib
 import sys
