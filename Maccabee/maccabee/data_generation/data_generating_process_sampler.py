@@ -242,18 +242,23 @@ class DataGeneratingProcessSampler():
         current_alignment_proportion = len(already_aligned_transforms)/len(all_transforms)
         alignment_diff = current_alignment_proportion - self.params.ACTUAL_CONFOUNDER_ALIGNMENT
         if alignment_diff > 0:
-            print("Reducing alignment")
+            print(f"Reducing alignment from {round(current_alignment_proportion, 3)} to {self.params.ACTUAL_CONFOUNDER_ALIGNMENT}")
+
+            expected_num_to_unalign = alignment_diff*len(all_transforms)
+            unalign_probability = expected_num_to_unalign/len(already_aligned_transforms)
             transforms_to_unalign = select_objects_given_probability(
                     list(already_aligned_transforms),
-                    selection_probability=alignment_diff)
+                    selection_probability=unalign_probability)
+
+            treatment_relative_size = len(set_treatment_covariate_transforms)/len(all_transforms)
             for transform in transforms_to_unalign:
                 already_aligned_transforms.remove(transform)
-                if np.random.random() < 0.5:
+                if np.random.random() < treatment_relative_size:
                     set_outcome_covariate_transforms.remove(transform)
                 else:
                     set_treatment_covariate_transforms.remove(transform)
 
-            aligned_transforms = already_aligned_transforms
+            aligned_transforms = list(already_aligned_transforms)
         else:
             print("Increasing alignment")
             # Select overlapping covariates transforms (effective confounder space)

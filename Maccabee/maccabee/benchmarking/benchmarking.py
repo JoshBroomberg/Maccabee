@@ -354,7 +354,7 @@ def benchmark_model_using_sampled_dgp(
     return (_aggregate_metric_results(performance_metric_dgp_results),
         performance_metric_dgp_results, performance_metric_raw_run_results,
         _aggregate_metric_results(data_metric_dgp_results, std=False),
-        data_metric_dgp_results)
+        data_metric_dgp_results, dgps)
 
 
 def benchmark_model_using_sampled_dgp_grid(
