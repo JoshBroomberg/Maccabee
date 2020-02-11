@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 from functools import partial, update_wrapper
 import types
+import sympy as sp
 
 
 GENERATED_DATA_DICT_NAME = "_generated_data"
@@ -376,12 +377,13 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         super().__init__(n_observations, data_analysis_mode)
 
         if compile_functions:
+            symbols = sp.symbols(list(observed_covariate_data.columns))
             treatment_effect_subfunction = \
-                CompiledExpression(treatment_effect_subfunction)
+                CompiledExpression(treatment_effect_subfunction, symbols)
             untreated_outcome_subfunction = \
-                CompiledExpression(untreated_outcome_subfunction)
+                CompiledExpression(untreated_outcome_subfunction, symbols)
             treatment_assignment_function = \
-                CompiledExpression(treatment_assignment_function)
+                CompiledExpression(treatment_assignment_function, symbols)
 
 
         # SAMPLED SGP CONFIG

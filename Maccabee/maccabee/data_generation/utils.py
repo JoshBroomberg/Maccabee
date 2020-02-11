@@ -5,7 +5,6 @@ import numpy as np
 import sympy as sp
 import pandas as pd
 from functools import partial
-from sympy.utilities.autowrap import ufuncify, CodeWrapper
 import importlib
 from multiprocessing import Process
 
@@ -54,13 +53,15 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
     else:
         return objects_to_sample[selected_indeces, :]
 
+from sympy.utilities.autowrap import ufuncify, CodeWrapper
 import pathlib
 import sys
 C_PATH = "./_maccabee_compiled_code/"
 
 class CompiledExpression():
 
-    def __init__(self, expression):
+    def __init__(self, expression, symbols):
+        self.symbols = symbols
         self.expression = expression
         self.constant_expression = False
 
@@ -91,13 +92,6 @@ class CompiledExpression():
     def _compile(self):
         free_symbols = getattr(self.expression, "free_symbols", None)
         if free_symbols is not None:
-            # Args
-            expr_func_ordered_symbols = list(free_symbols)
-            self.compiled_ordered_args = [
-                str(symbol)
-                for symbol in expr_func_ordered_symbols
-            ]
-
             try:
                 # Module
                 self.compiled_module_name = \
@@ -110,13 +104,13 @@ class CompiledExpression():
                 # print("Compiling")
                 # Compile
                 ufuncify(
-                    expr_func_ordered_symbols,
+                    self.symbols,
                     self.expression,
                     backend="cython",
                     tempdir=mod_path)
                 # print("Done compiling")
-            except:
-                raise Exception("Failure in compilation of compiled expression.")
+            except Exception as e:
+                raise Exception(f"Failure in compilation of compiled expression. {e}")
         else:
             # No free symbols, expression is constant.
             self.constant_expression = True
@@ -144,21 +138,14 @@ class CompiledExpression():
                 func_name = next(filter(lambda x: x.startswith(compiled_func_prefix), dir(mod)))
                 self.expression_func = getattr(mod, func_name)
 
-            column_data = [
-                data[arg].to_numpy().astype(np.float64)
-                for arg in self.compiled_ordered_args
-            ]
-
             # print("Executing compiled code")
-            expr_result = self.expression_func(*column_data)
+            data = map(lambda x: x.flatten(), np.hsplit(data.values, data.shape[1]))
+            expr_result = self.expression_func(*data)
             # print("Done executing compiled code")
             res = pd.Series(expr_result)
-
             return res
         except Exception as e:
-            # print(e)
-            # print("failure")
-            print("failure in compiled expression eval")
+            print(f"failure in compiled expression eval. {e}")
             return evaluate_expression(self.expression, data)
 
 def evaluate_expression(expression, data):
@@ -176,10 +163,8 @@ def evaluate_expression(expression, data):
     else:
         free_symbols = getattr(expression, "free_symbols", None)
         if free_symbols is not None:
-            free_symbols = list(free_symbols)
-
             expr_func = sp.lambdify(
-                    free_symbols,
+                    list(data.columns),
                     expression,
                     modules=[
                         {
@@ -188,10 +173,9 @@ def evaluate_expression(expression, data):
                         },
                         "numpy"
                     ],
-                    dummify=True)
+                    dummify=False)
 
-            column_data = [data[str(sym)] for sym in free_symbols]
-            return expr_func(*column_data)
+            return pd.Series(expr_func(*np.hsplit(data.values, data.shape[1])).flatten())
         else:
             # No free symbols, return expression itself.
             return expression

@@ -317,6 +317,7 @@ def benchmark_model_using_sampled_dgp(
     for (dgp_index, dgp) in new_dgps:
         dgps[dgp_index] = (dgp_index, dgp)
 
+    dgps = list(dgps)
     # Data structures for storing the metric results for each sampled DGP.
     performance_metric_dgp_results = defaultdict(list)
     performance_metric_raw_run_results = defaultdict(list)
