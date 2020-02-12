@@ -317,14 +317,16 @@ def benchmark_model_using_sampled_dgp(
     for (dgp_index, dgp) in new_dgps:
         dgps[dgp_index] = (dgp_index, dgp)
 
-    dgps = list(dgps)
     # Data structures for storing the metric results for each sampled DGP.
     performance_metric_dgp_results = defaultdict(list)
     performance_metric_raw_run_results = defaultdict(list)
     data_metric_dgp_results = defaultdict(list)
 
+    raw_dgps = []
+
     # For each dgp, run a concrete benchmark.
     for dgp_index, dgp in dgps:
+        raw_dgps.append(dgp)
 
         print(f"Starting sampling for DGP {dgp_index+1}/{num_dgp_samples}")
         # print(dgp.treatment_assignment_logit_function)
@@ -355,7 +357,7 @@ def benchmark_model_using_sampled_dgp(
     return (_aggregate_metric_results(performance_metric_dgp_results),
         performance_metric_dgp_results, performance_metric_raw_run_results,
         _aggregate_metric_results(data_metric_dgp_results, std=False),
-        data_metric_dgp_results, dgps)
+        data_metric_dgp_results, raw_dgps)
 
 
 def benchmark_model_using_sampled_dgp_grid(

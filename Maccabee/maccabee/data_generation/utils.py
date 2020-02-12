@@ -162,7 +162,7 @@ def evaluate_expression(expression, data):
         return expression.eval_expr(data)
     else:
         free_symbols = getattr(expression, "free_symbols", None)
-        if free_symbols is not None:
+        if free_symbols is not None and len(free_symbols) > 0:
             expr_func = sp.lambdify(
                     list(data.columns),
                     expression,
@@ -175,6 +175,9 @@ def evaluate_expression(expression, data):
                     ],
                     dummify=False)
 
+            # print(expression)
+            # print(pd.Series(
+            #     expr_func(*np.hsplit(data.values, data.shape[1]))))
             return pd.Series(expr_func(*np.hsplit(data.values, data.shape[1])).flatten())
         else:
             # No free symbols, return expression itself.
