@@ -58,6 +58,7 @@ def _gen_data_and_apply_model(dgp, model_class, estimand, index):
 
 def _sample_dgp(dgp_sampler, index, dgps, semaphore):
     semaphore.acquire()
+    print(f"Sampling DGP {index+1}")
     np.random.seed()
     sampled_dgp = dgp_sampler.sample_dgp()
     dgps[index] = (index, sampled_dgp)
@@ -321,12 +322,11 @@ def benchmark_model_using_sampled_dgp(
     performance_metric_dgp_results = defaultdict(list)
     performance_metric_raw_run_results = defaultdict(list)
     data_metric_dgp_results = defaultdict(list)
-
-    raw_dgps = []
+    
+    dgps = list(dgps)
 
     # For each dgp, run a concrete benchmark.
     for dgp_index, dgp in dgps:
-        raw_dgps.append(dgp)
 
         print(f"Starting sampling for DGP {dgp_index+1}/{num_dgp_samples}")
         # print(dgp.treatment_assignment_logit_function)
@@ -357,7 +357,7 @@ def benchmark_model_using_sampled_dgp(
     return (_aggregate_metric_results(performance_metric_dgp_results),
         performance_metric_dgp_results, performance_metric_raw_run_results,
         _aggregate_metric_results(data_metric_dgp_results, std=False),
-        data_metric_dgp_results, raw_dgps)
+        data_metric_dgp_results, dgps)
 
 
 def benchmark_model_using_sampled_dgp_grid(

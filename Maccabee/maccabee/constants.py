@@ -103,6 +103,8 @@ class Constants:
         # values have zero mean with an approx std of 1.
         NORMALIZE_SAMPLED_TREATMENT_FUNCTION = True
         NORMALIZE_SAMPLED_OUTCOME_FUNCTION = False
+        CENTER_SAMPLED_OUTCOME_FUNCTION = False # TODO: consider removing
+        ADJUST_ALIGNMENT = True
 
         # How much of the covariate data to use when normalizing
         # the sampled functions. For large data sets, a smaller proportion

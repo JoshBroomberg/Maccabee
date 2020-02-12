@@ -31,8 +31,9 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
     objects_to_sample = np.array(objects_to_sample)
     n_objects = len(objects_to_sample)
     object_indeces = np.arange(n_objects)
-
-    if hasattr(selection_probability, "__len__"):
+    
+    # TODO: fixme always true
+    if hasattr(selection_probability, "__len__") or True:
         selection_status = np.random.uniform(size=n_objects) < selection_probability
         selected_indeces = object_indeces[selection_status]
     else:

@@ -238,35 +238,54 @@ class DataGeneratingProcessSampler():
             set_treatment_covariate_transforms)
 
         # TODO: comment this code.
+#         current_alignment_proportion = len(already_aligned_transforms)/len(all_transforms)
+        
+        if Constants.DGPSampling.ADJUST_ALIGNMENT:
+            print("running aligner")
+            # Set alignment ito outcome function.
+            alignment_base = set_outcome_covariate_transforms # or all_transforms
 
-        current_alignment_proportion = len(already_aligned_transforms)/len(all_transforms)
-        alignment_diff = current_alignment_proportion - self.params.ACTUAL_CONFOUNDER_ALIGNMENT
-        if alignment_diff > 0:
-            print(f"Reducing alignment from {round(current_alignment_proportion, 3)} to {self.params.ACTUAL_CONFOUNDER_ALIGNMENT}")
+            current_alignment_proportion = len(already_aligned_transforms)/len(alignment_base)
+            alignment_diff = current_alignment_proportion - self.params.ACTUAL_CONFOUNDER_ALIGNMENT
 
-            expected_num_to_unalign = alignment_diff*len(all_transforms)
-            unalign_probability = expected_num_to_unalign/len(already_aligned_transforms)
-            transforms_to_unalign = select_objects_given_probability(
-                    list(already_aligned_transforms),
-                    selection_probability=unalign_probability)
+            if alignment_diff > 0.01:
+                print(f"Reducing alignment from {round(current_alignment_proportion, 3)} to {self.params.ACTUAL_CONFOUNDER_ALIGNMENT}")
 
-            treatment_relative_size = len(set_treatment_covariate_transforms)/len(all_transforms)
-            for transform in transforms_to_unalign:
-                already_aligned_transforms.remove(transform)
-                if np.random.random() < treatment_relative_size:
-                    set_outcome_covariate_transforms.remove(transform)
-                else:
-                    set_treatment_covariate_transforms.remove(transform)
+                expected_num_to_unalign = alignment_diff*len(alignment_base)
+                unalign_probability = \
+                    expected_num_to_unalign/len(already_aligned_transforms)
+                
+                transforms_to_unalign = select_objects_given_probability(
+                        list(already_aligned_transforms),
+                        selection_probability=unalign_probability)
 
-            aligned_transforms = list(already_aligned_transforms)
+                treatment_relative_size = \
+                    len(set_treatment_covariate_transforms)/len(all_transforms)
+                
+                for transform in transforms_to_unalign:
+                    already_aligned_transforms.remove(transform)
+                    if np.random.random() < 1.5:#treatment_relative_size: #TODO
+                        set_outcome_covariate_transforms.remove(transform)
+                    else:
+                        set_treatment_covariate_transforms.remove(transform)
+
+                aligned_transforms = list(already_aligned_transforms)
+            elif alignment_diff < -0.01:
+                print("Increasing alignment")
+                # Select overlapping covariates transforms (effective confounder space)
+                # based on the alignment parameter.
+                new_aligned_transforms = select_objects_given_probability(
+                        list(all_transforms - already_aligned_transforms),
+                        selection_probability=abs(alignment_diff))
+
+                aligned_transforms = \
+                    list(new_aligned_transforms) + list(already_aligned_transforms)
+            else:
+                aligned_transforms = list(already_aligned_transforms)
         else:
-            print("Increasing alignment")
-            # Select overlapping covariates transforms (effective confounder space)
-            # based on the alignment parameter.
-            aligned_transforms = select_objects_given_probability(
-                    list(all_transforms - already_aligned_transforms),
-                    selection_probability=abs(alignment_diff))
-
+            print("skipping alignment")
+            aligned_transforms = list(already_aligned_transforms)
+            
         # Extract treat and outcome exclusive transforms.
         treat_only_transforms = list(set_treatment_covariate_transforms.difference(
             aligned_transforms))
@@ -312,7 +331,7 @@ class DataGeneratingProcessSampler():
 
         # Normalize if config specifies.
         if SamplingConstants.NORMALIZE_SAMPLED_TREATMENT_FUNCTION:
-
+            print("norming treatment")
             # Sample data to evaluate distribution.
             sampled_data = observed_covariate_data.sample(
                 frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
@@ -450,6 +469,7 @@ class DataGeneratingProcessSampler():
 
         # Normalize if config set to do so.
         if SamplingConstants.NORMALIZE_SAMPLED_OUTCOME_FUNCTION:
+            print("norming outcome")
             # Sample data to evaluate distribution.
             sampled_data = observed_covariate_data.sample(
                 frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
@@ -463,9 +483,11 @@ class DataGeneratingProcessSampler():
 
             # This is only an approximate normalization. It will shift the mean to zero
             # but the exact effect on std will depend on the distribution.
-            normalized_outcome_expression = \
-                (base_untreated_outcome_expression - outcome_mean)/outcome_std
-
+            normalized_outcome_expression = base_untreated_outcome_expression/outcome_std
+            if SamplingConstants.CENTER_SAMPLED_OUTCOME_FUNCTION:
+                normalized_outcome_expression = normalized_outcome_expression - \
+                    (outcome_mean/outcome_std)
+            
             untreated_outcome_subfunction = normalized_outcome_expression
         else:
             untreated_outcome_subfunction = base_untreated_outcome_expression
