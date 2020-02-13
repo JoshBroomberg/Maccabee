@@ -50,8 +50,8 @@ def absolute_mean_bias_percentage(avg_effect_estimate_vals, avg_effect_true_vals
         float: The Absolute Mean Error Percentage.
     """
     non_zeros = np.logical_not(np.isclose(avg_effect_true_vals, 0))
-    return 100*np.abs(
-        np.mean((avg_effect_estimate_vals[non_zeros] - avg_effect_true_vals[non_zeros]) /
+    return 100*np.mean(
+        np.abs((avg_effect_estimate_vals[non_zeros] - avg_effect_true_vals[non_zeros]) /
             avg_effect_true_vals[non_zeros]))
 
 #: The dictionary containing the average effect metrics.

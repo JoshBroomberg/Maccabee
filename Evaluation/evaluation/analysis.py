@@ -3,7 +3,7 @@ from sympy.polys.polytools import poly
 from maccabee.constants import Constants
 
 def get_term_category_data(dgps):
-    sampled_dgp_transforms = map(lambda x: x[1].treatment_covariate_transforms, dgps)
+    sampled_dgp_transforms = map(lambda x: x.treatment_covariate_transforms, dgps)
     category_data = list(map(categorize_terms, sampled_dgp_transforms))
     return category_data
 

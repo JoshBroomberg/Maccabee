@@ -146,71 +146,76 @@ def benchmark_model_using_concrete_dgp(
         num_samples_from_dgp, dgp.n_observations, estimand)
     perf_metric_names_and_funcs = _get_performance_metric_functions(estimand)
 
+    if n_jobs >= 1:
+        # Build a multiprocessing pool based on the allowed parallelism
+        # but only up to the max parallelism from num_samples_from_dgp.
+        # print("Building pool")
+        pool = Pool(processes=min(n_jobs, num_samples_from_dgp), maxtasksperchild=1)
+        map_func = partial(pool.map, chunksize=max(1, int(num_samples_from_dgp/n_jobs)))
+    else:
+        map_func = map
+
     # Sampling occurs in a single threaded context so that, when split
     # across cores, the numpy functions in each process don't use
     # more than the resources allocated to the process.
     thread_context = get_threading_context(n_threads)
     with thread_context():
 
-        # Build a multiprocessing pool based on the allowed parallelism
-        # but only up to the max parralelism from num_samples_from_dgp.
-        # print("Building pool")
-        with Pool(processes=min(n_jobs, num_samples_from_dgp), maxtasksperchild=1) as pool:
+        # Synchronous loop over the sampling runs.
+        for run_index in range(num_sampling_runs_per_dgp):
+            # print("Starting run:", run_index)
+            # Data structures to store the datasets, sampled estimand values and
+            # data metrics for each sample in this sampling run.
 
-            # Synchronous loop over the sampling runs.
-            for run_index in range(num_sampling_runs_per_dgp):
-                # print("Starting run:", run_index)
-                # Data structures to store the datasets, sampled estimand values and
-                # data metrics for each sample in this sampling run.
+            datasets = np.empty(num_samples_from_dgp, dtype="O")
+            estimand_sample_results = np.empty(perf_metric_data_store_shape)
+            data_metrics_sample_results = defaultdict(list) # TODO: numpy
 
-                datasets = np.empty(num_samples_from_dgp, dtype="O")
-                estimand_sample_results = np.empty(perf_metric_data_store_shape)
-                data_metrics_sample_results = defaultdict(list) # TODO: numpy
+            # Begin sampling.
 
-                # Begin sampling.
+            # Use the runner function and multiprocessing pool to draw
+            #    and process data samples into estimand samples.
+            # print("Starting sampling for run.")
+            for sample_index, effect_estimate_and_truth, dataset in map_func(
+                run_model_on_dgp, sample_indeces):
 
-                # Use the runner function and multiprocessing pool to draw
-                #    and process data samples into estimand samples.
-                # print("Starting sampling for run.")
-                for sample_index, effect_estimate_and_truth, dataset in pool.imap_unordered(
-                    run_model_on_dgp, sample_indeces):
+                # print("Sample:", sample_index)
+                # Store estimand and data set samples.
+                estimand_sample_results[sample_index, :] = effect_estimate_and_truth
+                datasets[sample_index] = dataset
 
-                    # print("Sample:", sample_index)
-                    # Store estimand and data set samples.
-                    estimand_sample_results[sample_index, :] = effect_estimate_and_truth
-                    datasets[sample_index] = dataset
+            # If in data analysis mode, use the pool to run data metric
+            # calculation.
+            if data_analysis_mode:
+                # print("Starting data analysis")
+                # Loop over generated datasets in order.
+                for data_metric_results in map_func(collect_dataset_metrics, datasets):
+                    # Record all metrics at the sampled data set level
+                    # for later aggregation.
+                    for axis_metric_name, axis_metric_val in data_metric_results.items():
+                        data_metrics_sample_results[axis_metric_name].append(
+                            axis_metric_val)
 
-                # If in data analysis mode, use the pool to run data metric
-                # calculation.
-                if data_analysis_mode:
-                    # print("Starting data analysis")
-                    # Loop over generated datasets in order.
-                    for data_metric_results in pool.map(collect_dataset_metrics, datasets):
-                        # Record all metrics at the sampled data set level
-                        # for later aggregation.
-                        for axis_metric_name, axis_metric_val in data_metric_results.items():
-                            data_metrics_sample_results[axis_metric_name].append(
-                                axis_metric_val)
+            # At the end of the sampling for this sampling run, process sample
+            # estimand results into metric estimates.
+            estimate_vals = estimand_sample_results[:, 0]
+            true_vals = estimand_sample_results[:, 1]
 
-                # At the end of the sampling for this sampling run, process sample
-                # estimand results into metric estimates.
-                estimate_vals = estimand_sample_results[:, 0]
-                true_vals = estimand_sample_results[:, 1]
+            for metric_name, metric_func in perf_metric_names_and_funcs.items():
+                performance_metric_run_results[metric_name].append(metric_func(
+                    estimate_vals, true_vals))
 
-                for metric_name, metric_func in perf_metric_names_and_funcs.items():
-                    performance_metric_run_results[metric_name].append(metric_func(
-                        estimate_vals, true_vals))
-
-                # Aggregate the data metrics by averaging across samples so that
-                # there is a single real value per sampling run as with the perf
-                # metrics.
-                if data_analysis_mode:
-                    for axis_metric_name, vals in data_metrics_sample_results.items():
-                        data_metric_run_results[axis_metric_name].append(
-                            np.mean(vals))
-
-            pool.close()
-            pool.join()
+            # Aggregate the data metrics by averaging across samples so that
+            # there is a single real value per sampling run as with the perf
+            # metrics.
+            if data_analysis_mode:
+                for axis_metric_name, vals in data_metrics_sample_results.items():
+                    data_metric_run_results[axis_metric_name].append(
+                        np.mean(vals))
+    
+    if n_jobs >= 1:
+        pool.close()
+        pool.join()
 
     # Aggregate perf and data metrics across sampling runs.
     performance_metric_aggregated_results = _aggregate_metric_results(performance_metric_run_results)
@@ -322,37 +327,71 @@ def benchmark_model_using_sampled_dgp(
     performance_metric_dgp_results = defaultdict(list)
     performance_metric_raw_run_results = defaultdict(list)
     data_metric_dgp_results = defaultdict(list)
-    
-    dgps = list(dgps)
 
-    # For each dgp, run a concrete benchmark.
-    for dgp_index, dgp in dgps:
+    dgps = [dgp[1] for dgp in dgps]
 
-        print(f"Starting sampling for DGP {dgp_index+1}/{num_dgp_samples}")
-        # print(dgp.treatment_assignment_logit_function)
-        performance_metric_data, performance_raw_data, data_metric_data, _ = \
-            benchmark_model_using_concrete_dgp(
-                dgp, model_class, estimand,
-                num_sampling_runs_per_dgp=num_sampling_runs_per_dgp,
-                num_samples_from_dgp=num_samples_from_dgp,
-                data_analysis_mode=data_analysis_mode,
-                data_metrics_spec=data_metrics_spec,
-                n_jobs=n_jobs)
+    benchmark_dgp = partial(
+        benchmark_model_using_concrete_dgp,
+        model_class=model_class,
+        estimand=estimand,
+        num_sampling_runs_per_dgp=num_sampling_runs_per_dgp,
+        num_samples_from_dgp=num_samples_from_dgp,
+        data_analysis_mode=data_analysis_mode,
+        data_metrics_spec=data_metrics_spec,
+        n_jobs=0)
 
-        # Extract and store the aggregated perf metric results (across
-        # all the sampling runs). This loop excludes the standard deviation
-        # from being collected at this stage. It is calculated over the
-        # sampled dgp results.
-        for metric_name in perf_metric_names_and_funcs:
-            performance_metric_dgp_results[metric_name].append(
-                performance_metric_data[metric_name])
-            performance_metric_raw_run_results[metric_name].append(
-                performance_raw_data[metric_name])
+    done_counter = 0
+    with Pool(processes=min(n_jobs, num_samples_from_dgp), maxtasksperchild=1) as pool:
+        for res_data in pool.imap_unordered(benchmark_dgp, dgps):
+            done_counter += 1
+            print(f"Done sampling for DGP {done_counter}/{num_dgp_samples}")
+            performance_metric_data, performance_raw_data, data_metric_data, _ = res_data
 
-        # As above, but for the data metrics which don't have a standard dev.
-        if data_analysis_mode:
-            for axis_metric_name, val in data_metric_data.items():
-                data_metric_dgp_results[axis_metric_name].append(val)
+            # Extract and store the aggregated perf metric results (across
+            # all the sampling runs). This loop excludes the standard deviation
+            # from being collected at this stage. It is calculated over the
+            # sampled dgp results.
+            for metric_name in perf_metric_names_and_funcs:
+                performance_metric_dgp_results[metric_name].append(
+                    performance_metric_data[metric_name])
+                performance_metric_raw_run_results[metric_name].append(
+                    performance_raw_data[metric_name])
+
+            # As above, but for the data metrics which don't have a standard dev.
+            if data_analysis_mode:
+                for axis_metric_name, val in data_metric_data.items():
+                    data_metric_dgp_results[axis_metric_name].append(val)
+
+    # # For each dgp, run a concrete benchmark.
+    # for dgp_index, dgp in dgps:
+    #
+    #     print(f"Starting sampling for DGP {dgp_index+1}/{num_dgp_samples}")
+    #     # print(dgp.treatment_assignment_logit_function)
+    #     performance_metric_data, performance_raw_data, data_metric_data, _ = \
+    #         benchmark_model_using_concrete_dgp,
+    #         dgp,
+    #         model_class=model_class,
+    #         estimand=estimand,
+    #         num_sampling_runs_per_dgp=num_sampling_runs_per_dgp,
+    #         num_samples_from_dgp=num_samples_from_dgp,
+    #         data_analysis_mode=data_analysis_mode,
+    #         data_metrics_spec=data_metrics_spec,
+    #         n_jobs=0
+    #
+    #     # Extract and store the aggregated perf metric results (across
+    #     # all the sampling runs). This loop excludes the standard deviation
+    #     # from being collected at this stage. It is calculated over the
+    #     # sampled dgp results.
+    #     for metric_name in perf_metric_names_and_funcs:
+    #         performance_metric_dgp_results[metric_name].append(
+    #             performance_metric_data[metric_name])
+    #         performance_metric_raw_run_results[metric_name].append(
+    #             performance_raw_data[metric_name])
+    #
+    #     # As above, but for the data metrics which don't have a standard dev.
+    #     if data_analysis_mode:
+    #         for axis_metric_name, val in data_metric_data.items():
+    #             data_metric_dgp_results[axis_metric_name].append(val)
 
     return (_aggregate_metric_results(performance_metric_dgp_results),
         performance_metric_dgp_results, performance_metric_raw_run_results,

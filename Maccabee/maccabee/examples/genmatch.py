@@ -26,20 +26,20 @@ numpy2ri.activate()
 stats = importr('stats') # standard regression package
 matching = importr('Matching') # GenMatch package
 
-MILD_NONLINEARITY = [2]
-MODERATE_NONLINEARITY = [2, 4, 7]
-MILD_NONADDITIVITY = [(1,3, 0.5), (2, 4, 0.7), (4,5, 0.5), (5,6, 0.5)]
+MILD_NONLINEARITY = [1]
+MODERATE_NONLINEARITY = [1, 3, 6]
+MILD_NONADDITIVITY = [(0,2, 0.5), (1, 3, 0.7), (3,4, 0.5), (4,5, 0.5)]
 MODERATE_NONADDITIVITY = [
-        (1,3, 0.5),
-        (2, 4, 0.7),
-        (3,5, 0.5),
-        (4,6, 0.7),
-        (5,7, 0.5),
-        (1,6, 0.5),
-        (2,3, 0.7),
+        (0,2, 0.5),
+        (1,3, 0.7),
+        (2,4, 0.5),
+        (3,5, 0.7),
+        (4,6, 0.5),
+        (0,5, 0.5),
+        (1,2, 0.7),
+        (2,3, 0.5),
         (3,4, 0.5),
-        (4,5, 0.5),
-        (5,6, 0.5)]
+        (4,5, 0.5)]
 
 GENMATCH_SPECS = {
     "A": ([], []),
@@ -51,31 +51,27 @@ GENMATCH_SPECS = {
     "G": (MODERATE_NONLINEARITY, MODERATE_NONADDITIVITY)
 }
 
-GENMATCH_N_COVARS = 11
-GENMATCH_BINARY_COVAR_INDECES = [1, 3, 5, 6, 8, 9]
-GENMATCH_COVAR_NAMES = np.array([f"X{i}" for i in range(GENMATCH_N_COVARS)])
+GENMATCH_N_COVARS = 10
+GENMATCH_BINARY_COVAR_INDECES = [0, 2, 4, 5, 7, 8]
+GENMATCH_COVAR_NAMES = [f"X{i}" for i in range(GENMATCH_N_COVARS)]
+GENMATCH_BINARY_COVAR_NAMES = [f"X{i}" for i in GENMATCH_BINARY_COVAR_INDECES]
 
 def _generate_genmatch_data(n_observations):
-    # TODO: remove
-    # np.random.seed()
+    np.random.seed()
     covar_data = np.random.normal(loc=0.0, scale=1.0, size=(
-            n_observations, GENMATCH_N_COVARS-1))
-
-    # Add bias/intercept dummy column
-    covar_data = np.hstack([np.ones((n_observations, 1)), covar_data])
+            n_observations, GENMATCH_N_COVARS))
 
     # Make binary columns binary.
     for var in GENMATCH_BINARY_COVAR_INDECES:
-        covar_data[:, var-1] = (covar_data[:, var -1] > 0).astype(int)
+        covar_data[:, var] = (covar_data[:, var] > 0).astype(int)
 
     return covar_data
 
 def build_genmatch_datasource(n_observations=1000):
     return StochasticDataSource(
         covar_data_generator=partial(_generate_genmatch_data, n_observations),
-        covar_names=list(GENMATCH_COVAR_NAMES),
-        discrete_covar_names=list(
-            GENMATCH_COVAR_NAMES[GENMATCH_BINARY_COVAR_INDECES]) + ["X0"])
+        covar_names=GENMATCH_COVAR_NAMES,
+        discrete_covar_names=GENMATCH_BINARY_COVAR_NAMES)
 
 class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
     def __init__(self, dgp_label, n_observations, data_analysis_mode):
@@ -85,14 +81,17 @@ class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
         quadratic_indeces, interactions_list = GENMATCH_SPECS[dgp_label]
 
         self.data_source = build_genmatch_datasource(n_observations)
-        self.covar_symbols = np.array(sp.symbols(list(GENMATCH_COVAR_NAMES)))
+        self.covar_symbols = np.array(sp.symbols(GENMATCH_COVAR_NAMES))
 
         self.assignment_weights = np.array(
-            [0, 0.8, -0.25, 0.6, -0.4, -0.8, -0.5, 0.7, 0, 0, 0])
+            [0.8, -0.25, 0.6, -0.4, -0.8, -0.5, 0.7, 0, 0, 0])
 
         self.outcome_weights = np.array(
-            [-3.85, 0.3, -0.36, -0.73, -0.2, 0, 0, 0, 0.71, -0.19, 0.26])
+            [0.3, -0.36, -0.73, -0.2, 0, 0, 0, 0.71, -0.19, 0.26])
+
         self.true_treat_effect = -0.4
+        self.treatment_bias = 0
+        self.outcome_bias = -3.85
 
         self.quad_terms_indeces = quadratic_indeces
         self.interactions_list = np.array(interactions_list)
@@ -123,11 +122,13 @@ class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
                        self.covar_symbols[interact_2_indeces]*
                        interact_weights))
 
-        self.treatment_logit_expression = np.sum(self.treatment_logit_terms)
+        self.treatment_logit_expression = \
+            np.sum(self.treatment_logit_terms) + self.treatment_bias
 
 
         self.untreated_outcome_terms = self.outcome_weights * self.covar_symbols
-        self.untreated_outcome_expression = np.sum(self.untreated_outcome_terms)
+        self.untreated_outcome_expression = \
+            np.sum(self.untreated_outcome_terms) + self.outcome_bias
 
     @data_generating_method(DGPVariables.COVARIATES_NAME, [], cache_result=False)
     def _generate_observed_covars(self, input_vars):
