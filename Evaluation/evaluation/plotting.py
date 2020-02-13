@@ -43,12 +43,15 @@ def display_sampled_dgps_vs_concrete(
     for i, distro_vals in enumerate(sampled_runs):
         c = cmap(i)
         plt.hist(distro_vals, density=True, alpha=0.25, color=c)
-        plt.axvline(x=np.mean(distro_vals), alpha=0.25, color=c)
-
+        plt.axvline(x=np.mean(distro_vals), alpha=0.25, color=c, ymax=0.4)
+        
     plt.hist(concrete_run_data[metric],
         density=True, color="b", label="Concrete Runs")
-    plt.axvline(x=np.mean(concrete_run_data[metric]), c="b")
-
+    plt.axvline(x=np.mean(concrete_run_data[metric]), c="b", ymax=0.66)
+    
+    plt.xlabel(metric)
+    
+    plt.ylim((0, 50))
     plt.legend()
     plt.show()
 

@@ -213,6 +213,22 @@ AXES_AND_METRICS = {
                 "y": DGPVariables.PROPENSITY_LOGIT_NAME
             },
             "name": "Lin r2(Y0, Treat Logit)"
+        },
+        {
+            "function": DataMetricFunctions.LOGISTIC_R2,
+            "args": {
+                "X": DGPVariables.POTENTIAL_OUTCOME_WITHOUT_TREATMENT_NAME,
+                "y": DGPVariables.TREATMENT_ASSIGNMENT_NAME
+            },
+            "name": "Log r2(Y0, T)"
+        },
+        {
+            "function": DataMetricFunctions.LOGISTIC_R2,
+            "args": {
+                "X": DGPVariables.OBSERVED_OUTCOME_NAME,
+                "y": DGPVariables.TREATMENT_ASSIGNMENT_NAME
+            },
+            "name": "Log r2(Y, T)"
         }
     ],
 

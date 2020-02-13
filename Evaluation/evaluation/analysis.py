@@ -2,8 +2,8 @@ from collections import defaultdict
 from sympy.polys.polytools import poly
 from maccabee.constants import Constants
 
-def get_term_category_data(dgps):
-    sampled_dgp_transforms = map(lambda x: x.treatment_covariate_transforms, dgps)
+def get_term_category_data(dgps, expr_prop):
+    sampled_dgp_transforms = map(lambda x: getattr(x, expr_prop), dgps)
     category_data = list(map(categorize_terms, sampled_dgp_transforms))
     return category_data
 
