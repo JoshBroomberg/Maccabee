@@ -40,9 +40,17 @@ extensions = [
     'sphinx.ext.napoleon', # google format docstrings
     'sphinx.ext.intersphinx', # links to external docs
     'sphinx.ext.viewcode', # source code links
+    'sphinx.ext.autosectionlabel', # link to pages
     'sphinx_rtd_theme', # RTD them
     'nbsphinx' # rendering ipynbs
 ]
+
+nbsphinx_execute_arguments = [
+    "--InlineBackend.figure_formats={'svg', 'pdf'}",
+    "--InlineBackend.rc={'figure.dpi': 96}",
+]
+nbsphinx_input_prompt = '%s'
+nbsphinx_output_prompt = '%s'
 
 add_module_names = False
 
@@ -60,7 +68,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ["**/.ipynb_checkpoints"]
 
 
 # -- Options for HTML output -------------------------------------------------

@@ -20,7 +20,7 @@ def build_csv_datasource(csv_path, discrete_covar_names):
     Returns:
         :class:`DataSource <maccabee.data_sources.DataSource>`: A :class:`DataSource <maccabee.data_sources.DataSource>` instance which will generate the covariates from the CSV when sampled.
     """
-    covar_data, covar_names = load_covars_from_csv_path(csv_path)
+    covar_names, covar_data = load_covars_from_csv_path(csv_path)
 
     return StaticDataSource(
         static_covar_data=covar_data,
@@ -64,7 +64,7 @@ def build_random_normal_datasource(
 
 
     # Name covars sequentially
-    covar_names = np.array([f"X{i}" for i in range(n_covars)])
+    covar_names = [f"X{i}" for i in range(n_covars)]
 
     gen_random_normal_data = partial(_gen_random_normal_data,
         n_covars, n_observations, partial_correlation_degree)
@@ -80,12 +80,12 @@ def _gen_random_normal_data(n_covars, n_observations,
 
     covar = random_covar_matrix(
         dimension=n_covars,
-        correlation_deg=partial_correlation_degree)
+        correlation_deg=correlation_deg)
 
-    # Generate random covariates
+    # Generate standard normal random covariates
     covar_data = np.random.multivariate_normal(
-        mean=np.full((n_covars,), mean),
-        cov=std*covar,
+        mean=np.full((n_covars,), 0),
+        cov=1*covar,
         size=n_observations)
 
     return covar_data

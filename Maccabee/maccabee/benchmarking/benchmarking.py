@@ -116,8 +116,7 @@ def benchmark_model_using_concrete_dgp(
 
     # Set DGP data analysis mode
     if dgp.get_data_analysis_mode() != data_analysis_mode:
-        print("WARNING: DGP analysis mode contradicts parameter data_analysis_mode.")
-        print(f"WARNING: Setting DGP data_analysis_mode to {data_analysis_mode}")
+        print(f"NOTICE: data_analysis_mode is {data_analysis_mode} but the dgp is in data analysis mode.")
 
     dgp.set_data_analysis_mode(data_analysis_mode)
 
@@ -212,7 +211,7 @@ def benchmark_model_using_concrete_dgp(
                 for axis_metric_name, vals in data_metrics_sample_results.items():
                     data_metric_run_results[axis_metric_name].append(
                         np.mean(vals))
-    
+
     if n_jobs >= 1:
         pool.close()
         pool.join()
@@ -409,7 +408,8 @@ def benchmark_model_using_sampled_dgp_grid(
     data_metrics_spec=None,
     param_overrides={},
     dgp_class=SampledDataGeneratingProcess,
-    dgp_kwargs={}):
+    dgp_kwargs={},
+    n_jobs=1):
     """This function is a thin wrapper around the :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp` function. It is used to run the sampeld DGP benchmark across many different sampling parameter value combinations. The signature is the same as the wrapped function with `dgp_sampling_params` replaced by `dgp_param_grid` and the new `param_overrides` option. For all other arguments, see :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp`.
 
     Args:
@@ -433,20 +433,24 @@ def benchmark_model_using_sampled_dgp_grid(
             dgp_params.set_parameter(param_name, param_overrides[param_name])
 
         # Run sampling benchmark.
-        param_performance_metric_data, _, param_data_metric_data, _ = \
+        param_performance_metric_data, _, _, param_data_metric_data, _, _ = \
             benchmark_model_using_sampled_dgp(
-                param_spec, data_source,
-                model_class, estimand,
-                num_dgp_samples,
-                num_samples_from_dgp,
+                dgp_sampling_params=dgp_params,
+                data_source=data_source,
+                model_class=model_class,
+                estimand=estimand,
+                num_dgp_samples=num_dgp_samples,
+                num_sampling_runs_per_dgp=num_sampling_runs_per_dgp,
+                num_samples_from_dgp=num_samples_from_dgp,
                 data_analysis_mode=data_analysis_mode,
                 data_metrics_spec=data_metrics_spec,
                 dgp_class=dgp_class,
-                dgp_kwargs=dgp_kwargs)
+                dgp_kwargs=dgp_kwargs,
+                n_jobs=n_jobs)
 
         # Store the params for this run in the results dict
         for param_name, param_value in param_spec.items():
-            results[f"param_{param_name.lower()}"].append(param_value)
+            metric_param_results[f"param_{param_name.lower()}"].append(param_value)
 
         # Calculate and store the requested metric values.
         for metric_name, metric_result in param_performance_metric_data.items():

@@ -1,5 +1,5 @@
-Advanced Functionality
-======================
+Advanced Tutorials
+==================
 
 .. toctree::
    :maxdepth: 1

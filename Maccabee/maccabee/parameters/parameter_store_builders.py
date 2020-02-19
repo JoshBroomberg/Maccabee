@@ -82,6 +82,6 @@ def build_parameters_from_axis_levels(metric_levels, save=False):
             raise Exception(f"{metric_name} is not a valid metric")
 
 
-    params.recalculate_calculated_params()
+    params._recalculate_calculated_params()
 
     return params

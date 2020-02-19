@@ -88,7 +88,7 @@ class GeneratedDataSet(metaclass=DGPVariableAccessor):
         # Build a dataframe for the DGP variables listed in dgp_var_names.
         df = pd.DataFrame()
         for name in dgp_var_names:
-            df[name] = self.get_dgp_var(name)
+            df[name] = self.get_dgp_variable(name)
 
         return df
 
