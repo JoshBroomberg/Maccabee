@@ -31,6 +31,30 @@ def root_mean_sqaured_error(avg_effect_estimate_vals, avg_effect_true_vals):
     return np.sqrt(
         np.mean((avg_effect_estimate_vals - avg_effect_true_vals)**2))
 
+def mean_absolute_bias_percentage(avg_effect_estimate_vals, avg_effect_true_vals):
+    """mean_absolute_bias_percentage(...)
+
+    The Mean Absolute Bias Percentage (MABP):
+
+    .. math::
+
+        100 \\times \\frac{1}{N} \\times \\sum_{i=1}^N \\left( \\left| \\frac{\\hat{\\tau_i} - \\tau_i}{\\tau_i} \\right| \\right)
+
+    This metric quantifies the average bias in the estimator. It measures the mean absolute value of this bias in the estimate as a percentage of the ground-truth effects. Note: an unbiased estimator may still have a large MAB if each estimate
+    tends to be far from the ground truth.
+
+    Args:
+        avg_effect_estimate_vals (:class:`numpy.ndarray`): an array of sampled average effect estimates.
+        avg_effect_true_vals (:class:`numpy.ndarray`): an array of sampled average effect ground truths.
+
+    Returns:
+        float: The Absolute Mean Error Percentage.
+    """
+    non_zeros = np.logical_not(np.isclose(avg_effect_true_vals, 0))
+    return 100*np.mean(
+        np.abs((avg_effect_estimate_vals[non_zeros] - avg_effect_true_vals[non_zeros]) /
+            avg_effect_true_vals[non_zeros]))
+
 def absolute_mean_bias_percentage(avg_effect_estimate_vals, avg_effect_true_vals):
     """absolute_mean_bias_percentage(...)
 
@@ -50,8 +74,8 @@ def absolute_mean_bias_percentage(avg_effect_estimate_vals, avg_effect_true_vals
         float: The Absolute Mean Error Percentage.
     """
     non_zeros = np.logical_not(np.isclose(avg_effect_true_vals, 0))
-    return 100*np.mean(
-        np.abs((avg_effect_estimate_vals[non_zeros] - avg_effect_true_vals[non_zeros]) /
+    return 100*np.abs(
+        np.mean((avg_effect_estimate_vals[non_zeros] - avg_effect_true_vals[non_zeros]) /
             avg_effect_true_vals[non_zeros]))
 
 #: The dictionary containing the average effect metrics.
@@ -59,9 +83,11 @@ def absolute_mean_bias_percentage(avg_effect_estimate_vals, avg_effect_true_vals
 #:
 #: * :func:`RMSE <maccabee.modeling.performance_metrics.root_mean_sqaured_error>` - the Root Mean Squared Error.
 #: * :func:`AMBP <maccabee.modeling.performance_metrics.absolute_mean_bias_percentage>`  - Absolute Mean Bias Percentage.
+#: * :func:`MABP <maccabee.modeling.performance_metrics.mean_absolute_bias_percentage>`  - Mean Absolute Bias Percentage.
 AVG_EFFECT_METRICS = {
     "RMSE": root_mean_sqaured_error,
-    "AMBP": absolute_mean_bias_percentage
+    "AMBP": absolute_mean_bias_percentage,
+    "MABP": mean_absolute_bias_percentage
 }
 
 def precision_in_estimating_heterogenous_treat_effects(

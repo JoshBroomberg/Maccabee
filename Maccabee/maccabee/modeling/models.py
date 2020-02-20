@@ -72,12 +72,13 @@ class LinearRegressionCausalModel(CausalModel):
 
     def __init__(self, dataset):
         self.dataset = dataset
-        self.model = LinearRegression()
+        self.model = LinearRegression(fit_intercept=True)
         self.data = dataset.observed_data.drop("Y", axis=1)
 
     def fit(self):
         """Fit the linear regression model.
         """
+        # self.model.fit(np.hstack([self.dataset.X, self.dataset.T.to_numpy().reshape((-1, 1))]), self.dataset.Y)
         self.model.fit(self.data, self.dataset.Y)
 
     def estimate_ATE(self):

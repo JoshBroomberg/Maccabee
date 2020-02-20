@@ -57,7 +57,6 @@ GENMATCH_COVAR_NAMES = [f"X{i}" for i in range(GENMATCH_N_COVARS)]
 GENMATCH_BINARY_COVAR_NAMES = [f"X{i}" for i in GENMATCH_BINARY_COVAR_INDECES]
 
 def _generate_genmatch_data(n_observations):
-    np.random.seed()
     covar_data = np.random.normal(loc=0.0, scale=1.0, size=(
             n_observations, GENMATCH_N_COVARS))
 

@@ -498,7 +498,6 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         [DGPVariables.COVARIATES_NAME],
         cache_result=True)
     def _generate_treatment_effects(self, input_vars):
-        print("here2") # TODO
         observed_covariate_data = input_vars[DGPVariables.COVARIATES_NAME]
         return evaluate_expression(
             self.treatment_effect_subfunction,

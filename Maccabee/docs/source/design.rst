@@ -75,6 +75,9 @@ TODO: improve these.
     distributional problem space axis
       The :term:`distributional problem space` is defined by axes which represent the distributional properties and the values they can take on. The cartesian product of the values the axes can take out is the extent of the problem space.
 
+    distributional setting
+      A location in the :term:`distributional problem space` characterized by a specific position along each :term:`distributional problem space axis`.
+
     dsl
       TODO - domain specific language.
 

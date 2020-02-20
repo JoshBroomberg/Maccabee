@@ -1,5 +1,5 @@
-The :mod:`maccabee` package
-===========================
+:mod:`maccabee` package reference
+=================================
 
 .. toctree::
    :maxdepth: 2

@@ -176,10 +176,13 @@ class ParameterStore():
     # TODO: provide a way to specify sampling functions in param spec file.
     # to avoid this hard coding.
 
+    # TODO reconsider all of these distributions.
+
     # NOTE: the transforms which appear in the distributions below are
     # arbitrary and could easily be changed/different. They're just
     # designed to represent non-trivial distributions to sample from.
     def sample_subfunction_constants(self, size=1):
+        # TODO
         # std = 5*np.sqrt(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS/(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS-2))
         # return np.round(np.random.standard_t(
         #                      self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS, size=size)/std, 3)

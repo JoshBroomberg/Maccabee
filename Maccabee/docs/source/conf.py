@@ -49,8 +49,9 @@ nbsphinx_execute_arguments = [
     "--InlineBackend.figure_formats={'svg', 'pdf'}",
     "--InlineBackend.rc={'figure.dpi': 96}",
 ]
-nbsphinx_input_prompt = '%s'
-nbsphinx_output_prompt = '%s'
+# nbsphinx_input_prompt = '[%s]'
+# nbsphinx_output_prompt = '[%s]'
+nbsphinx_prompt_width = 0
 
 add_module_names = False
 

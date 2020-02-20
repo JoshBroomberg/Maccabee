@@ -107,7 +107,10 @@ class GeneratedDataSet(metaclass=DGPVariableAccessor):
         """
         **[DGP VARIABLE GROUP]**\n\n This property returns a DataFrame containing all of the observable data: the observable covariates, the treatment assignment and the observed outcome. This is the data on which causal inference will be performed.
         """
-        return self.X.join(self.observed_outcome_data)
+        return pd.concat([
+            self.X.reset_index(drop=True),
+            self.observed_outcome_data],
+            axis=1)
 
     # Estimand accessors
     @property

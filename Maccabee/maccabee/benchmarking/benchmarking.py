@@ -26,6 +26,7 @@ from ..exceptions import UnknownEstimandException
 from ..constants import Constants
 
 METRIC_ROUNDING = 3
+VERBOSE = False
 
 def _aggregate_metric_results(metric_results, std=True):
     aggregated_results = {}
@@ -58,7 +59,9 @@ def _gen_data_and_apply_model(dgp, model_class, estimand, index):
 
 def _sample_dgp(dgp_sampler, index, dgps, semaphore):
     semaphore.acquire()
-    print(f"Sampling DGP {index+1}")
+    # TODO: verbose?
+    if VERBOSE:
+        print(f"Sampling DGP {index+1}")
     np.random.seed()
     sampled_dgp = dgp_sampler.sample_dgp()
     dgps[index] = (index, sampled_dgp)
@@ -114,10 +117,12 @@ def benchmark_model_using_concrete_dgp(
         UnknownEstimandException: If an unknown estimand is supplied.
     """
 
-    # Set DGP data analysis mode
-    if dgp.get_data_analysis_mode() != data_analysis_mode:
-        print(f"NOTICE: data_analysis_mode is {data_analysis_mode} but the dgp is in data analysis mode.")
 
+    # TODO remove
+    # if dgp.get_data_analysis_mode() != data_analysis_mode:
+    #     print(f"NOTICE: data_analysis_mode is {data_analysis_mode} but the dgp is in data analysis mode.")
+
+    # Set DGP data analysis mode
     dgp.set_data_analysis_mode(data_analysis_mode)
 
     # Build a runner function which samples a data set from the dgp,
@@ -316,7 +321,10 @@ def benchmark_model_using_sampled_dgp(
     new_dgps = []
     for i, (dgp_index, dgp) in enumerate(dgps):
         if dgp is None:
-            print("recovering from failed compilation")
+
+            # TODO: verbose?
+            if VERBOSE:
+                print("recovering from failed compilation")
             new_dgps.append(dgp_sampler(i,dgps, semaphore))
 
     for (dgp_index, dgp) in new_dgps:
@@ -343,7 +351,9 @@ def benchmark_model_using_sampled_dgp(
     with Pool(processes=min(n_jobs, num_samples_from_dgp), maxtasksperchild=1) as pool:
         for res_data in pool.imap_unordered(benchmark_dgp, dgps):
             done_counter += 1
-            print(f"Done sampling for DGP {done_counter}/{num_dgp_samples}")
+            # TODO: verbose?
+            if VERBOSE:
+                print(f"Done sampling for DGP {done_counter}/{num_dgp_samples}")
             performance_metric_data, performance_raw_data, data_metric_data, _ = res_data
 
             # Extract and store the aggregated perf metric results (across
@@ -421,7 +431,6 @@ def benchmark_model_using_sampled_dgp_grid(
     """
 
     metric_param_results = defaultdict(list)
-
     # Iterate over all DGP sampler parameter configurations
     for param_spec in ParameterGrid(dgp_param_grid):
 
@@ -433,7 +442,7 @@ def benchmark_model_using_sampled_dgp_grid(
             dgp_params.set_parameter(param_name, param_overrides[param_name])
 
         # Run sampling benchmark.
-        param_performance_metric_data, _, _, param_data_metric_data, _, _ = \
+        param_performance_metric_data, _, _, param_data_metric_data, _, dgps = \
             benchmark_model_using_sampled_dgp(
                 dgp_sampling_params=dgp_params,
                 data_source=data_source,
@@ -447,6 +456,7 @@ def benchmark_model_using_sampled_dgp_grid(
                 dgp_class=dgp_class,
                 dgp_kwargs=dgp_kwargs,
                 n_jobs=n_jobs)
+
 
         # Store the params for this run in the results dict
         for param_name, param_value in param_spec.items():
