@@ -14,7 +14,7 @@
 from sklearn.model_selection import ParameterGrid
 from collections import defaultdict
 import numpy as np
-from multiprocessing import Pool, Process, Manager
+from multiprocessing import Pool, Process, Manager, cpu_count
 from functools import partial
 
 from ..parameters import build_parameters_from_axis_levels
@@ -22,7 +22,7 @@ from ..data_generation import DataGeneratingProcessSampler, SampledDataGeneratin
 from ..data_analysis import calculate_data_axis_metrics
 from ..utilities.threading import get_threading_context
 from ..modeling.performance_metrics import AVG_EFFECT_METRICS, INDIVIDUAL_EFFECT_METRICS
-from ..exceptions import UnknownEstimandException
+from ..exceptions import UnknownEstimandException, UnknownEstimandAggregationException
 from ..constants import Constants
 
 METRIC_ROUNDING = 3
@@ -83,10 +83,12 @@ def _get_performance_metric_functions(estimand):
     if estimand not in Constants.Model.ALL_ESTIMANDS:
         raise UnknownEstimandException()
 
-    if estimand == Constants.Model.ITE_ESTIMAND:
+    if estimand in Constants.Model.INDIVIDUAL_ESTIMANDS:
         perf_metric_names_and_funcs = INDIVIDUAL_EFFECT_METRICS
-    else:
+    elif estimand in Constants.Model.AVERAGE_ESTIMANDS:
         perf_metric_names_and_funcs = AVG_EFFECT_METRICS
+    else:
+        raise UnknownEstimandAggregationException()
 
     return perf_metric_names_and_funcs
 
@@ -96,8 +98,7 @@ def benchmark_model_using_concrete_dgp(
     num_sampling_runs_per_dgp, num_samples_from_dgp,
     data_analysis_mode=False,
     data_metrics_spec=None,
-    n_jobs=1,
-    n_threads=1):
+    n_jobs=1):
     """Sample data sets from the given DGP instance and calculate performance and (optionally) data metrics.
 
     Args:
@@ -156,13 +157,18 @@ def benchmark_model_using_concrete_dgp(
         # print("Building pool")
         pool = Pool(processes=min(n_jobs, num_samples_from_dgp), maxtasksperchild=1)
         map_func = partial(pool.map, chunksize=max(1, int(num_samples_from_dgp/n_jobs)))
-    else:
+    elif n_jobs == 0:
         map_func = map
+    elif n_jobs == -1:
+        n_jobs = cpu_count()
+    else:
+        raise Exception("Invalid n_jobs value - should be integer from -1 to n")
+
 
     # Sampling occurs in a single threaded context so that, when split
     # across cores, the numpy functions in each process don't use
     # more than the resources allocated to the process.
-    thread_context = get_threading_context(n_threads)
+    thread_context = get_threading_context(1)
     with thread_context():
 
         # Synchronous loop over the sampling runs.
@@ -241,7 +247,7 @@ def benchmark_model_using_sampled_dgp(
     dgp_class=SampledDataGeneratingProcess,
     dgp_kwargs={},
     n_jobs=1,
-    n_threads=1):
+    compile_functions=False):
     """Short summary.
 
     Args:
@@ -257,6 +263,7 @@ def benchmark_model_using_sampled_dgp(
         dgp_class (:class:`maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess`): The DGP class to instantiate after function sampling. This must be a subclass of :class:`maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess`. This can be used to tweak aspects of the default sampled DGP. Defaults to SampledDataGeneratingProcess.
         dgp_kwargs (dict): A dictionary of keyword arguments to pass to the sampled DGPs at instantion time. Defaults to {}.
         n_jobs (int): See :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp`. Defaults to 1.
+        compile_functions (bool): A boolean indicating whether sampling DGP functions should be compiled prior to execution. Defaults to ``False``.
 
     Returns:
         tuple: A tuple with four entries. See :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp` for a description of the entries but note that, in this func, the aggregate metric values are averaged across dgp samples and sampling runs and the raw metric values correspond to averages over sampling runs for each sampled DGP. This means each entry in the raw metrics list corresponds to the aggregated result of the :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_concrete_dgp` function.
@@ -266,6 +273,8 @@ def benchmark_model_using_sampled_dgp(
     """
 
     perf_metric_names_and_funcs = _get_performance_metric_functions(estimand)
+
+    dgp_kwargs["compile_functions"] = compile_functions
 
     dgp_sampler = DataGeneratingProcessSampler(
         dgp_class=dgp_class,
@@ -278,32 +287,11 @@ def benchmark_model_using_sampled_dgp(
     # Build a multiprocessing pool which exploits the parallelism in the DGP
     # sampling. Use it to sample all DGPs.
 
-    # 1.
-    # dgps = [dgp_sampler(i) for i in range(num_dgp_samples)]
-
-    # 2.
-    # Compilation must occur in the background but cannot be done
-    # in multiple processes at the same time.
-    # with Pool(processes=1, maxtasksperchild=1) as pool:
-    #     dgps = pool.map(dgp_sampler, range(num_dgp_samples))
-    #     pool.close()
-    #     pool.join()
-
-    # 3.
-    # for i in range(num_dgp_samples):
-    #     p = Process(target=dgp_sampler, args=(i,dgps))
-    #     p.start()
-    #     processes.append(p)
-    #
-    #     if len(processes) == n_jobs:
-    #         for process in processes:
-    #             process.join()
-    #             process.terminate()
-    #
-    #         processes = []
-
     # TODO: refactor this multiprocessing approach.
     # Attempt to move to the compile expression itself
+    if n_jobs == -1:
+        n_jobs = cpu_count()
+
     manager = Manager()
     dgps = manager.list([(None, None)]*num_dgp_samples)
     semaphore = manager.Semaphore(n_jobs)
@@ -348,7 +336,7 @@ def benchmark_model_using_sampled_dgp(
         n_jobs=0)
 
     done_counter = 0
-    with Pool(processes=min(n_jobs, num_samples_from_dgp), maxtasksperchild=1) as pool:
+    with Pool(processes=min(n_jobs, num_dgp_samples), maxtasksperchild=1) as pool:
         for res_data in pool.imap_unordered(benchmark_dgp, dgps):
             done_counter += 1
             # TODO: verbose?
@@ -419,7 +407,8 @@ def benchmark_model_using_sampled_dgp_grid(
     param_overrides={},
     dgp_class=SampledDataGeneratingProcess,
     dgp_kwargs={},
-    n_jobs=1):
+    n_jobs=1,
+    compile_functions=False):
     """This function is a thin wrapper around the :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp` function. It is used to run the sampeld DGP benchmark across many different sampling parameter value combinations. The signature is the same as the wrapped function with `dgp_sampling_params` replaced by `dgp_param_grid` and the new `param_overrides` option. For all other arguments, see :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp`.
 
     Args:
@@ -455,7 +444,8 @@ def benchmark_model_using_sampled_dgp_grid(
                 data_metrics_spec=data_metrics_spec,
                 dgp_class=dgp_class,
                 dgp_kwargs=dgp_kwargs,
-                n_jobs=n_jobs)
+                n_jobs=n_jobs,
+                compile_functions=compile_functions)
 
 
         # Store the params for this run in the results dict

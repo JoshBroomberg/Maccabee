@@ -250,6 +250,28 @@ AXES_AND_METRIC_NAMES = dict(
     (axis, [metric["name"] for metric in metrics])
     for axis, metrics in AXES_AND_METRICS.items())
 
+CUSTOM_METRICS = defaultdict(list)
+
+def add_data_metric(axis_name, metric_dict):
+    """Add a data metric specified by the components of `metric_dict` to the metrics for the axis in `axis_name`.
+
+    Args:
+        axis_name (str): The name of an axis from :class:`~maccabee.constants.Constants.AxisNames`.
+        metric_dict (dict): A dict, as described above, which contains keys for the name, args and function that is used to calculate the metric.
+    """
+
+    req_fields = ["function", "args", "name"]
+    for field in req_fields:
+        if field not in metric_dict:
+            raise Exception(f"Missing field {field} from metric_dict")
+
+    metric_name = metric_dict["name"]
+    if metric_name in AXES_AND_METRIC_NAMES[axis_name]:
+        raise Exception(f"Metric name {metric_name} already exists for {axis_name} and cannot be redefined.")
+
+    AXES_AND_METRICS[axis_name].append(metric_dict)
+    AXES_AND_METRIC_NAMES[axis_name].append(metric_name)
+    CUSTOM_METRICS[axis_name].append(metric_name)
 
 ### Metric functions
 

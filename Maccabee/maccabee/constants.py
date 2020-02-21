@@ -353,3 +353,14 @@ class Constants:
             ATE_ESTIMAND,
             ATT_ESTIMAND
         ]
+
+        #: A list of all estimands which target a sample-level average effect
+        AVERAGE_ESTIMANDS = [
+            ATE_ESTIMAND,
+            ATT_ESTIMAND
+        ]
+
+        #: A list of all estimands which target an observation-level individual effect
+        INDIVIDUAL_ESTIMANDS = [
+            ITE_ESTIMAND
+        ]

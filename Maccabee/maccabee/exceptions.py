@@ -2,6 +2,10 @@ class UnknownEstimandException(Exception):
     def __init__(self):
         super().__init__("Unknown Estimand provided")
 
+class UnknownEstimandAggregationException(Exception):
+    def __init__(self):
+        super().__init__("Estimand with unknown aggregation provided")
+
 class UnknownDGPVariableException(Exception):
     def __init__(self):
         super().__init__("Unknown DGP Variable provided")
@@ -9,7 +13,6 @@ class UnknownDGPVariableException(Exception):
 class DGPVariableMissingException(Exception):
     def __init__(self, msg):
         super().__init__(msg)
-
 
 class ParameterSpecificationException(Exception):
     pass

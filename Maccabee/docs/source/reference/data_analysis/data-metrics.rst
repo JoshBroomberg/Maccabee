@@ -11,3 +11,5 @@
 
 .. autodata:: AXIS_METRIC_FUNCTIONS
   :annotation: - {metric_function_name: metric_function_callable}
+
+.. autofunction:: maccabee.data_analysis.data_metrics.add_data_metric

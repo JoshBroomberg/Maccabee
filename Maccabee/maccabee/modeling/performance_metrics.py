@@ -8,7 +8,8 @@ In the documentation below, assume a sample of :math:`N` data sets each of which
 """
 
 import numpy as np
-
+from ..exceptions import UnknownEstimandAggregationException
+from ..constants import Constants
 
 def root_mean_sqaured_error(avg_effect_estimate_vals, avg_effect_true_vals):
     """root_mean_sqaured_error(...)
@@ -121,3 +122,24 @@ def precision_in_estimating_heterogenous_treat_effects(
 INDIVIDUAL_EFFECT_METRICS = {
     "PEHE": precision_in_estimating_heterogenous_treat_effects
 }
+
+def add_performance_metric(aggregation_level, metric_name, metric_callable):
+    """Adds a performance metric for individual or average estimands to the benchmarks.
+
+    Args:
+        aggregation_level (str): The estimand aggregation level to which the metric applies. One of either: ``Constants.Model.INDIVIDUAL_ESTIMANDS`` or ``Constants.Model.AVERAGE_ESTIMANDS``.
+        metric_name (str): The name of the metric. Must be unique for the aggregation level.
+        metric_callable (fynction): A callable which accepts two arguments - one for the estimand estimate values and one for the ground truth values. If at the average effect aggregation level, each argument is a 1D :class:`numpy.ndarray` with each entry corresponding to an estimand value in a different dataset of a sampling run. If at the individial effect aggregation level, each argument is a 2D :class:`numpy.ndarray` with each row corresponding to individual effect estimand values for a single dataset (one column per individual).
+    """
+
+    if aggregation_level == Constants.Model.INDIVIDUAL_ESTIMANDS:
+        metric_dict = INDIVIDUAL_EFFECT_METRICS
+    elif aggregation_level == Constants.Model.AVERAGE_ESTIMANDS:
+        metric_dict = AVG_EFFECT_METRICS
+    else:
+        raise UnknownEstimandAggregationException()
+
+    if metric_name in metric_dict:
+        raise Exception(f"Metric {metric_name} already exists for aggregation level.")
+
+    metric_dict[metric_name] = metric_callable

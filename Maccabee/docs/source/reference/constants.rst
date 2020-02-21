@@ -5,3 +5,4 @@
   :members:
   :private-members:
   :show-inheritance:
+  :member-order: bysource

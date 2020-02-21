@@ -37,8 +37,9 @@ def calculate_data_axis_metrics(dataset, observation_spec=None, flatten_result=F
             if (observation_spec is not None) and (metric["name"] not in observation_spec[axis]):
                  continue # this metric not in observation specs.
 
-            func_name = metric["function"]
-            func = AXIS_METRIC_FUNCTIONS[func_name]
+            func = metric["function"]
+            if not callable(func):
+                func = AXIS_METRIC_FUNCTIONS[func]
 
             # Assemble the argument values by fetching the relevant portions
             # of the data

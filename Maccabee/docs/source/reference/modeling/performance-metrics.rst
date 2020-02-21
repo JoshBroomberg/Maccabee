@@ -15,6 +15,8 @@ Average Effect Metrics
 
 .. autofunction:: absolute_mean_bias_percentage
 
+.. autofunction:: mean_absolute_bias_percentage
+
 Individual Effect Metrics
 ++++++++++++++++++++++++++
 
@@ -22,6 +24,11 @@ Individual Effect Metrics
   :annotation: - {...}
 
 .. autofunction:: precision_in_estimating_heterogenous_treat_effects
+
+Adding New Metrics
+++++++++++++++++++
+
+.. autofunction:: maccabee.modeling.performance_metrics.add_performance_metric
 
 .. rubric:: Footnotes
 
