@@ -4,6 +4,6 @@ Advanced Tutorials
 .. toctree::
    :maxdepth: 1
 
-   advanced/parallel-and-cluster
+   advanced/r-models
+   advanced/parallelization
    advanced/custom-metrics
-   advanced/custom-params

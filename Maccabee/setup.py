@@ -35,7 +35,7 @@ setuptools.setup(
           "sphinx_rtd_theme",
           "nbsphinx"
         ],
-        "R": [
+        "r": [
             "rpy2"
         ]
      },

@@ -9,6 +9,18 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 
 
+import importlib
+rpy2_spec = importlib.util.find_spec("rpy2")
+if rpy2_spec is not None:
+    # RPY2 is used an interconnect between Python and R. It allows
+    # python to run R code in a subprocess.
+    import rpy2
+    from rpy2.robjects import IntVector, FloatVector, Formula
+    from rpy2.robjects.packages import importr
+    from rpy2.robjects import numpy2ri
+    from rpy2.robjects.packages import SignatureTranslatedAnonymousPackage
+    numpy2ri.activate()
+
 class CausalModel():
     """The base :class:`maccabee.modeling.models.CausalModel` class presents a minimal interface. This is important because many models, with diverse operation/characteristics, are expected to conform to this interface. It takes a :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` instance which contains the data to be used for estimation. It has an abstract :meth:`~maccabee.modeling.models.CausalModel.fit` method which, when called on inheriting classes, should prepare the model to produce an estimate. This preparation could mean pre-processing data, training a neural network etc. Finally, it has a concrete :meth:`~maccabee.modeling.models.CausalModel.estimate` method which expects to find a defined method with the ``estimate_*`` where \* is an estimand name. It is up to the inheriting class to define the appropriate estimator methods depending on the estimands which will be evaluated.
 
@@ -65,13 +77,45 @@ class CausalModel():
 
         return getattr(self, estimate_method_name)(*args, **kwargs)
 
+class CausalModelR(CausalModel):
+    """
+    This class inherits from :class:`maccabee.modeling.models.CausalModel` and implements additional tooling using to write causal models with major components in R.
+    """
+
+    def __init__(self, dataset):
+        super().__init__(dataset)
+
+    def _import_r_package(self, package_name):
+        """Helper function to import a package pre-installed in the system's R language.
+
+        Args:
+            package_name (str): The string name of the package, as would be used in the R `load` command.
+
+        Returns:
+            object: A python object representing the R package with all functions as attribute methods of the object.
+        """
+        return importr(package_name)
+
+    def _import_r_file_as_package(self, file_path, package_name):
+        """Helper function to import an R file as a psuedo-package. The functions from the R file are translated as exported methods of a package called `package_name`.
+
+        Args:
+            file_path (str): The path to the R file to import.
+            package_name (str): The name to be used for the psuedo-package.
+
+        Returns:
+            object: A python object representing the R package with all functions as attribute methods of the object.
+        """
+        with open(file_path, "r") as prog:
+            R_prog = ''.join(prog.readlines())
+        return SignatureTranslatedAnonymousPackage(R_prog, package_name)
 
 class LinearRegressionCausalModel(CausalModel):
     """This class inherits from :class:`maccabee.modeling.models.CausalModel` and implements a linear-regression based estimator for the ATE and ITE using SciKit Learn linear regression model. The ITE is a dummy estimand in this case given the linear model assumes a homogenous effect amongst all units.
     """
 
     def __init__(self, dataset):
-        self.dataset = dataset
+        super().__init__(dataset)
         self.model = LinearRegression(fit_intercept=True)
         self.data = dataset.observed_data.drop("Y", axis=1)
 

@@ -14,6 +14,7 @@ from functools import partial
 
 from sklearn.linear_model import LogisticRegression
 
+# TODO: move this to the new CausalModelR
 # RPY2 is used an interconnect between Python and R. It allows
 # my to run R code from python which makes this experimentation
 # process smoother.
