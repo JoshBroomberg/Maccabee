@@ -1,13 +1,7 @@
-# SYSTEM: do not edit
 boto3
 setproctitle
-ray
-
-# USER: add your packages below. You can fix a version with standard
-# pip syntax eg: packagename==0.3.0 or packagename>=0.2.0
+maccabee[r]
 rpy2
-
-# docs
 sphinx
 sphinx-autobuild
 sphinx_rtd_theme
