@@ -311,7 +311,7 @@ def _mean_mahalanobis_between_nearest_counterfactual(covariates, treatment_statu
     X_treated, X_control = _extract_treat_and_control_data(
         covariates, treatment_status)
 
-    # TODO: fix singular matrix issue.
+    # TODO: attempt to account for singular matrix issue.
     try:
         distance_matrix = cdist(X_treated, X_control, "mahalanobis")
         np.nan_to_num(distance_matrix, copy=False, nan=np.inf)
