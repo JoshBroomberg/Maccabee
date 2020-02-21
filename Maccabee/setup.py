@@ -34,6 +34,9 @@ setuptools.setup(
           "sphinx-autobuild",
           "sphinx_rtd_theme",
           "nbsphinx"
+        ],
+        "R": [
+            "rpy2"
         ]
      },
      classifiers=[
