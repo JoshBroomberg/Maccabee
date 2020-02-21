@@ -1,5 +1,5 @@
-Design and Motivation
-=====================
+Design, Motivation, and Approach
+================================
 
 Motivation
 ----------
@@ -12,23 +12,10 @@ Most existing benchmarks fall into one of two categories:
 
 The common flaw present in both benchmarking designs is that the sample size is, effectively, one. A new causal inference method is usually tested against a single DGP. In empirical datasets, the properties of this DGP and, most importantly, its place in the :term:`distributional problem space` is unknown. So the causal inference method is validated against a single sample from an unknown location in the problem space. In synthetic datasets, the DGP and the location is problem space is known. But, in the worst case, the manual specification introduces specification bias - where the best/simplest version of a DGP in a problem space region is selected (perhaps unintentially). And, even in the best case, there is only one (or a few) samples from the location in problem space, potentially missing important aspects of the distribution of method performance over structurally similar DGP. Finally, synthetic DGPs rely on unrealistic (synthetic) covariate data which means that their results may not generalize to real datasets with similar treatment/outcome mechanisms.
 
+Approach
+--------
+
 The approach enabled by this package is designed to improve the validity of benchmarks by more thoroughly exploring the distributional problem space (relative to empirical benchmarks) and reducing specification dependence/bias and improving the realism of covariates (relative to synthetic benchmarks). Crucially, the sampling of Data Generating Processes allows one to evaluate the distribution over method performance in a region of the :term:`distributional problem space`.
-
-Design Principles
------------------
-
-Fundamentally, this package only succeeds if it provides a useful and usable way to benchmark new methods for causal inference developed by its users. Maccabee’s features are focused around four design principles to achieve this end:
-
-* **Minimal imposition on method design:** attention has been paid to ensuring model developers can use their own empirical data and models with Maccabee painlessly. This includes support for benchmarking models written in both Python and R to avoid the need for language translation.
-
-* **Quickstart but powerful customization:** The package includes high-quality data and pre-tuned parameters. This means that little boilerplate code is required to run a benchmark and receive results. This helps new users understand, and get value out of, the package quickly. At the same time, there is a large control surface to give advanced users the tools they need to support heavily-customized benchmarking processes.
-
-* **Support for advanced functionality:** all Monte Carlo benchmarking requires access to sufficient computational power and a way to persist and compare results. Maccabee provides seamless integration with cluster computing tools to run large benchmarks on public cloud/private compute platforms as well as providing tools for result persistence and management which work both locally and with cluster computing.
-
-* **Smooth side-by-side support of old and new approaches:** most users may feel initial discomfort using only the novel benchmarking approach proposed in the theoretical work. Maccabee allows for concrete, user-specified DGPs to be used side by side with the new approach. This allows users to switch between/compare the new and old approaches while using a single benchmarking tool. It also allows users to exploit the advanced functionality outlined above even if they don’t use the core sampling functionality. The hope is that users who start with concrete DGPs will transition to the newer (and theoretically superior) sampling approaches.
-
-Theoretical Approach
---------------------
 
 TODO: flesh this out.
 
@@ -50,6 +37,19 @@ TODO: cover:
 * Flexible parameter specification
 * DGP Sampling
 * DGP spec - DSL
+
+Design Principles
+-----------------
+
+Fundamentally, this package only succeeds if it provides a useful and usable way to benchmark new methods for causal inference developed by its users. Maccabee’s features are focused around four design principles to achieve this end:
+
+* **Minimal imposition on method design:** attention has been paid to ensuring model developers can use their own empirical data and models with Maccabee painlessly. This includes support for benchmarking models written in both Python and R to avoid the need for language translation.
+
+* **Quickstart but powerful customization:** The package includes high-quality data and pre-tuned parameters. This means that little boilerplate code is required to run a benchmark and receive results. This helps new users understand, and get value out of, the package quickly. At the same time, there is a large control surface to give advanced users the tools they need to support heavily-customized benchmarking processes.
+
+* **Support for advanced functionality:** all Monte Carlo benchmarking requires access to sufficient computational power and a way to persist and compare results. Maccabee provides seamless integration with cluster computing tools to run large benchmarks on public cloud/private compute platforms as well as providing tools for result persistence and management which work both locally and with cluster computing.
+
+* **Smooth side-by-side support of old and new approaches:** most users may feel initial discomfort using only the novel benchmarking approach proposed in the theoretical work. Maccabee allows for concrete, user-specified DGPs to be used side by side with the new approach. This allows users to switch between/compare the new and old approaches while using a single benchmarking tool. It also allows users to exploit the advanced functionality outlined above even if they don’t use the core sampling functionality. The hope is that users who start with concrete DGPs will transition to the newer (and theoretically superior) sampling approaches.
 
 Glossary
 --------

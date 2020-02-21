@@ -6,6 +6,6 @@ Quick Start Tutorials
 
    usage/sampled-dgp.ipynb
    usage/concrete-dgp.ipynb
-   usage/custom-sampled-dgp
-   usage/empirical-datasets
+   usage/custom-sampled-dgp.ipynb
+   usage/empirical-datasets.ipynb
    usage/data-analysis
