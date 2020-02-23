@@ -61,6 +61,7 @@ SCHEMA:
       covariates appear in the outcome mechanism in different
       forms.
 
+  # TODO remove
   OUTCOME_MECHANISM_EXPONENTIATION:
     type: bool
     description: |
@@ -146,6 +147,7 @@ SCHEMA:
     description: |
       DF for the T-distribution over treatment effects.
 
+  # TODO: remove? Not sure about this.
   OBSERVATION_PROBABILITY:
     type: number
     <<: *probability_min_max

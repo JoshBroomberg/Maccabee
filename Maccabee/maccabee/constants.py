@@ -265,7 +265,7 @@ class Constants:
         #: The overlap axis - controls to covariate distribution overlap in
         #: the treated and control groups.
         #: WARNING: not currently supported in sampling.
-        OVERLAP = "OVERLAP"
+        OVERLAP = "OVERLAP" # TODO remove.
 
         #: The balance axis - controls the degree of similarity between the
         #: covariate distribution in the treated and control group.
