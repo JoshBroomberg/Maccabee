@@ -1,95 +1,90 @@
 Design and Implementation
 =========================
 
-In depth explanations of the theoretical underpinnings of the Maccabee benchmarking process can be found in Chapters 5 and 6 of the :download:`theory paper </maccabee-theory-paper.pdf>`.
+The goal of this page is to explain how Maccabee's theoretical approach to benchmarking - as laid out in Chapter 5 of the :download:`theory paper </maccabee-theory-paper.pdf>` - is implemented using the functions and classes of the Maccabee package. This page therefore assumes a base level of familiarity with the theoretical approach although a brief summary is provided in the first section below.
 
-This page documents the implementation which is to operationalize Maccabee's Monte Carlo Benchmarking. ... The second subsection then shows how the sampling procedure is implemented in the functions and classes that make up the package. This is a description at the level of the functional components used concretize, and sample from, the statistical model described in the first subsection.
+Statistical Benchmarking Approach
+---------------------------------
 
-Package Design Principles
--------------------------
+The graphical model below represents the complete statistical model of a Maccabee Monte Carlo benchmark.
 
-Fundamentally, this package only succeeds if it provides a useful and usable way to benchmark new methods for causal inference developed by its users. Maccabee’s features are focused around four design principles to achieve this end:
+.. image:: design/maccabee-design-graphical-model-fig.png
 
-* **Minimal imposition on method design:** attention has been paid to ensuring model developers can use their own empirical data and models with Maccabee painlessly. This includes support for benchmarking models written in both Python and R to avoid the need for language translation.
+Briefly summarizing the sampling procedure:
 
-* **Quickstart but powerful customization:** The package includes high-quality data and pre-tuned parameters. This means that little boilerplate code is required to run a benchmark and receive results. This helps new users understand, and get value out of, the package quickly. At the same time, there is a large control surface to give advanced users the tools they need to support heavily-customized benchmarking processes.
+* A set of :math:`M` DGPs is sampled based on supplied *DGP Sampling Parameters*.
 
-* **Support for optimized, parallel execution:** valid Monte Carlo benchmarks require large sample sizes. In turn, this requires effecient, optimized code and the ability to access and utilize sufficient computational power. Maccabee provides code compilation for sampled DGPs - which greatly improves execution time - and parallelization tools that enable execution across multiple cores. Together, these tools make large-sample benchmarks feasible.
+* For each DGP, :math:`N` sets of individual observation variables consisting of observed covariates and a set of associated treatment assignment, outcome and causal effect variables (both observed and unobserved). The complete set of variables is defined in :data:`~maccabee.constants.Constants.DGPVariables`.
 
-* **Smooth side-by-side support of old and new approaches:** Maccabee allows for user-specified DGPs to be used side by side with the sampled DGPs enabled by the package. This allows users to switch between/compare the new and old approaches while using a single benchmarking tool. It also allows users to exploit the advanced functionality outlined above even if they don’t use the core sampling functionality.
+* For each DGP, causal estimand values are sampled (perhaps deterministically) at either the individual observation (for individual effects) or dataset level (for average effects). These values are conditioned on all :math:`N` of the :math:`X`, :math:`T` and :math:`Y` observations.
 
-Objects
--------
+* :math:`M` Individual or Average Performance Metric values are calculated (deterministically sampled) at the dataset level by combining the causal effect estimate values with the appropriate ground truth value(s). Optionally, :math:`M` Data Metrics are calculated by combining some/all of the covariate data with the observed and oracle outcome data.
 
-The figure below...
+Implementation Overview
+-----------------------
 
-The bolded text signifies Maccabee classes/modules and link to detailed documentation for the relevant component.
+The section above used a graphical model to describe the benchmarking approach at the level of the data (random variables). This section describes the components used to implement, and sample from, this model. This description is at the level of implemented functions and classes.
 
 .. image:: design/maccabee-design-implementation-fig.png
 
-To perform a **Benchmark** (:mod:`~maccabee.benchmarking`), one or more sets of **Sampling Parameters** (:mod:`~maccabee.parameters`) are using by the **DGP Sampler** (:mod:`~maccabee.data_generation.data_generating_process_sampler`) to sample **DGPs** (:mod:`~maccabee.data_generation.data_generating_process`) at a specific location in the :term:`distributional problem space`. **Data sets** (:mod:`~maccabee.data_generation.generated_data_set`) are then sampled from the sampled DGPs. The location of these data sets in the problem space is evaluated using **Data Metrics** (:mod:`~maccabee.data_analysis.data_metrics`). **Causal Models** (:mod:`~maccabee.modeling.models`) are used to generate estimates for a selected causal estimands. The performance of the models is evaluated against the ground truth from the sampled data sets using **Performance Metrics** (:mod:`~maccabee.modeling.performance_metrics`). The results of repeated DGP and data set samples are aggregated and returned to the user.
+Core Execution Flow
++++++++++++++++++++
 
-Advanced Implementation
------------------------
+The figure below shows how all of Maccabee's classes and functions fit together to perform a single sample of all of the random variables that appear in the graphical model above. Modules containing the closely related components are indicated using boxes. From top to bottom:
 
-- Aggregation in the benchmarking section
+* A *data source builder* function from the :mod:`~maccabee.data_sources.data_source_builders` module is used to build a :class:`~maccabee.data_sources.data_sources.DataSource` instance. This class encapsulates the code needed to load and prepare empirical or synthetic covariate observations.
+
+|
+
+* A *parameter store builder* function from the :mod:`~maccabee.parameters.parameter_store_builders` module is used to build a :class:`~maccabee.parameters.parameter_store.ParameterStore` instance. This class encapsulates the code used to modify and access the DGP sampling parameters.
+
+|
+
+* The two instances from the steps above are provided to a :class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcessSampler` instance. This class encapsulates the code required to sample Data Generating Processes defined over the covariate data from the :class:`~maccabee.data_sources.data_sources.DataSource` instance based on the parameters in the :class:`~maccabee.parameters.parameter_store.ParameterStore` instance.
+
+|
+
+* The :class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcessSampler` instance is used to sample :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess` instance. The :class:`~maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess` subclass, produced by the :class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcessSampler`, encapsulates the logic needed to sample datasets given the sampled components of a DGP as described in :download:`theory paper </maccabee-theory-paper.pdf>`.
+
+|
+
+* The :class:`~maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess` instance is used to sample  :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` instance. The :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` class encapsulates the logic used to access generated DGP variables (the observed and unobserved variables listed in :data:`~maccabee.constants.Constants.DGPVariables` over which the DGP is defined). This includes logic to access ground truth estimand values derived from the DGP variables.
+
+|
+
+* A :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` instance is passed to a :class:`~maccabee.modeling.models.CausalModel` instance. This class encapsulates the (user-supplied) modeling logic that estimates causal estimands. The causal model class provides abstracts the details of the model and allows for simple external access to one or more estimands.
+
+|
+
+* The estimated causal estimand values (from the :class:`~maccabee.modeling.models.CausalModel` instance) and the ground truth values (from the :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` instance) are passed to *performance metric functions* from the :mod:`~maccabee.modeling.performance_metrics` module (this is a submodule of the :mod:`~maccabee.modeling` module). Given the relative simplicity of the performance metric calculation, the functions from the :mod:`~maccabee.modeling.performance_metrics` module are used directly by code outside the module.
+
+|
+
+* Optionally, the :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` instance is passed to *data metric functions* from the :mod:`~maccabee.data_analysis` module. The data metric code is complex enough that the calculation of data metrics using *data metric functions* is encapsulated by the :func:`~maccabee.data_analysis.data_analysis.calculate_data_axis_metrics` function.
+
+Additional Execution Flow Details
++++++++++++++++++++++++++++++++++
+
+There are a few details missing from the section above.
+
+Firstly, most of the process above is not implemented directly by users. Rather, it is implemented in *benchmarking functions* from the :mod:`~maccabee.benchmarking` module. The exact process above is implemented in the :func:`~maccabee.benchmarking.benchmarking.benchmark_model_using_sampled_dgp` which accepts a :class:`~maccabee.data_sources.data_sources.DataSource` instance and a :class:`~maccabee.parameters.parameter_store.ParameterStore` instance from the user and then implements the rest of the process (sampling many :class:`~maccabee.data_generation.data_generating_process.SampledDataGeneratingProcess` instances and many :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` instances from each DGP). The other functions in the :mod:`~maccabee.benchmarking` module support different use cases and these covered in the tutorials.
+
+Second, there is nuance around how covariate data is handled relative to the formal statistical model. In the model, the covariates are sampled directly from a DGP. In the package, covariate sampling is encapsulated in a :class:`~maccabee.data_sources.data_sources.DataSource` instance which is provided to the :class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcessSampler` instance. This is done for two reasons.
+
+1. This encapsulates the complex logic needed to load empirical datasets or sample stochastic joint distributions and then normalize the resultant observations. Under the hood, the :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess` samples covariates from the :class:`~maccabee.data_sources.data_sources.DataSource` as one would expect.
+
+2. A sample of the covariate data is actually used by the :class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcessSampler` when normalizing the sampled treatment and outcome functions. This means the :class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcessSampler` needs access to covariate data **before** DGPs can be sampled.
+
+If the user defines a custom :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess` class to represent a concrete DGP, then the choice of whether to use a :class:`~maccabee.data_sources.data_sources.DataSource` or sample covariates directly in the :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess` is up to the user.
+
+Finally, it is worth discussing the philosophy behind the choice to use classes vs functions to represent different components. In general, code that is stateless (doesn't preserve any information between runs) is implemented using functions. This applies to the *_builder* functions, metric calculation functions, and the benchmarking functions. Note that, where possible, code executed directly by users is designed to be stateless to allow for execution without the overhead of instance creation and management. Code that is stateful, and called repeatedly, is implemented using classes. Both the functional and class based components are customizable. For example, users can inject their own performance/data metrics as demonstrated in :doc:`/advanced/custom-metrics` and subclass the :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess` class to benchmark using concrete DGPs as demonstrated in :doc:`/usage/concrete-dgp`.
+
+Implementation Details
+----------------------
+
+This section of the documentation covers the details of the implementation in Maccabee.
+
+- Pandas for data management
 - Abstract Syntax Trees for equation construction
-- Parallelism
-- Good OOP practices throughout.
-
-Glossary of Terms
------------------
-
-TODO: finish these.
-
-.. glossary::
-
-    Causal Model
-      A causal model implements a mathematical estimator which extracts a causal estimand from an observational data set.
-
-    Data Metric
-      Data Metrics are real-valued functions which measure some distributional property of a generated data set. Each data metric measures the position of the data set along some well-defined 'axis' of the distributional problem space. Each axis may have more than one corresponding data metric.
-
-    DGP
-      A Data Generating Process describes the mathematical process which gives rise to a set of observed data - covariates, treatment assignments, and outcomes - and the corresponding unobserved/oracle data, primarily the treatment effect.
-
-      Concretely, a DGP relates the DGP Variables - defined in the constants group :class:`~maccabee.constants.Constants.DGPVariables` - through a series of stochastic/deterministic functions. The nature of these functions defines the location of the resultant data sets in the :term:`distributional problem space`.
-
-    Distributional Problem Space
-      The performance of causal estimators depends on distributional properties of the observed data. The space of all possible distributional properties forms the distributional problem space. The performance of an estimator across the space and in specific regions is of interest to researchers.
-
-    Distributional Problem Space Axis
-      The :term:`distributional problem space` is defined by axes which represent the distributional properties and the values they can take on. The cartesian product of the values the axes can take out is the extent of the problem space.
-
-    Distributional Setting
-      A location in the :term:`distributional problem space` characterized by a specific position along each :term:`distributional problem space axis`.
-
-    DSL
-      TODO - domain specific language.
-
-    DGP Variable
-      DGP variables are the variables over which the DGP is defined. See chapter 3 and 4 of the theory work.
-
-    Observable DGP Variable
-      DGP variables which are available for causal inference.
-
-    Oracle DGP Variable
-      DGP variables which are not available for causal inference but which can be thought of as 'existing' during the data generation process. This includes potential outcomes, treatment effect, outcome noise etc.
-
-    Parameter Specification File
-      A file used to specify a set of DGP sampling parameters. The specification conforms to the schema laid out in the :term:`parameter schema file`.
-
-    Default Parameter Specification File
-      The file which specifies the default set of DGP sampling parameters. This is laid out as a standard :term:`parameter specification file`.
-
-    Parameter Schema File
-      The file which defines all of the DGP sampling parameters by providing names, types, validity conditions, and descriptions. The :term:`parameter specification file` specifies DGP sampling parameters that conform to the schema laid out in this file.
-
-    Performance Metric
-      Performance Metrics are real-valued functions which measure the quality of a causal estimator by comparing the estimand value to the ground truth. A performance metric may be well defined for a single estimand value but typically, in the context of this package, they are defined over a sample of estimand values with each estimand value corresponding to an estimate of the causal effect/s in a generated data set.
-
-    Transformed Covariate
-      TODO - transformed covariate
-
-    YML
-      YAML is a human-readable data-serialization language. It is commonly used for configuration files and in applications where data is being stored or transmitted (Wikipedia).
+- Process-based Parallelism
+- OOP practices.
