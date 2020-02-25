@@ -45,7 +45,7 @@ def build_stochastic_datasource(generator_func, covar_names, discrete_covar_name
 
 
 def build_cpp_datasource():
-    """Builds a datasource using the CPP data set of empirical covariates. See the :download:`theory paper </maccabee-theory-paper.pdf>` for more on this data set.
+    """Builds a datasource using the CPP data set of empirical covariates. See Chapter 5 of the :download:`theory paper </maccabee-theory-paper.pdf>` for more on this data set.
 
     Returns:
         :class:`DataSource <maccabee.data_sources.DataSource>`: A :class:`DataSource <maccabee.data_sources.DataSource>` instance which will generate the covariates from the CPP data set when sampled.
@@ -54,7 +54,7 @@ def build_cpp_datasource():
         Constants.ExternalCovariateData.CPP_PATH, Constants.ExternalCovariateData.CPP_DISCRETE_COVARS)
 
 def build_lalonde_datasource():
-    """Builds a datasource using the Lalonde data set of empirical covariates. See the :download:`theory paper </maccabee-theory-paper.pdf>` for more on this data set.
+    """Builds a datasource using the Lalonde data set of empirical covariates. See Chapter 5 of the :download:`theory paper </maccabee-theory-paper.pdf>` for more on this data set.
 
     Returns:
         :class:`DataSource <maccabee.data_sources.DataSource>`: A :class:`DataSource <maccabee.data_sources.DataSource>` instance which will generate the covariates from the Lalonde data set when sampled.

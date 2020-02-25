@@ -106,6 +106,7 @@ class DataGeneratingProcessSampler():
         # support more complex sampling procedures to allow for simulation
         # of observation censorship etc.
 
+        # TODO: move this to the DGP as indicated in the theory paper.
         observed_covariate_data = source_covariate_data.sample(
             frac=self.params.OBSERVATION_PROBABILITY)
 

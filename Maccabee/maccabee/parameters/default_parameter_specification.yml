@@ -24,6 +24,7 @@ OUTCOME_MECHANISM_COVARIATE_SELECTION_PROBABILITY:
 
 OUTCOME_MECHANISM_EXPONENTIATION: true
 
+# TODO: Remove during refactor of sampling funcs.
 SUBFUNCTION_CONSTANT_TAIL_THICKNESS: 3
 
 # TODO: remove
@@ -37,9 +38,13 @@ MAX_PROPENSITY_SCORE: 0.9
 TARGET_PROPENSITY_SCORE: 0.5
 FORCED_IMBALANCE_ADJUSTMENT: 0
 
+# TODO: Remove during refactor of sampling funcs.
 OUTCOME_NOISE_TAIL_THICKNESS: 3
 
 TREATMENT_EFFECT_HETEROGENEITY: 0
+
+# TODO: Remove during refactor of sampling funcs.
 TREATMENT_EFFECT_TAIL_THICKNESS: 150
 
+# TODO: remove. Not necessary? Or add to sampling descriptions. Or move to the sampled DGP as option there (this is the best option). This has been included in the PDF description.
 OBSERVATION_PROBABILITY: 1
