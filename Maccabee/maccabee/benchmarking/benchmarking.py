@@ -244,6 +244,7 @@ def benchmark_model_using_sampled_dgp(
     num_sampling_runs_per_dgp=1,
     data_analysis_mode=False,
     data_metrics_spec=None,
+    data_metric_intervals=False,
     dgp_class=SampledDataGeneratingProcess,
     dgp_kwargs={},
     n_jobs=1,
@@ -392,7 +393,7 @@ def benchmark_model_using_sampled_dgp(
 
     return (_aggregate_metric_results(performance_metric_dgp_results),
         performance_metric_dgp_results, performance_metric_raw_run_results,
-        _aggregate_metric_results(data_metric_dgp_results, std=False),
+        _aggregate_metric_results(data_metric_dgp_results, std=data_metric_intervals),
         data_metric_dgp_results, dgps)
 
 
@@ -404,6 +405,7 @@ def benchmark_model_using_sampled_dgp_grid(
     num_sampling_runs_per_dgp=1,
     data_analysis_mode=False,
     data_metrics_spec=None,
+    data_metric_intervals=True,
     param_overrides={},
     dgp_class=SampledDataGeneratingProcess,
     dgp_kwargs={},
@@ -442,6 +444,7 @@ def benchmark_model_using_sampled_dgp_grid(
                 num_samples_from_dgp=num_samples_from_dgp,
                 data_analysis_mode=data_analysis_mode,
                 data_metrics_spec=data_metrics_spec,
+                data_metric_intervals=data_metric_intervals,
                 dgp_class=dgp_class,
                 dgp_kwargs=dgp_kwargs,
                 n_jobs=n_jobs,

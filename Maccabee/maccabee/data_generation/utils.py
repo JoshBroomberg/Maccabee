@@ -32,7 +32,7 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
     n_objects = len(objects_to_sample)
     object_indeces = np.arange(n_objects)
     
-    # TODO: fixme always true
+    # TODO: add constant to control this
     if hasattr(selection_probability, "__len__"):
         selection_status = np.random.uniform(size=n_objects) < selection_probability
         selected_indeces = object_indeces[selection_status]

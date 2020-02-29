@@ -175,26 +175,19 @@ class ParameterStore():
 
     # TODO: provide a way to specify sampling functions in param spec file.
     # to avoid this hard coding.
-
-    # TODO reconsider all of these distributions.
-
-    # NOTE: the transforms which appear in the distributions below are
-    # arbitrary and could easily be changed/different. They're just
-    # designed to represent non-trivial distributions to sample from.
     def sample_subfunction_constants(self, size=1):
-        # TODO
-        # std = 5*np.sqrt(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS/(self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS-2))
-        # return np.round(np.random.standard_t(
-        #                      self.SUBFUNCTION_CONSTANT_TAIL_THICKNESS, size=size)/std, 3)
-
-        return np.random.normal(size=size)
-        # return np.random.uniform(low=-1, high=1, size=size)
+        vals = np.random.uniform(low=0.3, high=0.8, size=size)
+        neg_locs = (np.random.random(size=size) < 0.5)
+        neg_mask = np.full(size, 1)
+        neg_mask[neg_locs] = -1
+        return vals*neg_mask
 
     def sample_outcome_noise(self, size=1):
-        std = 3*np.sqrt(self.OUTCOME_NOISE_TAIL_THICKNESS/(self.OUTCOME_NOISE_TAIL_THICKNESS-2))
-        return np.round(np.random.standard_t(
-                            self.OUTCOME_NOISE_TAIL_THICKNESS, size=size)/std, 3)
+        return np.random.normal(size=size)
 
     def sample_treatment_effect(self, size=1):
-        return np.round(np.random.standard_t(
-                            self.TREATMENT_EFFECT_TAIL_THICKNESS, size=size), 3)
+        vals = np.random.uniform(low=0.3, high=0.8, size=size)
+        neg_locs = (np.random.random(size=size) < 0.5)
+        neg_mask = np.full(size, 1)
+        neg_mask[neg_locs] = -1
+        return vals*neg_mask
