@@ -59,7 +59,7 @@ def _gen_data_and_apply_model(dgp, model_class, estimand, index):
 
 def _sample_dgp(dgp_sampler, index, dgps, semaphore):
     semaphore.acquire()
-    # TODO: verbose?
+    # TODO-LOG: verbose?
     if VERBOSE:
         print(f"Sampling DGP {index+1}")
     np.random.seed()
@@ -119,7 +119,7 @@ def benchmark_model_using_concrete_dgp(
     """
 
 
-    # TODO remove
+    # TODO-LOG remove
     # if dgp.get_data_analysis_mode() != data_analysis_mode:
     #     print(f"NOTICE: data_analysis_mode is {data_analysis_mode} but the dgp is in data analysis mode.")
 
@@ -173,19 +173,23 @@ def benchmark_model_using_concrete_dgp(
 
         # Synchronous loop over the sampling runs.
         for run_index in range(num_sampling_runs_per_dgp):
-            # print("Starting run:", run_index)
+            # print("Starting run:", run_index) #TODO-LOG
             # Data structures to store the datasets, sampled estimand values and
             # data metrics for each sample in this sampling run.
 
             datasets = np.empty(num_samples_from_dgp, dtype="O")
             estimand_sample_results = np.empty(perf_metric_data_store_shape)
-            data_metrics_sample_results = defaultdict(list) # TODO: numpy
+
+            # Data metric collection is not on the key performance pathway.
+            # Use dynamic data structure for convenience and readability.
+            data_metrics_sample_results = defaultdict(list)
 
             # Begin sampling.
 
             # Use the runner function and multiprocessing pool to draw
             #    and process data samples into estimand samples.
-            # print("Starting sampling for run.")
+
+            # TODO-LOG print("Starting sampling for run.")
             for sample_index, effect_estimate_and_truth, dataset in map_func(
                 run_model_on_dgp, sample_indeces):
 
@@ -288,7 +292,7 @@ def benchmark_model_using_sampled_dgp(
     # Build a multiprocessing pool which exploits the parallelism in the DGP
     # sampling. Use it to sample all DGPs.
 
-    # TODO: refactor this multiprocessing approach.
+    # TODO-MULTIPROC: refactor this multiprocessing approach.
     # Attempt to move to the compile expression itself
     if n_jobs == -1:
         n_jobs = cpu_count()
@@ -306,12 +310,12 @@ def benchmark_model_using_sampled_dgp(
         process.join()
         process.terminate()
 
-    # TODO: refactor this recovery mechanism. Process queue with callbacks?
+    # TODO-MULTIPROC: refactor this recovery mechanism. Process queue with callbacks?
     new_dgps = []
     for i, (dgp_index, dgp) in enumerate(dgps):
         if dgp is None:
 
-            # TODO: verbose?
+            # TODO-LOG: verbose?
             if VERBOSE:
                 print("recovering from failed compilation")
             new_dgps.append(dgp_sampler(i,dgps, semaphore))
@@ -340,7 +344,7 @@ def benchmark_model_using_sampled_dgp(
     with Pool(processes=min(n_jobs, num_dgp_samples), maxtasksperchild=1) as pool:
         for res_data in pool.imap_unordered(benchmark_dgp, dgps):
             done_counter += 1
-            # TODO: verbose?
+            # TODO-LOG: verbose?
             if VERBOSE:
                 print(f"Done sampling for DGP {done_counter}/{num_dgp_samples}")
             performance_metric_data, performance_raw_data, data_metric_data, _ = res_data

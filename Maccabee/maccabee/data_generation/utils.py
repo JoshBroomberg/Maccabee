@@ -31,9 +31,10 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
     objects_to_sample = np.array(objects_to_sample)
     n_objects = len(objects_to_sample)
     object_indeces = np.arange(n_objects)
-    
-    # TODO: add constant to control this
-    if hasattr(selection_probability, "__len__"):
+
+    # If the select probability is one-per-item or per item sampling is on,
+    # then use a per-item selection probability.
+    if hasattr(selection_probability, "__len__") or Constants.DGPSampling.FORCE_PER_ITEM_SAMPLING:
         selection_status = np.random.uniform(size=n_objects) < selection_probability
         selected_indeces = object_indeces[selection_status]
     else:

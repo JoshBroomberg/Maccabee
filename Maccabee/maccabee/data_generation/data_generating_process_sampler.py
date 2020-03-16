@@ -34,6 +34,10 @@ class DataGeneratingProcessSampler():
         self.data_source = data_source
         self.dgp_kwargs = dgp_kwargs
 
+        # Used to memoize calculation of covariate combinations
+        # for sampled tranforms.
+        self.covariate_combinations_store = {}
+
     def sample_dgp(self):
         """This is the primary external method of this class. It is used to sample a new DGP. Internally, a number of steps are executed:
 
@@ -52,9 +56,6 @@ class DataGeneratingProcessSampler():
         # remain unchanged as it only defines an execution order and passes
         # fairly generic parameters. Rather override the various subroutines
         # below.
-
-        # TODO: Remove
-        # np.random.seed()
 
         source_covariate_data = self.data_source.get_covar_df()
         covariate_symbols = np.array(sp.symbols(self.data_source.get_covar_names()))
@@ -102,11 +103,13 @@ class DataGeneratingProcessSampler():
 
     def sample_observed_covariate_data(self, source_covariate_data):
         # 1. Sample a subset of the observable covariates.
-        # For now, we allow simple uniform sampling. In future, we may
+        # For now, we support simple uniform sampling. In future, we may
         # support more complex sampling procedures to allow for simulation
         # of observation censorship etc.
 
-        # TODO: move this to the DGP as indicated in the theory paper.
+        # NOTE: to reduce variance in the DGP and Data sampling,
+        # observed covariates are selected once, globally. All data sets
+        # are then sampled based on this sample of covariates.
         observed_covariate_data = source_covariate_data.sample(
             frac=self.params.OBSERVATION_PROBABILITY)
 
@@ -142,11 +145,15 @@ class DataGeneratingProcessSampler():
         # function). The subfunction form probabilities and the combination form
         # is different for the treat and outcome function.
 
-        # TODO: Post-process the output of this function to group terms
+        # TODO-FUTURE: Post-process the output of this function to group terms
         # based on the same covariates and produce new multiplicative
         # combinations of different covariates as in Dorie et al (2019)
-
         selected_covariate_transforms = []
+
+        # Find continuous covariates for use in non-discrete transforms.
+        continuous_covariate_symbols = list(filter(
+            lambda sym: str(sym) not in self.data_source.get_discrete_covar_names(),
+                covariate_symbols))
 
         # Loop over the transformation forms in SUBFUNCTION_FORMS.
         for transform_name, transform_spec in SamplingConstants.SUBFUNCTION_FORMS.items():
@@ -156,20 +163,28 @@ class DataGeneratingProcessSampler():
             transform_covariate_symbols = transform_spec[SamplingConstants.COVARIATE_SYMBOLS_KEY]
             transform_discrete_allowed = transform_spec[SamplingConstants.DISCRETE_ALLOWED_KEY]
 
-            # Filter out covariates which are not allowed in this subfunction.
-            usable_covariate_symbols = covariate_symbols
-            if not transform_discrete_allowed:
-                usable_covariate_symbols = list(filter(
-                    lambda sym: str(sym) not in self.data_source.get_discrete_covar_names(),
-                    covariate_symbols))
+            # Access/generate possible combinations of covariates for the given transform.
+            # This is the set of all possible covar instantiations of this subfunction.
+            num_covars_in_transform = len(transform_covariate_symbols)
+            covar_combination_key = (transform_discrete_allowed, num_covars_in_transform)
 
-            # TODO: this should be memoized.
-            # Generate possible combinations of covariates for the given transform.
-            # This is the set of all possible instantiations of this subfunction.
-            covariate_combinations = np.array(
-                list(combinations(
-                    usable_covariate_symbols,
-                    len(transform_covariate_symbols))))
+            # Check if combinations previously generated. If not, generate.
+            if covar_combination_key in self.covariate_combinations_store:
+                covariate_combinations = self.covariate_combinations_store[
+                    covar_combination_key]
+            else:
+                if not transform_discrete_allowed:
+                    usable_covariate_symbols = continuous_covariate_symbols
+                else:
+                    usable_covariate_symbols = covariate_symbols
+
+                covariate_combinations = np.array(
+                    list(combinations(
+                        usable_covariate_symbols,
+                        num_covars_in_transform)))
+
+                self.covariate_combinations_store[covar_combination_key] = \
+                    covariate_combinations
 
             # Sample from the set of all possible combinations.
             selected_covar_combinations = select_objects_given_probability(
@@ -183,27 +198,27 @@ class DataGeneratingProcessSampler():
                                 ])
 
         # Add at least one transform if empty_allowed is False
-        # and no transforms selected above.
-        # TODO: this is an ugly solution to a complex problem. Improve this.
+        # and no transforms selected above. This term is a simple constant
+        # which represents the least complex/most linear non-empty transform.
+        # This aligns with the intent of parameterizations which would result in
+        # no transforms being selected.
         if len(selected_covariate_transforms) == 0 and not empty_allowed:
             selected_covariate_transforms.append(
                 list(SamplingConstants.SUBFUNCTION_CONSTANT_SYMBOLS)[0])
 
-        # TODO: refactor this into a max term count
-        # which is then applied after the two sampled functions
-        # are fully contructed.
+        # The number of possible transform instantiations grows factorially
+        # with the number of covariates in the data. To avoid complexity blow up,
+        # Cap the number of covariate transforms at a multiple of the number of
+        # base covariates.
 
-        # The number of combinations grows factorially with the number of
-        # covariates. Cap the number of covariate transforms at a multiple
-        # of the number of base covariates.
+        # This is achieved by randomly sampling the transforms selected above
+        #such that the expected number selected is equal to the max.
         max_transform_count = \
             SamplingConstants.MAX_MULTIPLE_TRANSFORMED_TO_ORIGINAL_TERMS*len(
                 covariate_symbols)
 
         if len(selected_covariate_transforms) > max_transform_count:
-            # TODO print("Running term limiter")
-            # Randomly sample selected transforms with expected number selected
-            # equal to the max.
+            # TODO-LOG print("Running term limiter")
             selection_p = max_transform_count/len(selected_covariate_transforms)
 
             selected_covariate_transforms = select_objects_given_probability(
@@ -218,7 +233,8 @@ class DataGeneratingProcessSampler():
         # 3B. Sample covariate transforms for the treatment and outcome function
         # and then modify the sampled transforms to generate desired alignment.
         # IE, adjust so that there is the desired amount of overlap in transformed
-        # covariates which is the actual level of confounding.
+        # covariates which is what controls the actual degree of confounding
+        # between the two functions.
 
         outcome_covariate_transforms = self.sample_covariate_transforms(
                 potential_confounder_symbols,
@@ -238,20 +254,22 @@ class DataGeneratingProcessSampler():
         already_aligned_transforms = set_outcome_covariate_transforms.intersection(
             set_treatment_covariate_transforms)
 
-        # TODO: comment this code.
-#         current_alignment_proportion = len(already_aligned_transforms)/len(all_transforms)
 
         if Constants.DGPSampling.ADJUST_ALIGNMENT:
-            # TODO print("running aligner")
-            # Set alignment ito outcome function.
-            alignment_base = set_outcome_covariate_transforms # or all_transforms
+            # TODO-LOG print("running aligner")
 
+            # Alignment is specified in terms of the proportion of terms in
+            # the treatment assignment that align with the terms in the outcome.
+
+            alignment_base = set_outcome_covariate_transforms
             current_alignment_proportion = len(already_aligned_transforms)/len(alignment_base)
             alignment_diff = current_alignment_proportion - self.params.ACTUAL_CONFOUNDER_ALIGNMENT
 
+            # Alignment diff positive => too much alignment between functions.
             if alignment_diff > 0.01:
-                # TODO print(f"Reducing alignment from {round(current_alignment_proportion, 3)} to {self.params.ACTUAL_CONFOUNDER_ALIGNMENT}")
+                # TODO-LOG print(f"Reducing alignment from {round(current_alignment_proportion, 3)} to {self.params.ACTUAL_CONFOUNDER_ALIGNMENT}")
 
+                # Randomly select covariates to unalign.
                 expected_num_to_unalign = alignment_diff*len(alignment_base)
                 unalign_probability = \
                     expected_num_to_unalign/len(already_aligned_transforms)
@@ -260,19 +278,23 @@ class DataGeneratingProcessSampler():
                         list(already_aligned_transforms),
                         selection_probability=unalign_probability)
 
-                treatment_relative_size = \
-                    len(set_treatment_covariate_transforms)/len(all_transforms)
+                # Remove aligned terms proportional to the size of each of the
+                # functions to preserve non-linearity targets.
+                outcome_relative_size = \
+                    len(set_outcome_covariate_transforms)/len(all_transforms)
 
                 for transform in transforms_to_unalign:
                     already_aligned_transforms.remove(transform)
-                    if np.random.random() < 1.5:#treatment_relative_size: #TODO always remove from outcome function. Should be dynamic?
+                    if np.random.random() < outcome_relative_size:
                         set_outcome_covariate_transforms.remove(transform)
                     else:
                         set_treatment_covariate_transforms.remove(transform)
 
                 aligned_transforms = list(already_aligned_transforms)
+
+            # Alignment diff negative => not enough alignment between functions.
             elif alignment_diff < -0.01:
-                # print("Increasing alignment") TODO
+                # TODO-LOG print("Increasing alignment")
                 # Select overlapping covariates transforms (effective confounder space)
                 # based on the alignment parameter.
                 new_aligned_transforms = select_objects_given_probability(
@@ -284,7 +306,7 @@ class DataGeneratingProcessSampler():
             else:
                 aligned_transforms = list(already_aligned_transforms)
         else:
-            # print("skipping alignment") TODO
+            # TODO-LOG print("skipping alignment")
             aligned_transforms = list(already_aligned_transforms)
 
         # Extract treat and outcome exclusive transforms.
@@ -293,17 +315,14 @@ class DataGeneratingProcessSampler():
         outcome_only_transforms = list(set_outcome_covariate_transforms.difference(
             aligned_transforms))
 
-        # Union the true confounders into the original covariate selections.
+        # Build the set of transforms for each function by
+        # taking the union of the aligned transforms with unaligned transforms.
         outcome_covariate_transforms = np.hstack(
             [aligned_transforms, outcome_only_transforms])
         treatment_covariate_transforms = np.hstack(
             [aligned_transforms, treat_only_transforms])
 
-        outcome_covariate_transforms = np.hstack(
-            [aligned_transforms, outcome_only_transforms])
-        treatment_covariate_transforms = np.hstack(
-            [aligned_transforms, treat_only_transforms])
-
+        # Initialize the constants in each set of transforms separately.
         outcome_covariate_transforms= initialize_expression_constants(
             self.params.sample_subfunction_constants,
             outcome_covariate_transforms)
@@ -314,17 +333,16 @@ class DataGeneratingProcessSampler():
 
         return outcome_covariate_transforms, treatment_covariate_transforms
 
-
     def sample_treatment_assignment_function(self,
         treatment_covariate_transforms, observed_covariate_data):
         # 4. Sample a treatment assignment function by combining the sampled covariate
         # transforms and normalizing the function outputs to conform to
         # constraints and targets on the propensity scores.
 
-        # TODO: consider recursively applying the covariate transformation
+        # TODO-FUTURE: recursively apply the covariate transformation
         # to produce "deep" functions. Probably overkill.
-        # TODO: add non-linear activation function
-        # TODO: enable overlap adjustment
+        # TODO-FUTURE: add non-linear activation function
+        # TODO-FUTURE: enable overlap adjustment
 
         # Build base treatment logit function. Additive combination of the true covariates.
         base_treatment_logit_expression = np.sum(
@@ -332,7 +350,7 @@ class DataGeneratingProcessSampler():
 
         # Normalize if config specifies.
         if SamplingConstants.NORMALIZE_SAMPLED_TREATMENT_FUNCTION:
-            # print("norming treatment") TODO
+            # TODO-LOG print("norming treatment")
             # Sample data to evaluate distribution.
             sampled_data = observed_covariate_data.sample(
                 frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
@@ -349,7 +367,7 @@ class DataGeneratingProcessSampler():
             # Check if logit function is effectively constant. If constant
             # then return the target logit. If not normalize to meet target.
             if np.isclose(max_logit, min_logit):
-                # print("Using DGP with equal propensity for all units.")
+                # TODO-LOG print("Using DGP with equal propensity for all units.")
                 treatment_assignment_logit_function = self.params.TARGET_MEAN_LOGIT
             else:
                 # This is only an approximate normalization. It will shift the mean to zero
@@ -361,34 +379,6 @@ class DataGeneratingProcessSampler():
                     normalized_treatment_logit_expression + self.params.TARGET_MEAN_LOGIT
 
                 treatment_assignment_logit_function = targeted_treatment_logit_expression
-
-                # TODO: remove
-                # DEPRECATED NORMALIZATION SCHEME.
-                # # Rescale to meet min/max constraints and target propensity.
-                # # First, construct function to rescale between 0 and 1
-                # normalized_logit_expr = (x - min_logit)/range
-                #
-                # # Second, construct function to rescale to target interval
-                # constrained_logit_expr = self.params.TARGET_MIN_LOGIT + \
-                #     (x*(self.params.TARGET_MAX_LOGIT - self.params.TARGET_MIN_LOGIT))
-                #
-                # rescaling_expr = constrained_logit_expr.subs(x, normalized_logit_expr)
-                # rescaled_logit_mean = rescaling_expr.evalf(
-                #     subs={x: mean_logit})
-                #
-                # # Third, construct function to apply offset for targeted propensity.
-                # # This requires the rescaled mean found above.
-                # target_propensity_adjustment = self.params.TARGET_MEAN_LOGIT - rescaled_logit_mean
-                # targeted_logit_expr = rescaling_expr + target_propensity_adjustment
-                #
-                # # Apply max/min truncation to account for adjustment shift.
-                # max_min_capped_targeted_logit = sp.functions.Max(
-                #         sp.functions.Min(targeted_logit_expr, self.params.TARGET_MAX_LOGIT),
-                #         self.params.TARGET_MIN_LOGIT)
-                #
-                # # Finally, construct the full function expression.
-                # treatment_assignment_logit_function = \
-                #     max_min_capped_targeted_logit.subs(x, base_treatment_logit_expression)
         else:
             # Shortcircuiting all normalization.
             treatment_assignment_logit_function = base_treatment_logit_expression
@@ -428,9 +418,6 @@ class DataGeneratingProcessSampler():
             treatment_effect_multiplier_expr = np.sum(initialized_interaction_terms)
 
             # Normalize multiplier size.
-
-            # TODO: vaidate the approach to normalization used here (mean/std)
-            # vs treatment assignment function approach.
             sampled_data = observed_covariate_data.sample(
                 frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
 
@@ -459,17 +446,16 @@ class DataGeneratingProcessSampler():
         # 5B. construct the outcome function analogously to the way
         # the treatment assignment function was constructed.
 
-        # TODO: consider recursively applying the covariate transformation
-        # to produce "deep" functions. Probability overkill.
-        # TODO: add non-linear activation function and ensure proper normalization.
-        # using or changing the OUTCOME_MECHANISM_EXPONENTIATION param.
+        # TODO-FUTURE: consider recursively applying the covariate transformation
+        # to produce "deep" functions.
+        # TODO-FUTURE: add non-linear activation function.
 
         # Build base outcome function. Additive combination of the true covariates.
         base_untreated_outcome_expression = np.sum(outcome_covariate_transforms)
 
         # Normalize if config set to do so.
         if SamplingConstants.NORMALIZE_SAMPLED_OUTCOME_FUNCTION:
-            # print("norming outcome") TODO
+            # TODO-LOG print("norming outcome")
             # Sample data to evaluate distribution.
             sampled_data = observed_covariate_data.sample(
                 frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)

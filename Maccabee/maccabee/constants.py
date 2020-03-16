@@ -98,13 +98,26 @@ class Constants:
         """[INTERNAL] Constants related to the sampling of the subfunctions which make up the sampled DGP treatment and outcome functions.
         """
 
-        # Whether to apply approximate normalization schemes to the sampled
+        ## FEATURE FLAGS: The constants below are used to
+        # turn features of the sampling process on/off. They
+        # are used primarily in development but may be useful
+        # for advanced users.
+
+        # Normalization: whether to apply approximate normalization schemes to the sampled
         # treatment and outcome functions such that the outcome and propensity
         # values have zero mean with an approx std of 1.
         NORMALIZE_SAMPLED_TREATMENT_FUNCTION = True
         NORMALIZE_SAMPLED_OUTCOME_FUNCTION = False
-        CENTER_SAMPLED_OUTCOME_FUNCTION = False # TODO: consider removing
+        CENTER_SAMPLED_OUTCOME_FUNCTION = False
+
+        # Alignment: whether to apply the alignment adjustment.
         ADJUST_ALIGNMENT = True
+
+        # Sampling Strategy: force sampling of items based on per item probability rather than fixed choice of the expected number of selected items.
+        FORCE_PER_ITEM_SAMPLING = False
+
+        ## Sampling Configuration: the config which controls the
+        # operation of the sampling process.
 
         # How much of the covariate data to use when normalizing
         # the sampled functions. For large data sets, a smaller proportion
@@ -265,7 +278,7 @@ class Constants:
         #: The overlap axis - controls to covariate distribution overlap in
         #: the treated and control groups.
         #: WARNING: not currently supported in sampling.
-        OVERLAP = "OVERLAP" # TODO remove.
+        OVERLAP = "OVERLAP"
 
         #: The balance axis - controls the degree of similarity between the
         #: covariate distribution in the treated and control group.

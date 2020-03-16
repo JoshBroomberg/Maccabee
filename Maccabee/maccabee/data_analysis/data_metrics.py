@@ -280,6 +280,8 @@ def add_data_metric(axis_name, metric_dict):
 # is used in multiple metrics so they are named and
 # parameterized generically.
 
+# NOTE: 
+
 def _extract_treat_and_control_data(covariates, treatment_status):
     # Extract the treated and control observations from a set of
     # covariates given treatment statuses.
@@ -333,13 +335,14 @@ def _mean_mahalanobis_between_nearest_counterfactual(covariates, treatment_statu
     X_treated, X_control = _extract_treat_and_control_data(
         covariates, treatment_status)
 
-    # TODO: attempt to account for singular matrix issue.
     try:
+        # Under degenerate conditions, this will through a singular
+        # matrix exception. In this case, a None is returned.
         distance_matrix = cdist(X_treated, X_control, "mahalanobis")
         np.nan_to_num(distance_matrix, copy=False, nan=np.inf)
         return np.mean(np.min(distance_matrix, axis=1))
     except:
-        return np.NaN
+        return None
 
 def _standard_deviation_ratio(x1, x2):
     '''

@@ -11,7 +11,6 @@ ParamFileConstants = Constants.ParamFilesAndPaths
 SchemaConstants = Constants.ParamSchemaKeysAndVals
 
 
-# TODO: refactor the way calculated params and distributions are handled.
 class ParameterStore():
     """
     **The Design of the ParameterStore**
@@ -97,9 +96,10 @@ class ParameterStore():
         Examples
             >>> from maccabee.parameters import build_default_parameters
             >>> params = build_default_parameters()
-            >>> params.set_parameter("TREATMENT_EFFECT_TAIL_THICKNESS", 42)
-            >>> params.TREATMENT_EFFECT_TAIL_THICKNESS
-            42
+            >>> default_target_propensity = params.TARGET_PROPENSITY_SCORE
+            >>> params.set_parameter("TARGET_PROPENSITY_SCORE", 0.8)
+            >>> default_target_propensity, params.TARGET_PROPENSITY_SCORE
+            (0.5, 0.8)
         """
 
         # Make the parameter value available on the ParamStore object
@@ -120,9 +120,10 @@ class ParameterStore():
         Examples
             >>> from maccabee.parameters import build_default_parameters
             >>> params = build_default_parameters()
-            >>> params.set_parameters({"TREATMENT_EFFECT_TAIL_THICKNESS": 42})
-            >>> params.TREATMENT_EFFECT_TAIL_THICKNESS
-            42
+            >>> default_target_propensity = params.TARGET_PROPENSITY_SCORE
+            >>> params.set_parameters({"TARGET_PROPENSITY_SCORE": 0.8})
+            >>> default_target_propensity, params.TARGET_PROPENSITY_SCORE
+            (0.5, 0.8)
         """
 
         for param_name in param_dict:
@@ -131,9 +132,8 @@ class ParameterStore():
                 recalculate_calculated_params=recalculate_calculated_params)
 
     def write(self):
-        # TODO: dump parsed params to valid yaml spec
-        # with open('data.yml', 'w') as outfile:
-        #     yaml.dump(data, outfile, default_flow_style=False)
+        # TODO-FUTURE: enable parsed params to be dumped as yaml spec for later
+        # reuse.
         pass
 
     ### PRIVATE HELPER FUNCTIONS ###
@@ -173,8 +173,7 @@ class ParameterStore():
 
     ### TEMPORARY HARD CODED SOLUTION FOR DYNAMIC PARAMS ###
 
-    # TODO: provide a way to specify sampling functions in param spec file.
-    # to avoid this hard coding.
+    # TODO-FUTURE: provide a way to specify sampling functions in param spec file to avoid this hard coding.
     def sample_subfunction_constants(self, size=1):
         vals = np.random.uniform(low=0.3, high=0.8, size=size)
         neg_locs = (np.random.random(size=size) < 0.5)

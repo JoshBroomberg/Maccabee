@@ -75,11 +75,12 @@ class GeneratedDataSet(metaclass=DGPVariableAccessor):
       Behind the scenes, the DGP variable attributes are actually accessor functions which access the internal data structure to return the correct value for each DGP variable in :class:`~maccabee.constants.Constants.DGPVariables`. These functions are injected into the :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet` class through the ``DGPVariableAccessor(type)`` class which is used as type/metaclass for  :class:`~maccabee.data_generation.generated_data_set.GeneratedDataSet`. Users who plan to add their own DGP variables should see the source code and in line comments for the :class:`~maccabee.data_generation.data_generating_process.GeneratedDataSet` to ensure they understand this mechanism.
     """
 
-    # TODO: write tooling to go to and from file to support static
-    # benchmarking runs in future.
+    # TODO-FUTURE: write tooling to go to and from files to support the production
+    # and use of static benchmarks.
 
-    # TODO: write tooling for convenient creation of GeneratedDataSet objects
-    # from standard data frames.
+    # TODO-FUTURE: write tooling to allow for the convenient creation of
+    # GeneratedDataSet objects from standard data frames. These could be
+    # used to test/develop CausalModels prior to full benchmarking.
 
     def __init__(self, dgp_variable_dict):
          setattr(self, self.DGP_VARIABLE_DICT_NAME, dgp_variable_dict)

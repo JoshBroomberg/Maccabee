@@ -8,10 +8,6 @@ PROPENSITY_MIN_MAX: &propensity_min_max
   min: 0.000000000000001
   max: 0.999999999999999
 
-DOF_MIN_MAX: &dof_min_max
-  min: 3
-  max: 200
-
 FUNCTION_SURFACE_REQUIRED_KEYS: &function_surface_required_keys
   required_keys:
     - LINEAR
@@ -61,32 +57,7 @@ SCHEMA:
       covariates appear in the outcome mechanism in different
       forms.
 
-  # TODO remove
-  OUTCOME_MECHANISM_EXPONENTIATION:
-    type: bool
-    description: |
-      Exponentiate the combined, transformed covariates.
-
-  SUBFUNCTION_CONSTANT_TAIL_THICKNESS:
-    type: number
-    <<: *dof_min_max
-    description: |
-      DF for the T-distribution over subfunction constants.
-
   ### TREATMENT FUNCTION PARAMS ###
-
-  # propensity score settings
-  MIN_PROPENSITY_SCORE:
-    type: number
-    <<: *propensity_min_max
-    description: |
-      Minimum propensity score for treatment mechanism
-
-  MAX_PROPENSITY_SCORE:
-    type: number
-    <<: *propensity_min_max
-    description: |
-      Max propensity score for treatment mechanism
 
   TARGET_PROPENSITY_SCORE:
     type: number
@@ -102,22 +73,6 @@ SCHEMA:
       Value between 0 and 0.5 which is the proportion of controls/treated units
       that will be swapped to increase imbalance.
 
-  TARGET_MIN_LOGIT:
-    type: calculated
-    expr: np.log(MIN_PROPENSITY_SCORE/(1-MIN_PROPENSITY_SCORE))
-    description: |
-      Minimum logit value for treatment mechanism
-
-  # TODO: remove
-  # Deprecated.
-  TARGET_MAX_LOGIT:
-    type: calculated
-    expr: np.log(MAX_PROPENSITY_SCORE/(1-MAX_PROPENSITY_SCORE))
-    description: |
-      Max logit value for treatment mechanism
-
-  # TODO: remove
-  # Deprecated.
   TARGET_MEAN_LOGIT:
     type: calculated
     expr: np.log(TARGET_PROPENSITY_SCORE/(1-TARGET_PROPENSITY_SCORE))
@@ -125,12 +80,6 @@ SCHEMA:
       Target logit value for treatment mechanism
 
   ### OUTCOME FUNCTION PARAMS ###
-
-  OUTCOME_NOISE_TAIL_THICKNESS:
-    type: number
-    <<: *dof_min_max
-    description: |
-      DF for the T-distribution over outcome noise.
 
   ### TREATMENT EFFECT PARAMS ###
 
@@ -141,13 +90,6 @@ SCHEMA:
       Marginal probability that there is an interaction between the
       base treatment effect and each subfunction in the outcome function.
 
-  TREATMENT_EFFECT_TAIL_THICKNESS:
-    type: number
-    <<: *dof_min_max
-    description: |
-      DF for the T-distribution over treatment effects.
-
-  # TODO: remove? Not sure about this.
   OBSERVATION_PROBABILITY:
     type: number
     <<: *probability_min_max

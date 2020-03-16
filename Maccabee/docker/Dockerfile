@@ -47,10 +47,6 @@ RUN pip install --upgrade notebook && \
   pip install jupyterthemes && \
   jt -T -t grade3
 
-# Initialize plotting config at start up
-# TODO: this doesn't work right now.
-# COPY startup.ipy .ipython/profile_default/startup/
-
 ## Install python packages from requirements.txt file
 COPY requirements.txt /tmp/
 RUN pip install --requirement /tmp/requirements.txt

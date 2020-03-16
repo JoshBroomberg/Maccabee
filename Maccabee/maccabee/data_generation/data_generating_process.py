@@ -78,9 +78,6 @@ class DataGeneratingMethodWrapper():
 
             # Only run data_analysis_mode_only methods if dgp in analysis mode.
             if dgp.data_analysis_mode or not wrapper.data_analysis_mode_only:
-                # TODO: consider refactoring the func call to splat
-                # in the args directly rather than via a dict.
-
                 # Run the stored function.
                 val = wrapper.func(dgp, required_var_vals, *args, **kwargs)
 
@@ -170,8 +167,11 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodContainerClass):
         Raises:
             DGPVariableMissingException: If the execution order of the data generating methods is in conflict with their specified requirements such that a method's dependencies haven't been generated when it is executed.
         """
-        # TODO: consider specifying order via a list of method names or dgp ordering values
-        # (then replace _generate validation to just use this list of names instead of _generate_*
+        # TODO-FUTURE: consider specifying execution order either via a list of
+        # method names or ordering values in method meta-data. This would
+        # improve flexibility and extensibility of this base class.
+        # If a list is used, replace the _generate* validation and use the list
+        # instead.
 
         # Covars
         self._generate_observed_covars()
@@ -455,11 +455,10 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
         T = (np.random.uniform(
             size=self.n_observations) < propensity_scores).astype(int)
 
-        # TODO: fix error handling here.
-
         # Only perform balance adjustment if there is some heterogeneity
         # in the propensity scores.
         try:
+            # Do not run if all propensity scores are very similar.
             if not np.all(np.isclose(propensity_scores, propensity_scores[0])):
                 # Balance adjustment
                 control_p_scores = propensity_scores.where(T == 0)
@@ -474,7 +473,7 @@ class SampledDataGeneratingProcess(DataGeneratingProcess):
                 T[control_switch_targets] = 1
                 T[treat_switch_targets] = 0
         except IndexError:
-            # All observations have the same propensity score.
+            # Catch error thrown by very small/large treatment groups.
             pass
 
         return T

@@ -3,7 +3,7 @@ from ..data_sources.data_sources import StochasticDataSource
 
 from ..constants import Constants
 from ..data_generation.utils import evaluate_expression
-from ..modeling.models import CausalModel
+from ..modeling.models import CausalModelR
 
 DGPVariables = Constants.DGPVariables
 
@@ -14,18 +14,11 @@ from functools import partial
 
 from sklearn.linear_model import LogisticRegression
 
-# TODO: move this to the new CausalModelR
-# RPY2 is used an interconnect between Python and R. It allows
-# my to run R code from python which makes this experimentation
-# process smoother.
-import rpy2
-from rpy2.robjects import IntVector, FloatVector, Formula
-from rpy2.robjects.packages import importr
+# R in python. The imports below augment the CausalModelR
+# functionality by performing data conversion.
+from rpy2.robjects import IntVector, FloatVector
 from rpy2.robjects import numpy2ri
 numpy2ri.activate()
-
-stats = importr('stats') # standard regression package
-matching = importr('Matching') # GenMatch package
 
 MILD_NONLINEARITY = [1]
 MODERATE_NONLINEARITY = [1, 3, 6]
@@ -183,9 +176,10 @@ class GenmatchDataGeneratingProcess(ConcreteDataGeneratingProcess):
     def _generate_treatment_effects(self, input_vars):
         return self.true_treat_effect
 
-class LogisticPropensityMatchingCausalModel(CausalModel):
+class LogisticPropensityMatchingCausalModel(CausalModelR):
     def __init__(self, dataset):
         self.dataset = dataset
+        self.matching_lib = self._import_r_package("Matching")
 
     def fit(self):
         logistic_model = LogisticRegression(solver='lbfgs', n_jobs=1)
@@ -196,7 +190,7 @@ class LogisticPropensityMatchingCausalModel(CausalModel):
         propensity_scores = class_proba[:, logistic_model.classes_ == 1].flatten()
 
         # Run matching on prop scores
-        self.match_out = matching.Match(
+        self.match_out = self.matching_lib.Match(
             Y=FloatVector(self.dataset.Y),
             Tr=IntVector(self.dataset.T),
             X=FloatVector(propensity_scores),
@@ -214,9 +208,10 @@ class LogisticPropensityMatchingCausalModel(CausalModel):
     def estimate_ATE(self):
         return np.array(self.match_out.rx2("est").rx(1,1))[0]
 
-class GeneticMatchingCausalModel(CausalModel):
+class GeneticMatchingCausalModel(CausalModelR):
     def __init__(self, dataset):
         self.dataset = dataset
+        self.matching_lib = self._import_r_package("Matching")
 
     def fit(self):
         logistic_model = LogisticRegression(solver='lbfgs', n_jobs=1)
@@ -226,26 +221,17 @@ class GeneticMatchingCausalModel(CausalModel):
             self.dataset.X.to_numpy())
         propensity_scores = class_proba[:, logistic_model.classes_ == 1].flatten()
 
-        # # Run matching on prop scores
-        # self.match_out = matching.Match(
-        #     Y=FloatVector(self.dataset.Y),
-        #     Tr=IntVector(self.dataset.T),
-        #     X=FloatVector(propensity_scores),
-        #     estimand="ATT",
-        #     replace=True,
-        #     version="fast")
-
         matching_data = np.hstack([
             self.dataset.X.to_numpy(),
             propensity_scores.reshape((-1, 1))
         ])
 
-        gen_out = matching.GenMatch(
+        gen_out = self.matching_lib.GenMatch(
             Tr=IntVector(self.dataset.T),
             X=matching_data,
             print_level=0)
 
-        self.match_out = matching.Match(
+        self.match_out = self.matching_lib.Match(
             Y=FloatVector(self.dataset.Y),
             Tr=IntVector(self.dataset.T),
             X=matching_data,
