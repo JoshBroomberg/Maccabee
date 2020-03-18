@@ -25,8 +25,8 @@ from ..modeling.performance_metrics import AVG_EFFECT_METRICS, INDIVIDUAL_EFFECT
 from ..exceptions import UnknownEstimandException, UnknownEstimandAggregationException
 from ..constants import Constants
 
-from ..logging import builder_logger
-logger = builder_logger(__name__)
+from ..logging import get_logger
+logger = get_logger(__name__)
 
 METRIC_ROUNDING = 3
 
@@ -47,28 +47,28 @@ def _aggregate_metric_results(metric_results, std=True):
 
 def _gen_data_and_apply_model(dgp, model_class, estimand, index):
     np.random.seed()
-    logger.info("Generating data set")
+
+    logger.info(f"Generating data set {index+1}")
     dataset = dgp.generate_dataset()
 
-    logger.info("Fitting causal model to data")
+    logger.debug(f"Fitting causal model to data set {index+1}")
     # Fit model
     model = model_class(dataset)
     model.fit()
 
-    logger.info("Collecting estimand from model")
+    logger.debug(f"Collecting model estimand for data set {index+1}")
     # Collect estimand result
     estimate_val = model.estimate(estimand=estimand)
 
-    logger.info("Collecting ground truth from data set")
+    logger.debug(f"Collecting ground truth effect from data set {index+1}")
     true_val = dataset.ground_truth(estimand=estimand)
 
     return index, (estimate_val, true_val), dataset
 
 def _sample_dgp(dgp_sampler, index, dgps, semaphore):
     semaphore.acquire()
-    logger.info(f"Sampling DGP with {index+1}")
-
     np.random.seed()
+    logger.info(f"Sampling DGP {index+1}")
     sampled_dgp = dgp_sampler.sample_dgp()
     dgps[index] = (index, sampled_dgp)
     semaphore.release()
@@ -152,16 +152,18 @@ def benchmark_model_using_concrete_dgp(
         num_samples_from_dgp, dgp.n_observations, estimand)
     perf_metric_names_and_funcs = _get_performance_metric_functions(estimand)
 
+    if n_jobs == -1:
+        n_jobs = cpu_count()
+
     if n_jobs >= 1:
         # Build a multiprocessing pool based on the allowed parallelism
         # but only up to the max parallelism from num_samples_from_dgp.
-
+        logger.info(f"Running concrete DGP benchmark using a multiprocessing pool with {n_jobs} workers")
         pool = Pool(processes=min(n_jobs, num_samples_from_dgp), maxtasksperchild=1)
         map_func = partial(pool.map, chunksize=max(1, int(num_samples_from_dgp/n_jobs)))
     elif n_jobs == 0:
+        logger.info("Running concrete DGP benchmark using a single process.")
         map_func = map
-    elif n_jobs == -1:
-        n_jobs = cpu_count()
     else:
         raise ValueError("Invalid n_jobs value - should be integer from -1 to n")
 
@@ -174,7 +176,7 @@ def benchmark_model_using_concrete_dgp(
 
         # Synchronous loop over the sampling runs.
         for run_index in range(num_sampling_runs_per_dgp):
-            logger.info(f"Starting sampling run: {run_index+1}")
+            logger.debug(f"Starting sampling run {run_index+1}")
             # Data structures to store the datasets, sampled estimand values and
             # data metrics for each sample in this sampling run.
 
@@ -188,21 +190,21 @@ def benchmark_model_using_concrete_dgp(
             # Begin sampling.
 
             # Use the runner function and multiprocessing pool to draw
-            #    and process data samples into estimand samples.
+            # and process data samples into estimand samples.
 
-            logger.info("Starting sampling for run.")
+            logger.debug(f"Starting sampling for run {run_index+1}.")
             for sample_index, effect_estimate_and_truth, dataset in map_func(
                 run_model_on_dgp, sample_indeces):
 
                 # Store estimand and data set samples.
                 estimand_sample_results[sample_index, :] = effect_estimate_and_truth
                 datasets[sample_index] = dataset
-            logger.info("Done sampling for run.")
+            logger.debug(f"Done sampling for run {run_index+1}.")
 
             # If in data analysis mode, use the pool to run data metric
             # calculation.
             if data_analysis_mode:
-                logger.info("Starting data analysis for run")
+                logger.debug(f"Starting data analysis for run {run_index+1}.")
                 # Loop over generated datasets in order.
                 for data_metric_results in map_func(collect_dataset_metrics, datasets):
                     # Record all metrics at the sampled data set level
@@ -210,13 +212,14 @@ def benchmark_model_using_concrete_dgp(
                     for axis_metric_name, axis_metric_val in data_metric_results.items():
                         data_metrics_sample_results[axis_metric_name].append(
                             axis_metric_val)
-                logger.info("Done data analysis for run")
+                logger.debug(f"Done data analysis for run {run_index+1}.")
 
             # At the end of the sampling for this sampling run, process sample
             # estimand results into metric estimates.
             estimate_vals = estimand_sample_results[:, 0]
             true_vals = estimand_sample_results[:, 1]
 
+            logger.debug(f"Performing DGP aggregate perf metric collection.")
             for metric_name, metric_func in perf_metric_names_and_funcs.items():
                 performance_metric_run_results[metric_name].append(metric_func(
                     estimate_vals, true_vals))
@@ -225,6 +228,7 @@ def benchmark_model_using_concrete_dgp(
             # there is a single real value per sampling run as with the perf
             # metrics.
             if data_analysis_mode:
+                logger.debug(f"Performing DGP aggregate data metric collection.")
                 for axis_metric_name, vals in data_metrics_sample_results.items():
                     data_metric_run_results[axis_metric_name].append(
                         np.mean(vals))
@@ -299,25 +303,30 @@ def benchmark_model_using_sampled_dgp(
     if n_jobs == -1:
         n_jobs = cpu_count()
 
+    logger.info(f"Sampling DGPs using {n_jobs} processes")
     manager = Manager()
     dgps = manager.list([(None, None)]*num_dgp_samples)
     semaphore = manager.Semaphore(n_jobs)
     processes = []
     for i in range(num_dgp_samples):
+        logger.debug(f"Spawning dgp sampling process {i}.")
         p = Process(target=dgp_sampler, args=(i,dgps,semaphore))
         p.start()
         processes.append(p)
 
+    logger.debug(f"Waiting for dgp sampling processes to terminate.")
     for process in processes:
         process.join()
         process.terminate()
+    logger.debug(f"All dgp sampling processes terminated.")
+
+    logger.info(f"Completed sampling DGPs using {n_jobs} processes")
 
     # TODO-MULTIPROC: refactor this recovery mechanism. Process queue with callbacks?
     new_dgps = []
     for i, (dgp_index, dgp) in enumerate(dgps):
         if dgp is None:
-
-            logger.error("Recovering from failed DGP compilation")
+            logger.error("Recovering from failed DGP compilation by re-sampling")
             new_dgps.append(dgp_sampler(i,dgps, semaphore))
 
     for (dgp_index, dgp) in new_dgps:
@@ -330,6 +339,8 @@ def benchmark_model_using_sampled_dgp(
 
     dgps = [dgp[1] for dgp in dgps]
 
+    # Build benchmark executable. Note that parallelism is turned off
+    # in this executable. Parallelism is at the DGP level.
     benchmark_dgp = partial(
         benchmark_model_using_concrete_dgp,
         model_class=model_class,
@@ -341,11 +352,14 @@ def benchmark_model_using_sampled_dgp(
         n_jobs=0)
 
     done_counter = 0
-    with Pool(processes=min(n_jobs, num_dgp_samples), maxtasksperchild=1) as pool:
+    n_benchmark_works = min(n_jobs, num_dgp_samples)
+
+    logger.info(f"Starting benchmarking with sampled DGPs using {n_benchmark_works} workers.")
+    with Pool(processes=n_benchmark_works, maxtasksperchild=1) as pool:
         for res_data in pool.imap_unordered(benchmark_dgp, dgps):
             done_counter += 1
 
-            logger.info(f"Done sampling for DGP {done_counter}/{num_dgp_samples}")
+            logger.debug(f"Done data and metric sampling for DGP {done_counter}/{num_dgp_samples}")
             performance_metric_data, performance_raw_data, data_metric_data, _ = res_data
 
             # Extract and store the aggregated perf metric results (across
@@ -358,10 +372,15 @@ def benchmark_model_using_sampled_dgp(
                 performance_metric_raw_run_results[metric_name].append(
                     performance_raw_data[metric_name])
 
+            logger.debug(f"Done aggregate perf metric collection for DGP {done_counter}/{num_dgp_samples}")
+
             # As above, but for the data metrics which don't have a standard dev.
             if data_analysis_mode:
                 for axis_metric_name, val in data_metric_data.items():
                     data_metric_dgp_results[axis_metric_name].append(val)
+                logger.debug(f"Done aggregate data metric collection for DGP {done_counter}/{num_dgp_samples}")
+
+    logger.info("Done benchmarking with sampled DGPs.")
 
     return (_aggregate_metric_results(performance_metric_dgp_results),
         performance_metric_dgp_results, performance_metric_raw_run_results,
@@ -394,9 +413,10 @@ def benchmark_model_using_sampled_dgp_grid(
     """
 
     metric_param_results = defaultdict(list)
+
+
     # Iterate over all DGP sampler parameter configurations
     for param_spec in ParameterGrid(dgp_param_grid):
-
         # Construct the DGP sampler for these params.
         dgp_params = build_parameters_from_axis_levels(param_spec)
 
@@ -405,6 +425,7 @@ def benchmark_model_using_sampled_dgp_grid(
             dgp_params.set_parameter(param_name, param_overrides[param_name])
 
         # Run sampling benchmark.
+        logger.info(f"Running benchmarking with params {param_spec} and {n_jobs} workers.")
         param_performance_metric_data, _, _, param_data_metric_data, _, dgps = \
             benchmark_model_using_sampled_dgp(
                 dgp_sampling_params=dgp_params,

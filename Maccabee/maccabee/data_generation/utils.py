@@ -11,6 +11,9 @@ from multiprocessing import Process
 from ..constants import Constants
 from ..exceptions import DGPFunctionCompilationException
 
+from ..logging import get_logger
+logger = get_logger(__name__)
+
 def select_objects_given_probability(objects_to_sample, selection_probability):
     """Samples objects from `objects_to_sample` based on `selection_probability`.
 
@@ -36,9 +39,12 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
     # If the select probability is one-per-item or per item sampling is on,
     # then use a per-item selection probability.
     if hasattr(selection_probability, "__len__") or Constants.DGPSampling.FORCE_PER_ITEM_SAMPLING:
+        logger.debug("Sampling objects using per-item selection probability")
         selection_status = np.random.uniform(size=n_objects) < selection_probability
         selected_indeces = object_indeces[selection_status]
     else:
+        logger.debug("Sampling objects using calculated expected number of selected items")
+
         expected_num_to_select = int(n_objects*selection_probability)
 
         # If expected number is less than 1, fall back to per object sampling.
@@ -104,14 +110,14 @@ class CompiledExpression():
                 pathlib.Path(C_PATH).mkdir(parents=True, exist_ok=True)
                 CodeWrapper.module_name = self.compiled_module_name
 
-                # TODO-LOG print("Compiling")
+                logger.debug(f"Compiling expression {self.expression}")
                 # Compile
                 ufuncify(
                     self.symbols,
                     self.expression,
                     backend="cython",
                     tempdir=mod_path)
-                # TODO-LOG print("Done compiling")
+                logger.debug(f"Done compiling expression {self.expression}")
             except Exception as root_exception:
                 raise DGPFunctionCompilationException(root_exception)
         else:
@@ -130,25 +136,25 @@ class CompiledExpression():
                     if mod_path not in sys.path:
                         sys.path.append(mod_path)
 
-                    # TODO-LOG print("Importing compiled module.")
+                    logger.debug("Importing module containing compiled expression.")
                     mod = importlib.import_module(self.compiled_module_name)
                 else:
-                    # TODO-LOG print("Loading existing compiled module.")
+                    logger.debug("Using already imported module containing compiled expression.")
                     mod = sys.modules[self.compiled_module_name]
 
-                # compiled_func_prefix = "wrapped_"
                 compiled_func_prefix = "autofunc"
                 func_name = next(filter(lambda x: x.startswith(compiled_func_prefix), dir(mod)))
                 self.expression_func = getattr(mod, func_name)
 
-            # TODO-LOG print("Executing compiled code")
+            logger.debug("Executing compiled expression code.")
             data = map(lambda x: x.flatten(), np.hsplit(data.values, data.shape[1]))
             expr_result = self.expression_func(*data)
-            # TODO-LOG print("Done executing compiled code")
+            logger.debug("Done executing compiled expression code.")
             res = pd.Series(expr_result)
             return res
         except Exception as e:
-            # TODO-LOG print(f"failure in compiled expression eval. {e}")
+            logger.exception("Failure during compiled expression execution.")
+            logger.warning("Falling back to uncompiled expression.")
             return evaluate_expression(self.expression, data)
 
 def evaluate_expression(expression, data):

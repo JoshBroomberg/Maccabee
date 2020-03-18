@@ -9,6 +9,9 @@ from ..constants import Constants
 from ..exceptions import ParameterMissingFromSpecException, ParameterInvalidValueException, CalculatedParameterException
 from .utils import _non_zero_uniform_sampler
 
+from ..logging import get_logger
+logger = get_logger(__name__)
+
 ParamFileConstants = Constants.ParamFilesAndPaths
 SchemaConstants = Constants.ParamSchemaKeysAndVals
 
@@ -53,18 +56,22 @@ class ParameterStore():
     """
 
     def __init__(self, parameter_spec_path):
+        logger.debug(f"Reading parameter spec from path {parameter_spec_path}")
         with open(parameter_spec_path, "r") as params_file:
             raw_parameter_dict = yaml.safe_load(params_file)
+
         self.parsed_parameter_dict = {}
         self.calculated_parameters = {}
 
         # Read in the parameter values for each param in the
         # schema.
+        logger.debug("Build parameter store from schema")
         for param_name, param_info in ParamFileConstants.SCHEMA.items():
             param_type = param_info[SchemaConstants.TYPE_KEY]
 
             # If param should be calculated
             if param_type == SchemaConstants.TYPE_CALCULATED:
+                logger.debug(f"Calculating value for parameter {param_name}")
                 if param_name in raw_parameter_dict:
                     raise CalculatedParameterException(param_name)
 
@@ -73,6 +80,7 @@ class ParameterStore():
 
             # If the parameter is in the specification file
             elif param_name in raw_parameter_dict:
+                logger.debug(f"Validating supplied value for parameter {param_name}")
                 param_value = raw_parameter_dict[param_name]
                 if not self._validate_param_value(param_info, param_value):
                     raise ParameterInvalidValueException(
@@ -150,6 +158,7 @@ class ParameterStore():
     def _recalculate_calculated_params(self):
         # Recalculate all calculated param values
         # This is used following a change in param value.
+        logger.debug("Recalculating calculated parameter values.")
         for param_name, param_info in self.calculated_parameters.items():
             param_value = self._find_calculated_param_value(param_info)
             self.set_parameter(param_name, param_value,

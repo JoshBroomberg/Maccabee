@@ -10,6 +10,9 @@ from ..constants import Constants
 from .utils import select_objects_given_probability, evaluate_expression, initialize_expression_constants
 from .data_generating_process import SampledDataGeneratingProcess
 
+from ..logging import get_logger
+logger = get_logger(__name__)
+
 SamplingConstants = Constants.DGPSampling
 ComponentConstants = Constants.DGPVariables
 
@@ -57,35 +60,46 @@ class DataGeneratingProcessSampler():
         # fairly generic parameters. Rather override the various subroutines
         # below.
 
+        logger.info("Getting covariate data set from data source")
         source_covariate_data = self.data_source.get_covar_df()
         covariate_symbols = np.array(sp.symbols(self.data_source.get_covar_names()))
 
         # Sample the source data to generate the observed covariate data.
+        logger.info("Sampling observed covariates from data set")
         observed_covariate_data = self.sample_observed_covariate_data(
             source_covariate_data)
 
         # Select the observed variables which may appear in the assignment or
         # outcome functions. These are potential confounders.
+        logger.info("Sampling potential confounder covariates")
         potential_confounder_symbols = self.sample_potential_confounders(
             covariate_symbols)
+        logger.debug(f"Sampled potential confounder covariates: {potential_confounder_symbols}")
 
         # Sample the covariate transforms which make up the assignment and
         # outcome functions.
+        logger.info("Sampling outcome and treatment covariate transforms")
         outcome_covariate_transforms, treatment_covariate_transforms = \
             self.sample_treatment_and_outcome_covariate_transforms(
                 potential_confounder_symbols)
+        logger.debug(f"Sampled outcome and treatment covariate transforms: {outcome_covariate_transforms} | {treatment_covariate_transforms}")
 
         # Build the treatment assignment function.
+        logger.info("Building treatment function from transforms")
         treatment_assignment_logit_func, treatment_assignment_function = \
             self.sample_treatment_assignment_function(
                 treatment_covariate_transforms, observed_covariate_data)
+        logger.debug(f"Treatment function: {treatment_assignment_function}")
 
         # Build the outcome and treatment effect functions.
+        logger.info("Building outcome function from transforms")
         outcome_function, untreated_outcome_subfunc, treat_effect_subfunc = \
             self.sample_outcome_function(
                 outcome_covariate_transforms, observed_covariate_data)
+        logger.debug(f"Outcomr function: {outcome_function}")
 
         # Construct DGP
+        logger.info(f"Instantiating DGP using class: {self.dgp_class}")
         dgp = self.dgp_class(
             params=self.params,
             observed_covariate_data=observed_covariate_data,
@@ -218,15 +232,15 @@ class DataGeneratingProcessSampler():
                 covariate_symbols)
 
         if len(selected_covariate_transforms) > max_transform_count:
-            # TODO-LOG print("Running term limiter")
             selection_p = max_transform_count/len(selected_covariate_transforms)
 
+            logger.debug(f"Running covariate transform term limiter with selection probability of {selection_p} for {len(selected_covariate_transforms)} transforms")
             selected_covariate_transforms = select_objects_given_probability(
                 objects_to_sample=selected_covariate_transforms,
                 selection_probability=selection_p)
 
             selected_covariate_transforms = list(selected_covariate_transforms)
-
+            logger.debug(f"{len(selected_covariate_transforms)} transforms selected")
         return selected_covariate_transforms
 
     def sample_treatment_and_outcome_covariate_transforms(self, potential_confounder_symbols):
@@ -256,8 +270,6 @@ class DataGeneratingProcessSampler():
 
 
         if Constants.DGPSampling.ADJUST_ALIGNMENT:
-            # TODO-LOG print("running aligner")
-
             # Alignment is specified in terms of the proportion of terms in
             # the treatment assignment that align with the terms in the outcome.
 
@@ -265,9 +277,10 @@ class DataGeneratingProcessSampler():
             current_alignment_proportion = len(already_aligned_transforms)/len(alignment_base)
             alignment_diff = current_alignment_proportion - self.params.ACTUAL_CONFOUNDER_ALIGNMENT
 
+            logger.debug(f"Running alignment adjustment with alignment diff {alignment_diff}")
+
             # Alignment diff positive => too much alignment between functions.
             if alignment_diff > 0.01:
-                # TODO-LOG print(f"Reducing alignment from {round(current_alignment_proportion, 3)} to {self.params.ACTUAL_CONFOUNDER_ALIGNMENT}")
 
                 # Randomly select covariates to unalign.
                 expected_num_to_unalign = alignment_diff*len(alignment_base)
@@ -277,6 +290,8 @@ class DataGeneratingProcessSampler():
                 transforms_to_unalign = select_objects_given_probability(
                         list(already_aligned_transforms),
                         selection_probability=unalign_probability)
+
+                logger.debug(f"Reduced alignment. Unalign target {expected_num_to_unalign}. Unalign actual {len(transforms_to_unalign)}")
 
                 # Remove aligned terms proportional to the size of each of the
                 # functions to preserve non-linearity targets.
@@ -294,19 +309,18 @@ class DataGeneratingProcessSampler():
 
             # Alignment diff negative => not enough alignment between functions.
             elif alignment_diff < -0.01:
-                # TODO-LOG print("Increasing alignment")
-                # Select overlapping covariates transforms (effective confounder space)
-                # based on the alignment parameter.
                 new_aligned_transforms = select_objects_given_probability(
                         list(alignment_base - already_aligned_transforms),
                         selection_probability=abs(alignment_diff))
+
+                logger.debug(f"Increasing alignment. New aligned terms: {len(new_aligned_transforms)}")
 
                 aligned_transforms = \
                     list(new_aligned_transforms) + list(already_aligned_transforms)
             else:
                 aligned_transforms = list(already_aligned_transforms)
         else:
-            # TODO-LOG print("skipping alignment")
+            logger.debug(f"Skipping alignment adjustment")
             aligned_transforms = list(already_aligned_transforms)
 
         # Extract treat and outcome exclusive transforms.
@@ -350,7 +364,7 @@ class DataGeneratingProcessSampler():
 
         # Normalize if config specifies.
         if SamplingConstants.NORMALIZE_SAMPLED_TREATMENT_FUNCTION:
-            # TODO-LOG print("norming treatment")
+            logger.debug("Normalizing treatment function using mean centering and std scaling.")
             # Sample data to evaluate distribution.
             sampled_data = observed_covariate_data.sample(
                 frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)
@@ -367,7 +381,7 @@ class DataGeneratingProcessSampler():
             # Check if logit function is effectively constant. If constant
             # then return the target logit. If not normalize to meet target.
             if np.isclose(max_logit, min_logit):
-                # TODO-LOG print("Using DGP with equal propensity for all units.")
+                logger.debug("Detected homogenous treatment probability, rewriting treatment function as constant.")
                 treatment_assignment_logit_function = self.params.TARGET_MEAN_LOGIT
             else:
                 # This is only an approximate normalization. It will shift the mean to zero
@@ -455,7 +469,7 @@ class DataGeneratingProcessSampler():
 
         # Normalize if config set to do so.
         if SamplingConstants.NORMALIZE_SAMPLED_OUTCOME_FUNCTION:
-            # TODO-LOG print("norming outcome")
+            logger.debug("Normalizing outcome function using mean centering and std scaling.")
             # Sample data to evaluate distribution.
             sampled_data = observed_covariate_data.sample(
                 frac=SamplingConstants.NORMALIZATION_DATA_SAMPLE_FRACTION)

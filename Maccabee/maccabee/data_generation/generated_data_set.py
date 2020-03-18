@@ -38,7 +38,7 @@ class DGPVariableAccessor(type):
 
         dgp_var_dict = getattr(instance, DGPVariableAccessor.DGP_VARIABLE_DICT_NAME, None)
         if dgp_var_dict is None:
-            raise DGPVariableMissingException(f"{instance} has not dgp variable data.")
+            raise DGPVariableMissingException(f"{instance} has no dgp variable data.")
 
         dgp_var_value = dgp_var_dict.get(dgp_var_name, None)
         if dgp_var_value is not None:

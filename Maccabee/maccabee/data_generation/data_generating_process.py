@@ -16,6 +16,8 @@ from functools import partial, update_wrapper
 import types
 import sympy as sp
 
+from ..logging import get_logger
+logger = get_logger(__name__)
 
 GENERATED_DATA_DICT_NAME = "_generated_data"
 DGPVariables = Constants.DGPVariables
@@ -57,12 +59,13 @@ class DataGeneratingMethodWrapper():
     def call(wrapper, dgp, *args, **kwargs):
         # This is the code which is run when a data generating method
         # is executed.
-
+        logger.debug(f"Starting execution of wrapped data generating function: {wrapper.func}")
         # Get the central storage data structure.
         data_dict = getattr(dgp, GENERATED_DATA_DICT_NAME)
 
         # Check if there is a valid cache hit and return it.
         if wrapper.cache_result and (wrapper.generated_var in data_dict):
+            logger.debug("Return cached result for func")
             return data_dict[wrapper.generated_var]
 
         # Verify that all required variables have been generated.
@@ -77,6 +80,7 @@ class DataGeneratingMethodWrapper():
 
             # Only run data_analysis_mode_only methods if dgp in analysis mode.
             if dgp.data_analysis_mode or not wrapper.data_analysis_mode_only:
+                logger.debug("Executing wrapped data generating callable.")
                 # Run the stored function.
                 val = wrapper.func(dgp, required_var_vals, *args, **kwargs)
 
@@ -84,6 +88,8 @@ class DataGeneratingMethodWrapper():
                 data_dict[wrapper.generated_var] = val
 
                 return val
+            else:
+                logger.debug(f"Skipping execution of data analysis func. DGP data analysis mode {dgp.data_analysis_mode}.")
 
         # Do not have all required inputs.
         elif not wrapper.optional:
@@ -97,12 +103,14 @@ class DataGeneratingMethodWrapper():
         # Access at the class level, return the unbound func
         # for documentation etc.
         if instance is None:
+            logger.debug("Returning unbound version of data generating method")
             return self.func
 
         # Access at instance level, return a bound instance of the method.
         else:
             # Bind the DGP instance to the call method to give it
             # access to the instance at execution time.
+            logger.debug("Returning bound version of data generating method")
             return types.MethodType(self.wrapped_call, instance)
 
 def data_generating_method(
@@ -173,19 +181,32 @@ class DataGeneratingProcess(metaclass=DataGeneratingMethodContainerClass):
         # instead.
 
         # Covars
+        logger.debug("Generating Observed Covariates")
         self._generate_observed_covars()
         self._generate_transformed_covars()
 
         # Treatment assignment
+        logger.debug("Generating propensity scores")
         self._generate_true_propensity_scores()
         self._generate_true_propensity_score_logits()
+
+        logger.debug("Generating treatment assignments")
         self._generate_treatment_assignments()
 
         # Outcomes
+        logger.debug("Generating outcome noise")
         self._generate_outcome_noise_samples()
+
+        logger.debug("Generating outcome without treatment")
         self._generate_outcomes_without_treatment()
+
+        logger.debug("Generating treatment effects")
         self._generate_treatment_effects()
+
+        logger.debug("Generating outcome with treatment")
         self._generate_outcomes_with_treatment()
+
+        logger.debug("Generating observed outcomes")
         self._generate_observed_outcomes()
 
         generated_data_dict = getattr(self, GENERATED_DATA_DICT_NAME)

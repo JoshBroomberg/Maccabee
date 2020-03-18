@@ -26,6 +26,9 @@ from ..constants import Constants
 from ..parameters import build_parameters_from_axis_levels
 from ..data_generation import DataGeneratingProcessSampler
 
+from ..logging import get_logger
+logger = get_logger(__name__)
+
 AxisNames = Constants.AxisNames
 DGPVariables = Constants.DGPVariables
 DataMetricFunctions = Constants.DataMetricFunctions
@@ -345,6 +348,7 @@ def _mean_mahalanobis_between_nearest_counterfactual(covariates, treatment_statu
         np.nan_to_num(distance_matrix, copy=False, nan=np.inf)
         return np.mean(np.min(distance_matrix, axis=1))
     except:
+        logger.exception("Ill-conditioned Mahalanobis distance calculation")
         return None
 
 def _standard_deviation_ratio(x1, x2):
@@ -378,7 +382,7 @@ def _wasserstein(covariates, treatment_status):
     wass_dist = ot.sinkhorn2(a, b, M, lambd, maxiter=3000)[0]
     if wass_dist < 1e-3 and \
         _l2_distance_between_means(covariates, treatment_status) > 1e-4:
-        print(f"Detected failure with W={wass_dist}...")
+        logger.error(f"Detected failure in Wasserstein distance with W={wass_dist}...")
         return None
     else:
         return wass_dist

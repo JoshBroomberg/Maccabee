@@ -42,4 +42,4 @@ class ParameterInvalidValueException(ParameterSpecificationException):
 
 class CalculatedParameterException(ParameterSpecificationException):
     def __init__(self, invalid_param):
-        super().__init__(f"The spec contains an  value for the parameter {invalid_param}. No value should be supplied for calculated params.")
+        super().__init__(f"The spec contains a concrete value for the parameter {invalid_param} but the parameter is of the calculated type. No value should be supplied for calculated parameters.")
