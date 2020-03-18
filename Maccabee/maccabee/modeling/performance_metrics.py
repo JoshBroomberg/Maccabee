@@ -140,6 +140,6 @@ def add_performance_metric(aggregation_level, metric_name, metric_callable):
         raise UnknownEstimandAggregationException()
 
     if metric_name in metric_dict:
-        raise Exception(f"Metric {metric_name} already exists for aggregation level.")
+        raise ValueError(f"Metric {metric_name} already exists for aggregation level.")
 
     metric_dict[metric_name] = metric_callable

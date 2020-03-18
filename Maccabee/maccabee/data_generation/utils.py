@@ -9,6 +9,7 @@ import importlib
 from multiprocessing import Process
 
 from ..constants import Constants
+from ..exceptions import DGPFunctionCompilationException
 
 def select_objects_given_probability(objects_to_sample, selection_probability):
     """Samples objects from `objects_to_sample` based on `selection_probability`.
@@ -103,16 +104,16 @@ class CompiledExpression():
                 pathlib.Path(C_PATH).mkdir(parents=True, exist_ok=True)
                 CodeWrapper.module_name = self.compiled_module_name
 
-                # print("Compiling")
+                # TODO-LOG print("Compiling")
                 # Compile
                 ufuncify(
                     self.symbols,
                     self.expression,
                     backend="cython",
                     tempdir=mod_path)
-                # print("Done compiling")
-            except Exception as e:
-                raise Exception(f"Failure in compilation of compiled expression. {e}")
+                # TODO-LOG print("Done compiling")
+            except Exception as root_exception:
+                raise DGPFunctionCompilationException(root_exception)
         else:
             # No free symbols, expression is constant.
             self.constant_expression = True
@@ -129,10 +130,10 @@ class CompiledExpression():
                     if mod_path not in sys.path:
                         sys.path.append(mod_path)
 
-                    # print("Importing compiled module.")
+                    # TODO-LOG print("Importing compiled module.")
                     mod = importlib.import_module(self.compiled_module_name)
                 else:
-                    # print("Loading existing compiled module.")
+                    # TODO-LOG print("Loading existing compiled module.")
                     mod = sys.modules[self.compiled_module_name]
 
                 # compiled_func_prefix = "wrapped_"
@@ -140,14 +141,14 @@ class CompiledExpression():
                 func_name = next(filter(lambda x: x.startswith(compiled_func_prefix), dir(mod)))
                 self.expression_func = getattr(mod, func_name)
 
-            # print("Executing compiled code")
+            # TODO-LOG print("Executing compiled code")
             data = map(lambda x: x.flatten(), np.hsplit(data.values, data.shape[1]))
             expr_result = self.expression_func(*data)
-            # print("Done executing compiled code")
+            # TODO-LOG print("Done executing compiled code")
             res = pd.Series(expr_result)
             return res
         except Exception as e:
-            print(f"failure in compiled expression eval. {e}")
+            # TODO-LOG print(f"failure in compiled expression eval. {e}")
             return evaluate_expression(self.expression, data)
 
 def evaluate_expression(expression, data):
@@ -177,9 +178,6 @@ def evaluate_expression(expression, data):
                     ],
                     dummify=False)
 
-            # print(expression)
-            # print(pd.Series(
-            #     expr_func(*np.hsplit(data.values, data.shape[1]))))
             return pd.Series(expr_func(*np.hsplit(data.values, data.shape[1])).flatten())
         else:
             # No free symbols, return expression itself.

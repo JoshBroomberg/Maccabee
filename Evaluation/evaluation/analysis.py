@@ -34,7 +34,7 @@ def categorize_terms(terms):
             assert(max_deg == 1)
             category = Constants.DGPSampling.INTERACTION_THREE_WAY
         elif len(variables) > 3:
-            raise Exception("Unexpected degree!")
+            raise Exception("Unexpected variable count! This should never happen...")
         elif max_deg == 2:
             assert(len(variables) == 1)
             category = Constants.DGPSampling.POLY_QUADRATIC

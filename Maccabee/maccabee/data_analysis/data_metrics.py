@@ -263,11 +263,11 @@ def add_data_metric(axis_name, metric_dict):
     req_fields = ["function", "args", "name"]
     for field in req_fields:
         if field not in metric_dict:
-            raise Exception(f"Missing field {field} from metric_dict")
+            raise ValueError(f"Missing field {field} from metric_dict")
 
     metric_name = metric_dict["name"]
     if metric_name in AXES_AND_METRIC_NAMES[axis_name]:
-        raise Exception(f"Metric name {metric_name} already exists for {axis_name} and cannot be redefined.")
+        raise ValueError(f"Metric name {metric_name} already exists for {axis_name} and cannot be redefined.")
 
     AXES_AND_METRICS[axis_name].append(metric_dict)
     AXES_AND_METRIC_NAMES[axis_name].append(metric_name)
@@ -280,7 +280,10 @@ def add_data_metric(axis_name, metric_dict):
 # is used in multiple metrics so they are named and
 # parameterized generically.
 
-# NOTE: 
+# NOTE: these functions follow a functional programming
+# error paradigm in which None is returned in place of errors.
+# This allows for more convenient bulk calculation of metrics
+# for many sampled data sets.
 
 def _extract_treat_and_control_data(covariates, treatment_status):
     # Extract the treated and control observations from a set of

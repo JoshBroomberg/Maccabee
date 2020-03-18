@@ -23,7 +23,7 @@ def read_result(base_name):
         file_path_pattern = RESULT_DIR + f"{base_name}*.pkl"
         file_paths = sorted(glob.glob(file_path_pattern))
         if len(file_paths) == 0:
-            raise Exception(f"No results for name: {base_name}")
+            raise ValueError(f"No results for name: {base_name}")
 
         file_path = file_paths[-1] # most recent
 

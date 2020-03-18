@@ -7,8 +7,11 @@ from sympy.abc import x
 import yaml
 from ..constants import Constants
 from ..exceptions import ParameterMissingFromSpecException, ParameterInvalidValueException, CalculatedParameterException
+from .utils import _non_zero_uniform_sampler
+
 ParamFileConstants = Constants.ParamFilesAndPaths
 SchemaConstants = Constants.ParamSchemaKeysAndVals
+
 
 
 class ParameterStore():
@@ -174,19 +177,18 @@ class ParameterStore():
     ### TEMPORARY HARD CODED SOLUTION FOR DYNAMIC PARAMS ###
 
     # TODO-FUTURE: provide a way to specify sampling functions in param spec file to avoid this hard coding.
+
+    # TODO-FUTURE: consider allowing parameterization of the sampling functions
+    # below. The current thinking is that any customization will likely involve
+    # replacing the whole function rather than only changing sampling parameters.
+
     def sample_subfunction_constants(self, size=1):
-        vals = np.random.uniform(low=0.3, high=0.8, size=size)
-        neg_locs = (np.random.random(size=size) < 0.5)
-        neg_mask = np.full(size, 1)
-        neg_mask[neg_locs] = -1
-        return vals*neg_mask
+        return _non_zero_uniform_sampler(
+            abs_low=0.25, abs_high=10, size=size)
 
     def sample_outcome_noise(self, size=1):
         return np.random.normal(size=size)
 
     def sample_treatment_effect(self, size=1):
-        vals = np.random.uniform(low=0.3, high=0.8, size=size)
-        neg_locs = (np.random.random(size=size) < 0.5)
-        neg_mask = np.full(size, 1)
-        neg_mask[neg_locs] = -1
-        return vals*neg_mask
+        return _non_zero_uniform_sampler(
+            abs_low=0.25, abs_high=10, size=size)

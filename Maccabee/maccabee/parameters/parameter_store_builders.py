@@ -77,9 +77,9 @@ def build_parameters_from_axis_levels(metric_levels, save=False):
                     params.set_parameter(
                         param_name, param_value, recalculate_calculated_params=False)
             else:
-                raise Exception(f"{metric_level} is not a valid level for {metric_name}")
+                raise ValueError(f"{metric_level} is not a valid level for {metric_name}")
         else:
-            raise Exception(f"{metric_name} is not a valid metric")
+            raise ValueError(f"{metric_name} is not a valid metric")
 
 
     params._recalculate_calculated_params()

@@ -49,8 +49,3 @@ Table of Contents
   :caption: Reference
 
   reference.rst
-
-.. .. toctree::
-..   :hidden:
-..
-..   glossary.rst

@@ -7,7 +7,7 @@ The documentation below explains the :func:`~maccabee.data_generation.data_gener
 """
 
 from ..constants import Constants
-from ..exceptions import DGPVariableMissingException
+from ..exceptions import DGPVariableMissingException, DGPInvalidSpecificationException
 from .generated_data_set import GeneratedDataSet
 from .utils import evaluate_expression, CompiledExpression
 import pandas as pd
@@ -28,8 +28,7 @@ class DataGeneratingMethodContainerClass(type):
         for method_name, method_obj in clsdict.items():
             if method_name.startswith('_generate'):
                 if type(method_obj) != DataGeneratingMethodWrapper:
-                    raise Exception(
-                        f"{method_obj} is a _generate* method without the data_generating_method decorator.")
+                    raise DGPInvalidSpecificationException(method_obj)
 
         super(DataGeneratingMethodContainerClass, cls).__init__(name, bases, clsdict)
 

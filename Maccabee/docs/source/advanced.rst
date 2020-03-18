@@ -7,3 +7,4 @@ Advanced Tutorials
    advanced/r-models
    advanced/parallelization
    advanced/custom-metrics
+   advanced/logging

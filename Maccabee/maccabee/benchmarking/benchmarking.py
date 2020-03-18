@@ -25,9 +25,14 @@ from ..modeling.performance_metrics import AVG_EFFECT_METRICS, INDIVIDUAL_EFFECT
 from ..exceptions import UnknownEstimandException, UnknownEstimandAggregationException
 from ..constants import Constants
 
-METRIC_ROUNDING = 3
-VERBOSE = False
+from ..logging import builder_logger
+logger = builder_logger(__name__)
 
+METRIC_ROUNDING = 3
+
+# TODO Takes metric results in the form of a dictionary
+# with metric names as keys with associated lists of metric values
+# Returns the mean for each metric and, optionally, the standard deviation.
 def _aggregate_metric_results(metric_results, std=True):
     aggregated_results = {}
     for metric, results_list in metric_results.items():
@@ -42,26 +47,27 @@ def _aggregate_metric_results(metric_results, std=True):
 
 def _gen_data_and_apply_model(dgp, model_class, estimand, index):
     np.random.seed()
-    # print("Generating data")
+    logger.info("Generating data set")
     dataset = dgp.generate_dataset()
 
-    # print("Fitting model to data")
+    logger.info("Fitting causal model to data")
     # Fit model
     model = model_class(dataset)
     model.fit()
 
-    # print("Collecting estimand from model")
+    logger.info("Collecting estimand from model")
     # Collect estimand result
     estimate_val = model.estimate(estimand=estimand)
+
+    logger.info("Collecting ground truth from data set")
     true_val = dataset.ground_truth(estimand=estimand)
 
     return index, (estimate_val, true_val), dataset
 
 def _sample_dgp(dgp_sampler, index, dgps, semaphore):
     semaphore.acquire()
-    # TODO-LOG: verbose?
-    if VERBOSE:
-        print(f"Sampling DGP {index+1}")
+    logger.info(f"Sampling DGP with {index+1}")
+
     np.random.seed()
     sampled_dgp = dgp_sampler.sample_dgp()
     dgps[index] = (index, sampled_dgp)
@@ -118,11 +124,6 @@ def benchmark_model_using_concrete_dgp(
         UnknownEstimandException: If an unknown estimand is supplied.
     """
 
-
-    # TODO-LOG remove
-    # if dgp.get_data_analysis_mode() != data_analysis_mode:
-    #     print(f"NOTICE: data_analysis_mode is {data_analysis_mode} but the dgp is in data analysis mode.")
-
     # Set DGP data analysis mode
     dgp.set_data_analysis_mode(data_analysis_mode)
 
@@ -154,7 +155,7 @@ def benchmark_model_using_concrete_dgp(
     if n_jobs >= 1:
         # Build a multiprocessing pool based on the allowed parallelism
         # but only up to the max parallelism from num_samples_from_dgp.
-        # print("Building pool")
+
         pool = Pool(processes=min(n_jobs, num_samples_from_dgp), maxtasksperchild=1)
         map_func = partial(pool.map, chunksize=max(1, int(num_samples_from_dgp/n_jobs)))
     elif n_jobs == 0:
@@ -162,7 +163,7 @@ def benchmark_model_using_concrete_dgp(
     elif n_jobs == -1:
         n_jobs = cpu_count()
     else:
-        raise Exception("Invalid n_jobs value - should be integer from -1 to n")
+        raise ValueError("Invalid n_jobs value - should be integer from -1 to n")
 
 
     # Sampling occurs in a single threaded context so that, when split
@@ -173,7 +174,7 @@ def benchmark_model_using_concrete_dgp(
 
         # Synchronous loop over the sampling runs.
         for run_index in range(num_sampling_runs_per_dgp):
-            # print("Starting run:", run_index) #TODO-LOG
+            logger.info(f"Starting sampling run: {run_index+1}")
             # Data structures to store the datasets, sampled estimand values and
             # data metrics for each sample in this sampling run.
 
@@ -189,19 +190,19 @@ def benchmark_model_using_concrete_dgp(
             # Use the runner function and multiprocessing pool to draw
             #    and process data samples into estimand samples.
 
-            # TODO-LOG print("Starting sampling for run.")
+            logger.info("Starting sampling for run.")
             for sample_index, effect_estimate_and_truth, dataset in map_func(
                 run_model_on_dgp, sample_indeces):
 
-                # print("Sample:", sample_index)
                 # Store estimand and data set samples.
                 estimand_sample_results[sample_index, :] = effect_estimate_and_truth
                 datasets[sample_index] = dataset
+            logger.info("Done sampling for run.")
 
             # If in data analysis mode, use the pool to run data metric
             # calculation.
             if data_analysis_mode:
-                # print("Starting data analysis")
+                logger.info("Starting data analysis for run")
                 # Loop over generated datasets in order.
                 for data_metric_results in map_func(collect_dataset_metrics, datasets):
                     # Record all metrics at the sampled data set level
@@ -209,6 +210,7 @@ def benchmark_model_using_concrete_dgp(
                     for axis_metric_name, axis_metric_val in data_metric_results.items():
                         data_metrics_sample_results[axis_metric_name].append(
                             axis_metric_val)
+                logger.info("Done data analysis for run")
 
             # At the end of the sampling for this sampling run, process sample
             # estimand results into metric estimates.
@@ -315,9 +317,7 @@ def benchmark_model_using_sampled_dgp(
     for i, (dgp_index, dgp) in enumerate(dgps):
         if dgp is None:
 
-            # TODO-LOG: verbose?
-            if VERBOSE:
-                print("recovering from failed compilation")
+            logger.error("Recovering from failed DGP compilation")
             new_dgps.append(dgp_sampler(i,dgps, semaphore))
 
     for (dgp_index, dgp) in new_dgps:
@@ -344,9 +344,8 @@ def benchmark_model_using_sampled_dgp(
     with Pool(processes=min(n_jobs, num_dgp_samples), maxtasksperchild=1) as pool:
         for res_data in pool.imap_unordered(benchmark_dgp, dgps):
             done_counter += 1
-            # TODO-LOG: verbose?
-            if VERBOSE:
-                print(f"Done sampling for DGP {done_counter}/{num_dgp_samples}")
+
+            logger.info(f"Done sampling for DGP {done_counter}/{num_dgp_samples}")
             performance_metric_data, performance_raw_data, data_metric_data, _ = res_data
 
             # Extract and store the aggregated perf metric results (across
@@ -363,37 +362,6 @@ def benchmark_model_using_sampled_dgp(
             if data_analysis_mode:
                 for axis_metric_name, val in data_metric_data.items():
                     data_metric_dgp_results[axis_metric_name].append(val)
-
-    # # For each dgp, run a concrete benchmark.
-    # for dgp_index, dgp in dgps:
-    #
-    #     print(f"Starting sampling for DGP {dgp_index+1}/{num_dgp_samples}")
-    #     # print(dgp.treatment_assignment_logit_function)
-    #     performance_metric_data, performance_raw_data, data_metric_data, _ = \
-    #         benchmark_model_using_concrete_dgp,
-    #         dgp,
-    #         model_class=model_class,
-    #         estimand=estimand,
-    #         num_sampling_runs_per_dgp=num_sampling_runs_per_dgp,
-    #         num_samples_from_dgp=num_samples_from_dgp,
-    #         data_analysis_mode=data_analysis_mode,
-    #         data_metrics_spec=data_metrics_spec,
-    #         n_jobs=0
-    #
-    #     # Extract and store the aggregated perf metric results (across
-    #     # all the sampling runs). This loop excludes the standard deviation
-    #     # from being collected at this stage. It is calculated over the
-    #     # sampled dgp results.
-    #     for metric_name in perf_metric_names_and_funcs:
-    #         performance_metric_dgp_results[metric_name].append(
-    #             performance_metric_data[metric_name])
-    #         performance_metric_raw_run_results[metric_name].append(
-    #             performance_raw_data[metric_name])
-    #
-    #     # As above, but for the data metrics which don't have a standard dev.
-    #     if data_analysis_mode:
-    #         for axis_metric_name, val in data_metric_data.items():
-    #             data_metric_dgp_results[axis_metric_name].append(val)
 
     return (_aggregate_metric_results(performance_metric_dgp_results),
         performance_metric_dgp_results, performance_metric_raw_run_results,

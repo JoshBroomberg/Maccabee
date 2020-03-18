@@ -9,7 +9,7 @@ def random_covar_matrix(dimension, correlation_deg = 0.5):
     how-to-efficiently-generate-random-positive-semidefinite-correlation-matrices
     """
     if not (0 <= correlation_deg <= 1):
-        raise Exception("Invalid correlation_deg. Must be in [0, 1]")
+        raise ValueError("Invalid correlation_deg. Must be in [0, 1]")
 
     # Small K means a larger degree of correlation.
     k = min(max(1, int(dimension*(1-correlation_deg))), dimension-1)
