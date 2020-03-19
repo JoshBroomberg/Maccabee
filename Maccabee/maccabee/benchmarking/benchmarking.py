@@ -30,10 +30,16 @@ logger = get_logger(__name__)
 
 METRIC_ROUNDING = 3
 
-# TODO Takes metric results in the form of a dictionary
-# with metric names as keys with associated lists of metric values
-# Returns the mean for each metric and, optionally, the standard deviation.
 def _aggregate_metric_results(metric_results, std=True):
+    """Helper method used to calculate aggregate metric statistics (mean and standard deviation) for multiple supplied metrics, each with an arbitrary number of individual results.
+
+    Args:
+        metric_results (dict): A dictionary with metric names as keys and individual metric result lists as values.
+        std (bool): Boolean indicating whether to calculate standard deviations. Defaults to True.
+
+    Returns:
+        dict: A dictionary with the metric names as keys and mean metric value as values. Standard deviations are included as keys made up of the metric name with an "(std)" appended.
+    """
     aggregated_results = {}
     for metric, results_list in metric_results.items():
         aggregated_results[metric] = np.round(
@@ -46,7 +52,26 @@ def _aggregate_metric_results(metric_results, std=True):
     return aggregated_results
 
 def _gen_data_and_apply_model(dgp, model_class, estimand, index):
-    np.random.seed()
+    """Helper method used execute the set of operations required to benchmark a single DGP. This set is as follows:
+
+    * Sample a data set
+    * Apply a causal model to the data to estimate a desired causal estimand
+    * Calculate the true value of the estimand from the data
+
+    Args:
+        dgp (:class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess`): a DGP instance.
+        model_class (:class:`~maccabee.modeling.models.CausalModel`): a class definition that inherits from :class:`~maccabee.modeling.models.CausalModel`, implementing a causal estimator.
+        estimand (str): the string name of a causal estimand.
+        index (int): An index associated with the DGP that is returned with the results of this function. This is for the convenience of calling functions that may execute this method in parallel.
+
+    Returns:
+        tuple: a tuple with the index as the first entry, the estimated and true causal effects as a tuple in the second entry and the generated data (from the DGP) associated with the causal effects as the third entry.
+    """
+
+    # TODO-FUTURE: consider implementing a mechanism to control this seeding.
+    # This is complex given the parallelism requires each worker to have a
+    # different source of entropy.
+    np.random.seed() # randomly seed the data sampling process.
 
     logger.info(f"Generating data set {index+1}")
     dataset = dgp.generate_dataset()
@@ -66,8 +91,23 @@ def _gen_data_and_apply_model(dgp, model_class, estimand, index):
     return index, (estimate_val, true_val), dataset
 
 def _sample_dgp(dgp_sampler, index, dgps, semaphore):
+    """Helper method to sample a :class:`~maccabee.data_generation.data_generating_process.DataGeneratingProcess` instance from a :class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcessSampler` instance. Optionally storing this in a supplied list-like data structure.
+
+    Args:
+        dgp_sampler (:class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcessSampler`): a :class:`~maccabee.data_generation.data_generating_process_sampler.DataGeneratingProcessSampler` instance from which to sample DGPs.
+        index (int): index at which to store the sampled DGP in the supplied data structure.
+        dgps (list): a list or integer-indexable data structure in which to store the sampled DGP.
+
+    Returns:
+        tuple: a tuple with the index as the first entry and the sampled DGP as the second entry.
+    """
     semaphore.acquire()
-    np.random.seed()
+
+    # TODO-FUTURE: consider implementing a mechanism to control this seeding.
+    # This is complex given the parallelism requires each worker to have a
+    # different source of entropy.
+    np.random.seed() # seed the dgp sampling process
+
     logger.info(f"Sampling DGP {index+1}")
     sampled_dgp = dgp_sampler.sample_dgp()
     dgps[index] = (index, sampled_dgp)
@@ -75,6 +115,16 @@ def _sample_dgp(dgp_sampler, index, dgps, semaphore):
     return index, sampled_dgp
 
 def _get_performance_metric_data_structures(num_samples_from_dgp, n_observations, estimand):
+    """Helper method to generate data structures to store performance metric data.
+
+    Args:
+        num_samples_from_dgp (int): the number of data sets that will be sampled from the DGP.
+        n_observations (int): the number of observations in each data set.
+        estimand (str): the name of the estimand being used for benchmarking. This influences the dimensionality of the data to be stored for metric calculation.
+
+    Returns:
+        tuple: a tuple describing the dimensions of the data structure requiring to store the performance metrics at the lowest level of aggregation.
+    """
     if estimand not in Constants.Model.ALL_ESTIMANDS:
         raise UnknownEstimandException()
 
@@ -86,6 +136,14 @@ def _get_performance_metric_data_structures(num_samples_from_dgp, n_observations
     return data_store_shape
 
 def _get_performance_metric_functions(estimand):
+    """Helper method that returns the performance metric functions for a specified estimand.
+
+    Args:
+        estimand (str): the name of the estimand being used for benchmarking.
+
+    Returns:
+        dict: A dictionary with performance metric names as keys and functions as values.
+    """
     if estimand not in Constants.Model.ALL_ESTIMANDS:
         raise UnknownEstimandException()
 
