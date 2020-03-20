@@ -107,9 +107,4 @@ The theory paper outlined the detailed steps used to sample DGPs. This section e
 Implementation Details
 ----------------------
 
-This section of the documentation covers the details of the implementation in Maccabee.
-
-- Pandas for data management
-- Abstract Syntax Trees for equation construction
-- Process-based Parallelism
-- OOP practices.
+The Learning Outcome appendix of the :download:`theory paper </maccabee-theory-paper.pdf>` documents numerous aspects of the implementation of this package. These details will be transferred here shortly.
