@@ -1,6 +1,7 @@
 """
-This submodule contains utility functions that are used during both DGP sampling and the sampling of data from DGPs. The functions in this module may be useful for users writing their own concrete DGPs.
+This submodule contains utility functions and classes that are used during both DGP sampling and the sampling of data from DGPs. The functions in this module may be useful for users writing their own concrete DGPs.
 """
+
 import numpy as np
 import sympy as sp
 import pandas as pd
@@ -86,6 +87,7 @@ class CompiledExpression():
 
         self.expression_func = None
 
+    # Custom Pickle and Depickle functions
     def __getstate__(self):
         return (
             self.expression,
@@ -105,21 +107,26 @@ class CompiledExpression():
         self.expression_func = None
 
     def _compile(self):
+        """
+        Autogenerate C code and then compile in a Cython module.
+        """
+        
         free_symbols = getattr(self.expression, "free_symbols", None)
-        if free_symbols is not None:
+        if free_symbols is not None: # there are free symbols
             try:
-                # Module
+
+                # Persistent the module name
                 self.compiled_module_name = \
                     f"mod_{abs(hash(self.expression))}_{np.random.randint(1e8)}"
                 mod_path = C_PATH+self.compiled_module_name
 
+                # Generate location to save module
                 pathlib.Path(C_PATH).mkdir(parents=True, exist_ok=True)
                 CodeWrapper.module_name = self.compiled_module_name
 
                 logger.debug(f"Compiling expression {self.expression}")
 
                 # Compile the function
-
                 if self.background_compile:
                     # Run the compilation in a subprocess background
                     # This is required if the compiled funciton is used
@@ -153,11 +160,12 @@ class CompiledExpression():
             self.constant_expression = True
 
     def eval_expr(self, data):
-        if self.constant_expression:
+        if self.constant_expression: # if constant, return directly.
             return self.expression
 
         try:
             if self.expression_func is None:
+                # Cython module not important
                 if self.compiled_module_name not in sys.modules:
                     mod_path = C_PATH + self.compiled_module_name
 
@@ -166,16 +174,20 @@ class CompiledExpression():
 
                     logger.debug("Importing module containing compiled expression.")
                     mod = importlib.import_module(self.compiled_module_name)
-                else:
+                else: # Cython module imported already
                     logger.debug("Using already imported module containing compiled expression.")
                     mod = sys.modules[self.compiled_module_name]
 
+                # Extract function from module
                 compiled_func_prefix = "autofunc"
                 func_name = next(filter(lambda x: x.startswith(compiled_func_prefix), dir(mod)))
                 self.expression_func = getattr(mod, func_name)
 
             logger.debug("Executing compiled expression code.")
+            # Prep data for eval
             data = map(lambda x: x.flatten(), np.hsplit(data.values, data.shape[1]))
+
+            # Eval
             expr_result = self.expression_func(*data)
             logger.debug("Done executing compiled expression code.")
             res = pd.Series(expr_result)
@@ -195,9 +207,14 @@ def evaluate_expression(expression, data):
     Returns:
         :class:`~numpy.ndarray`: An array of expression values corresponding to the rows of the `data`.
     """
+    # TODO-FUTURE: it would be neater to have a single Expression
+    # type with compiled and uncompiled subtypes and a single
+    # evaluation interface. This is tolerable for now.
     if isinstance(expression, CompiledExpression):
+        # If compiled, then use compiled evaluation.
         return expression.eval_expr(data)
     else:
+        # If not compiled, perform direct evaluation.
         free_symbols = getattr(expression, "free_symbols", None)
         if free_symbols is not None and len(free_symbols) > 0:
             expr_func = sp.lambdify(
