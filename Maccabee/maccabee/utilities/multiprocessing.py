@@ -1,78 +1,139 @@
 from multiprocessing import Process, Manager, cpu_count
 from functools import partial
+import time
+
 from ..logging import get_logger
 logger = get_logger(__name__)
 
 
-def parallel_map_wrapper_func(func, semaphore, results_list, args_index, args):
-    semaphore.acquire()
-    logger.info(f"Executing parallel map wrapper with index={args_index}")
-    results_list[args_index] = func(*args)
-    semaphore.release()
+class MultiprocessingNullResult():
+    pass
 
-def robust_parallel_map(func, args_list, n_jobs=-1, retry_failed_jobs=True):
-    """Quick and dirty parallel map capable of handling failure/sudden death of the worker processes.
+class MultiprocessingExceptionResult():
+    def __init__(self, index, base_exception):
+        self.index = index
+        self.base_exception = base_exception
 
-    TODO finish this docstring.
+def eval_wrapped_function(func, args):
+    # Assume that multiple arguments are stored in
+    # a structure with a length. EG a tuple, list etc.
+    if hasattr(args, "__len__"):
+        result = func(*args)
+    else:
+        result = func(args)
+    return result
 
-    Args:
-        func (type): Description of parameter `func`.
-        args_list (type): Description of parameter `args_list`.
-        n_jobs (type): Description of parameter `n_jobs`. Defaults to -1.
-        retry_failed_jobs (type): xxx.
+def worker_func(target_func,
+                args_list, results_list,
+                pending_index_queue,
+                complete_index_list,
+                exception_list,
+                current_worker_index_map, p_uid):
 
-    Returns:
-        type: Description of returned object.
+    while True:
+        current_index = pending_index_queue.get()
+        logger.debug("Worker: %s  working on index: %s", p_uid, current_index)
+        current_args = args_list[current_index]
 
-    Raises:
-        ExceptionName: Why the exception is raised.
+        # Store current work index
+        current_worker_index_map[p_uid] = current_index
 
-    Examples
-        Examples should be written in doctest format, and
-        should illustrate how to use the function/class.
-        >>>
+        # Execute
+        try:
+            results_list[current_index] = eval_wrapped_function(target_func, current_args)
+            logger.debug("Worker: %s produced result: %s",
+                         p_uid, results_list[current_index])
+        except Exception as e:
+            logger.exception("Worker caught exception in target function execution.")
+            exception_list.append(MultiprocessingExceptionResult(
+                index=current_index, base_exception=e))
 
-    """
+        complete_index_list.append(current_index)
+
+        # Unstore current work index
+        del current_worker_index_map[p_uid]
+
+def start_worker_proc(worker_func, p_uid, worker_store):
+    proc = Process(
+            target=worker_func,
+            args=(p_uid,))
+    proc.start()
+    worker_store[proc] = p_uid
+
+def robust_parallel_map(target_func, args_list, n_jobs=-1, raise_exceptions=True):
     if n_jobs == -1:
         n_jobs = cpu_count()
 
-    logger.debug(f"Running robust parallel map with n_jobs={n_jobs}.")
-
-    manager = Manager()
     n_arg_entries = len(args_list)
 
-    results_list = manager.list([None]*n_arg_entries)
-    semaphore = manager.Semaphore(n_jobs) # used to control parallelism
+    manager = Manager()
 
-    wrapper_func = partial(parallel_map_wrapper_func,
-        func,
-        semaphore,
-        results_list)
+    args_list = manager.list(list(args_list))
+    results_list = manager.list([MultiprocessingNullResult()]*n_arg_entries)
+    complete_index_list = manager.list()
+    exception_list = manager.list()
 
-    processes = [] # store process instances for later control.
-    for args_index, args in enumerate(args_list):
-        logger.debug(f"Spawning process for arg index={args_index}.")
-        p = Process(
-            target=wrapper_func,
-            args=(args_index, args))
-        p.start()
-        processes.append(p)
+    pending_index_queue = manager.Queue(n_arg_entries)
+    current_worker_index_map = manager.dict()
 
-    logger.debug(f"Waiting for spawned processes to finish.")
-    for process in processes:
-        process.join()
-        process.terminate()
+    # enqueue jobs
+    for arg_index in range(n_arg_entries):
+        pending_index_queue.put_nowait(arg_index)
 
-    logger.debug(f"All processes terminated.")
+    # Prep worker func
+    bound_worker_func = partial(worker_func, target_func,
+                                args_list, results_list,
+                                pending_index_queue,
+                                complete_index_list,
+                                exception_list,
+                                current_worker_index_map)
 
-    # Failure Recovery
-    if retry_failed_jobs:
-        for i, (res, args) in enumerate(zip(results_list, args_list)):
-            if res is None:
-                logger.error("Recovering from failed execution")
-                results_list[i] = func(*args)
+    worker_processes = {}
+    for p_uid in range(n_jobs):
+        start_worker_proc(bound_worker_func, p_uid, worker_processes)
 
-    # convert to standard list from shared mem
+    while len(complete_index_list) < n_arg_entries:
+        dead_procs = []
+        for proc, p_uid in worker_processes.items():
+            if not proc.is_alive():
+                logger.warning("Worker with p_uid %s died with exitcode %s", p_uid, proc.exitcode)
+                dead_procs.append(proc)
+
+                # Check for failed job to requeue
+                if p_uid in current_worker_index_map:
+                    logger.warning("Worker with p_uid %s had work on failure...", p_uid)
+                    potentially_failed_index = current_worker_index_map[p_uid]
+
+                    if isinstance(results_list[potentially_failed_index], MultiprocessingNullResult):
+                        logger.warning(f"Requeueing arg index {potentially_failed_index} to recover from worker failure.")
+                        pending_index_queue.put_nowait(potentially_failed_index)
+                        del current_worker_index_map[p_uid]
+                    else:
+                        logger.error("Working proc died without updating current work...")
+
+        for proc in dead_procs:
+            p_uid = worker_processes[proc]
+            start_worker_proc(bound_worker_func, p_uid, worker_processes)
+
+            proc.close()
+            del worker_processes[proc]
+
+            logger.warning(f"Started new worker. Worker count: %s", len(worker_processes))
+
+        time.sleep(1)
+
+    for proc in worker_processes:
+        proc.terminate()
+
+    time.sleep(0.25)
+
+    for proc in worker_processes:
+        proc.close()
+
+    if len(exception_list) > 0 and raise_exceptions:
+        for exception_result in exception_list:
+            raise(exception_result.base_exception)
+
     results_list = list(results_list)
 
     return results_list

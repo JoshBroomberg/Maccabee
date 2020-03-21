@@ -62,17 +62,23 @@ def select_objects_given_probability(objects_to_sample, selection_probability):
     else:
         return objects_to_sample[selected_indeces, :]
 
+# TODO-FUTURE: the code below is kept separate from the above to enable
+# a future refactor in which compiled expressions get their own
+# submodule in the data_generation main module.
 from sympy.utilities.autowrap import ufuncify, CodeWrapper
 import pathlib
 import sys
+import multiprocessing as mp
+from copy import deepcopy
 C_PATH = "./_maccabee_compiled_code/"
 
 class CompiledExpression():
 
-    def __init__(self, expression, symbols):
+    def __init__(self, expression, symbols, background_compile=False):
         self.symbols = symbols
         self.expression = expression
         self.constant_expression = False
+        self.background_compile = background_compile
 
         self.compiled_module_name = None
         self.compiled_ordered_args = None
@@ -111,12 +117,34 @@ class CompiledExpression():
                 CodeWrapper.module_name = self.compiled_module_name
 
                 logger.debug(f"Compiling expression {self.expression}")
-                # Compile
-                ufuncify(
-                    self.symbols,
-                    self.expression,
-                    backend="cython",
-                    tempdir=mod_path)
+
+                # Compile the function
+
+                if self.background_compile:
+                    # Run the compilation in a subprocess background
+                    # This is required if the compiled funciton is used
+                    # directly (without the benchmarking wrapping)
+                    # to avoid including the compiled module in the main
+                    # python namespace, resulting in evaluation issues later.
+                    proc = mp.Process(target=ufuncify,
+                                      args=(
+                                        deepcopy(self.symbols),
+                                        deepcopy(self.expression)),
+                                      kwargs={
+                                        "backend": "cython",
+                                        "tempdir": mod_path })
+                    proc.start()
+                    proc.join()
+                    proc.terminate()
+                    proc.close()
+                else:
+                    # Run compilation in the main process.
+                    ufuncify(
+                        self.symbols,
+                        self.expression,
+                        backend="cython",
+                        tempdir=mod_path)
+
                 logger.debug(f"Done compiling expression {self.expression}")
             except Exception as root_exception:
                 raise DGPFunctionCompilationException(root_exception)
