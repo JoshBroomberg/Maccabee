@@ -362,6 +362,7 @@ def benchmark_model_using_sampled_dgp(
         n_jobs = cpu_count()
 
     logger.info(f"Sampling DGPs using {n_jobs} processes")
+
     manager = Manager()
     dgps = manager.list([(None, None)]*num_dgp_samples)
     semaphore = manager.Semaphore(n_jobs)
@@ -376,8 +377,8 @@ def benchmark_model_using_sampled_dgp(
     for process in processes:
         process.join()
         process.terminate()
-    logger.debug(f"All dgp sampling processes terminated.")
 
+    logger.debug(f"All dgp sampling processes terminated.")
     logger.info(f"Completed sampling DGPs using {n_jobs} processes")
 
     # TODO-MULTIPROC: refactor this recovery mechanism. Process queue with callbacks?
