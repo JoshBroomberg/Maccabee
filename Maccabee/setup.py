@@ -9,7 +9,7 @@ with open(readme_path, "r") as fh:
 
 setuptools.setup(
      name='maccabee',
-     version='1.0.0',
+     version='1.0.2',
      scripts=[],
      author="Josh Broomberg",
      author_email="joshbroomberg@gmail.com",

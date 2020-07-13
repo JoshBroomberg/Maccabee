@@ -199,8 +199,9 @@ def robust_parallel_map(target_func, args_list, n_jobs=-1, raise_exceptions=True
     time.sleep(0.25)
 
     # Free resources.
-    for proc in worker_processes:
-        proc.close()
+    # TODO re-enable?
+    # for proc in worker_processes:
+    #     proc.close()
 
     # If exceptions occured, raise them if set to do so.
     if len(exception_list) > 0 and raise_exceptions:
